@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply bg-deep-bg text-soft-lavender font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-soft-lavender;
+    line-height: 1.2;
+  }
+  
+  p {
+    line-height: 1.5;
+  }
+}
+
+@layer components {
+  .container {
+    @apply px-4 mx-auto max-w-7xl;
+  }
+  
+  /* Custom slider styling */
+  .slider::-webkit-slider-thumb {
+    @apply appearance-none w-5 h-5 bg-electric-cyan rounded-full cursor-pointer shadow-lg;
+  }
+  
+  .slider::-moz-range-thumb {
+    @apply w-5 h-5 bg-electric-cyan rounded-full cursor-pointer border-0 shadow-lg;
+  }
+}
+
+@layer utilities {
+  .text-gradient-purple {
+    @apply bg-gradient-to-r from-cosmic-purple to-neon-pink text-transparent bg-clip-text;
+  }
+  
+  .text-gradient-cyan {
+    @apply bg-gradient-to-r from-electric-cyan to-cosmic-purple text-transparent bg-clip-text;
+  }
+}
+
+/* Custom animations */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(123, 63, 238, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(123, 63, 238, 0.6);
+  }
+}
+
+.animate-glow {
+  animation: glow 3s ease-in-out infinite;
+}
