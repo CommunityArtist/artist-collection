@@ -448,7 +448,7 @@ const PromptBuilder: React.FC = () => {
                       </label>
                       <textarea
                         className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
-                        rows={3}
+                        rows={6}
                         placeholder={field.placeholder}
                         value={field.value}
                         onChange={(e) => handleFieldChange(sectionIndex, fieldIndex, e.target.value)}
