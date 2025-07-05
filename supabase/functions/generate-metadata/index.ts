@@ -163,6 +163,7 @@ Create a poetic title that captures the essence and mood, detailed professional 
         errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
       } else if (error.message.includes('insufficient_quota')) {
         errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
+      }
       if (error.message.includes('Incorrect API key')) {
         errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
       } else if (error.message.includes('You exceeded your current quota')) {
