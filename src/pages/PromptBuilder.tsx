@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle } from 'lucide-react';
 import Button from '../components/Button';
+import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
 import { PromptTag } from '../types';
 
@@ -185,6 +186,10 @@ const PromptBuilder: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [imageDimensions, setImageDimensions] = useState('1:1');
   const [numberOfImages, setNumberOfImages] = useState(1);
+  
+  // Image viewer modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   // Enhancement slider state
   const [enhanceLevel, setEnhanceLevel] = useState(0);
@@ -443,6 +448,32 @@ const PromptBuilder: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleImageClick = (index: number) => {
+    setCurrentImageIndex(index);
+    setIsModalOpen(true);
+  };
+
+  const handleModalPrevious = () => {
+    setCurrentImageIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleModalNext = () => {
+    setCurrentImageIndex(prev => Math.min(generatedImages.length - 1, prev + 1));
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleDownloadImage = (imageUrl: string, index: number) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `generated-image-${index + 1}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getSectionIcon = (title: string) => {
@@ -727,19 +758,25 @@ const PromptBuilder: React.FC = () => {
                     {generatedImages.map((imageUrl, index) => (
                       <div 
                         key={index} 
-                        className={`relative group ${
+                        className={`relative group cursor-pointer ${
                           generatedImages.length === 1 ? 'aspect-square' : 'aspect-square'
                         }`}
+                        onClick={() => handleImageClick(index)}
                       >
                         <img
                           src={imageUrl}
                           alt={`Generated artwork ${index + 1}`}
-                          className="w-full h-full object-cover rounded-lg hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover rounded-lg hover:scale-105 transition-transform duration-300 cursor-pointer"
                         />
                         <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                           {index + 1}
                         </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-lg"></div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-lg cursor-pointer"></div>
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                            Click to view
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -869,6 +906,17 @@ const PromptBuilder: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Image Viewer Modal */}
+      <ImageViewerModal
+        images={generatedImages}
+        currentIndex={currentImageIndex}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onPrevious={handleModalPrevious}
+        onNext={handleModalNext}
+        onDownload={handleDownloadImage}
+      />
     </div>
   );
 };
