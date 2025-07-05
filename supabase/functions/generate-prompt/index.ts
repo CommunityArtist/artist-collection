@@ -153,8 +153,16 @@ Focus on creating vivid imagery while maintaining technical accuracy and profess
     let errorMessage = 'An unexpected error occurred';
     
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        errorMessage = 'Invalid OpenAI API key';
+      if (error.message.includes('Incorrect API key')) {
+        errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
+      } else if (error.message.includes('You exceeded your current quota')) {
+        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
+      } else if (error.message.includes('API key not found')) {
+        errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
+      } else if (error.message.includes('insufficient_quota')) {
+        errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
+      } else if (error.message.includes('invalid_api_key')) {
+        errorMessage = 'Invalid OpenAI API key format. Please check your API key in settings.';
       } else if (error.message.includes('network')) {
         errorMessage = 'Network error occurred while connecting to OpenAI';
       } else {
