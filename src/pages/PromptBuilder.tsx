@@ -309,11 +309,16 @@ const PromptBuilder: React.FC = () => {
       }
 
       // Generate text prompt
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please sign in to generate prompts');
+      }
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(promptData),
       });
@@ -329,12 +334,6 @@ const PromptBuilder: React.FC = () => {
       // Generate image
       setIsGeneratingImage(true);
       
-      // Get auth token for the request
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please sign in to generate images');
-      }
-
       const imageResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
         method: 'POST',
         headers: {
