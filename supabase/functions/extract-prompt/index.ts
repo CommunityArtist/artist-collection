@@ -113,15 +113,6 @@ ANALYSIS GUIDELINES:
 - If it's architecture, describe materials, style, lighting, perspective
 - If it's nature, describe specific elements, weather, time of day
 
-EXAMPLE OF GOOD MAIN PROMPT (Food):
-"A hyper-realistic food photography close-up of a gourmet cheeseburger placed on a rustic wooden slab. The burger features a perfectly grilled beef patty with char marks, layers of melted golden cheddar cheese dripping down the sides, fresh red tomato slices, crisp green lettuce leaves, and thinly sliced red onions, all stacked inside a golden sesame seed bun with a glossy surface. A small fresh strawberry with green leaves crowns the top bun as a whimsical garnish. Scattered around the wooden board are bright green edamame pods, additional ripe red strawberries, and a whole red tomato, all arranged on a dark teal wooden table surface."
-
-EXAMPLE OF GOOD MAIN PROMPT (Portrait):
-"A professional portrait of a young woman with long, flowing auburn hair cascading over her shoulders, wearing a soft mauve sundress with thin straps. She has a serene, contemplative expression with her left hand gently holding a bright yellow sunflower near her face, while her right hand rests delicately on her collarbone. She's positioned in a vast sunflower field with tall, golden sunflowers in full bloom stretching into the background, creating natural depth and bokeh. A narrow dirt path winds through the field, and a soft, blurred treeline is visible in the distant background under an overcast sky."
-
-EXAMPLE OF BAD MAIN PROMPT:
-"A professional artistic composition with careful attention to visual elements, lighting, and composition."
-
 RESPONSE FORMAT:
 Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "technicalDetails", "colorPalette", "composition", "lighting", "mood", "camera", "lens", "audioVibe"`;
 
@@ -168,86 +159,33 @@ The goal is to create a prompt that would generate a very similar-looking image 
       console.log('Parsing OpenAI response:', response);
       extractedData = JSON.parse(response);
     } catch (parseError) {
-      console.error('JSON parsing failed, using enhanced fallback:', parseError);
-      // Enhanced fallback with more specific content based on the example
-      extractedData = {
-        mainPrompt: "A hyper-realistic food photography close-up of a gourmet cheeseburger placed on a rustic wooden slab. The burger features a perfectly grilled beef patty with char marks, layers of melted golden cheddar cheese, fresh red tomato slices, and crisp green lettuce leaves, all stacked inside a golden sesame seed bun. A small fresh strawberry crowns the top bun as a whimsical garnish. Surrounding elements include scattered edamame pods, ripe strawberries, and a whole tomato on a dark teal wooden table, enhancing the natural, fresh feel of the setup.",
-        styleElements: ["Hyper-realistic food photography", "Professional commercial style", "Rustic gourmet presentation", "Natural food styling", "Restaurant-quality plating", "Artisanal burger composition"],
-        technicalDetails: ["Macro lens photography", "Controlled studio lighting", "Shallow depth of field", "High resolution capture", "Professional color accuracy", "Sharp foreground focus"],
-        colorPalette: ["Golden brown sesame bun", "Bright red tomato", "Fresh green lettuce", "Melted yellow cheese", "Dark teal wood", "Natural strawberry red"],
-        composition: "The composition follows the rule of thirds with the burger positioned slightly off-center as the main focal point. The rustic wooden slab creates a natural base, while scattered ingredients around the perimeter add visual interest and context. The background elements are artfully blurred to maintain focus on the main subject while providing depth and atmosphere.",
-        lighting: "Soft, diffused studio lighting creates even illumination across the burger while maintaining natural shadows that add dimension. The lighting setup appears to use a main key light with fill lighting to reduce harsh shadows, creating a warm, inviting atmosphere that enhances the food's appetizing appearance.",
-        mood: "Warm, inviting, and appetizing atmosphere that evokes a cozy, upscale dining experience. The rustic presentation combined with gourmet ingredients creates a perfect balance between comfort food and fine dining, suggesting quality and craftsmanship in both preparation and presentation.",
-        camera: "Canon EOS R5",
-        lens: "RF 50mm f/1.2L",
-        audioVibe: "Lo-fi jazz with soft crackling ambiance – like a cozy evening bistro"
-      };
+      console.error('JSON parsing failed:', parseError);
+      throw new Error('Failed to parse AI response. The AI returned invalid data. Please try again.');
     }
 
     // Ensure all required fields exist and have proper structure
     const requiredFields = ['mainPrompt', 'styleElements', 'technicalDetails', 'colorPalette', 'composition', 'lighting', 'mood', 'camera', 'lens', 'audioVibe'];
     for (const field of requiredFields) {
       if (!extractedData[field]) {
-        console.warn(`Missing field: ${field}, using enhanced fallback`);
-        switch (field) {
-          case 'mainPrompt':
-            extractedData[field] = "A detailed photographic composition featuring specific visual elements with careful attention to subject matter, positioning, and environmental context. The image demonstrates professional quality with attention to lighting, texture, and compositional balance that creates a cohesive and engaging visual narrative.";
-            break;
-          case 'camera':
-            extractedData[field] = "Canon EOS R5";
-            break;
-          case 'lens':
-            extractedData[field] = "RF 85mm f/1.4L";
-            break;
-          case 'audioVibe':
-            extractedData[field] = "Ambient instrumental music with subtle atmospheric tones";
-            break;
-          case 'composition':
-            extractedData[field] = "Well-balanced composition following professional photography principles with careful attention to framing, subject placement, and visual hierarchy that guides the viewer's eye through the scene.";
-            break;
-          case 'lighting':
-            extractedData[field] = "Professional lighting setup with careful attention to shadows, highlights, and overall illumination quality that enhances the mood and visual impact of the composition.";
-            break;
-          case 'mood':
-            extractedData[field] = "Professional and polished atmosphere with attention to artistic and technical excellence that creates an engaging and emotionally resonant visual experience.";
-            break;
-          default:
-            extractedData[field] = field.includes('Elements') || field.includes('Details') || field.includes('Palette') ? 
-              ["Professional photography", "High quality execution", "Detailed composition", "Artistic vision", "Technical excellence", "Visual storytelling"] :
-              "Professional composition with attention to detail and artistic excellence.";
-        }
+        throw new Error(`AI response is missing required field: ${field}. Please try again.`);
       }
     }
 
-    // Ensure arrays have proper structure and sufficient detail
-    if (!Array.isArray(extractedData.styleElements)) {
-      extractedData.styleElements = ["Professional photography", "Artistic composition", "High quality rendering", "Detailed execution", "Contemporary style", "Visual storytelling"];
-    }
-    if (!Array.isArray(extractedData.technicalDetails)) {
-      extractedData.technicalDetails = ["Professional camera setup", "Controlled lighting", "Sharp focus", "High resolution", "Optimal exposure", "Professional color grading"];
-    }
-    if (!Array.isArray(extractedData.colorPalette)) {
-      extractedData.colorPalette = ["Warm natural tones", "Balanced color harmony", "Professional color grading", "Natural color balance"];
+    // Validate array fields have proper structure
+    const arrayFields = ['styleElements', 'technicalDetails', 'colorPalette'];
+    for (const field of arrayFields) {
+      if (!Array.isArray(extractedData[field]) || extractedData[field].length === 0) {
+        throw new Error(`AI response has invalid ${field} format. Please try again.`);
+      }
     }
 
-    // Ensure arrays have the right number of elements (5-6 for style/technical, 4-6 for colors)
-    if (extractedData.styleElements.length < 5) {
-      const additionalStyles = ["Professional quality", "Artistic execution", "Visual storytelling", "Contemporary aesthetic", "Technical mastery", "Creative composition"];
-      extractedData.styleElements.push(...additionalStyles.slice(0, 6 - extractedData.styleElements.length));
+    // Validate string fields are not empty
+    const stringFields = ['mainPrompt', 'composition', 'lighting', 'mood', 'camera', 'lens', 'audioVibe'];
+    for (const field of stringFields) {
+      if (typeof extractedData[field] !== 'string' || extractedData[field].trim().length === 0) {
+        throw new Error(`AI response has invalid ${field} format. Please try again.`);
+      }
     }
-    if (extractedData.technicalDetails.length < 5) {
-      const additionalTechnical = ["High resolution capture", "Professional setup", "Optimal camera settings", "Quality execution", "Technical precision", "Professional workflow"];
-      extractedData.technicalDetails.push(...additionalTechnical.slice(0, 6 - extractedData.technicalDetails.length));
-    }
-    if (extractedData.colorPalette.length < 4) {
-      const additionalColors = ["Natural color tones", "Balanced color scheme", "Professional color grading", "Harmonious color palette"];
-      extractedData.colorPalette.push(...additionalColors.slice(0, 6 - extractedData.colorPalette.length));
-    }
-
-    // Trim arrays to maximum lengths
-    extractedData.styleElements = extractedData.styleElements.slice(0, 6);
-    extractedData.technicalDetails = extractedData.technicalDetails.slice(0, 6);
-    extractedData.colorPalette = extractedData.colorPalette.slice(0, 6);
 
     console.log('Returning extracted data:', extractedData);
     return new Response(
@@ -277,6 +215,8 @@ The goal is to create a prompt that would generate a very similar-looking image 
         errorMessage = 'Network error occurred while connecting to OpenAI';
       } else if (error.message.includes('image')) {
         errorMessage = 'Failed to process the image. Please ensure the image URL is valid and accessible.';
+      } else if (error.message.includes('Failed to parse AI response') || error.message.includes('AI response')) {
+        errorMessage = error.message; // Use the specific parsing error message
       } else {
         errorMessage = error.message;
       }
