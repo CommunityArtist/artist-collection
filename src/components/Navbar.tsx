@@ -15,7 +15,7 @@ const navItems: NavItem[] = [
 ];
 
 const aiTools = [
-  { label: 'Prompt Extractor', href: 'https://promptextractor.lovable.app/auth' },
+  { label: 'Prompt Extractor', href: '/prompt-extractor' },
   { label: 'VirtuAide', href: 'https://virtuaide-assistant.lovable.app/' }
 ];
 
@@ -124,13 +124,24 @@ const Navbar: React.FC = () => {
                       className="absolute top-full mt-2 w-48 bg-card-bg rounded-lg shadow-lg border border-border-color py-2"
                     >
                       {aiTools.map((tool) => (
-                        <button
+                        {tool.href.startsWith('/') ? (
+                          <Link
+                            key={tool.label}
+                            to={tool.href}
+                            className="w-full text-left px-4 py-2 text-soft-lavender hover:bg-cosmic-purple/10 transition-colors duration-200"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            {tool.label}
+                          </Link>
+                        ) : (
+                          <button
                           key={tool.label}
                           onClick={() => handleExternalLink(tool.href)}
                           className="w-full text-left px-4 py-2 text-soft-lavender hover:bg-cosmic-purple/10 transition-colors duration-200"
                         >
                           {tool.label}
-                        </button>
+                          </button>
+                        )}
                       ))}
                     </div>
                   )}
@@ -181,7 +192,17 @@ const Navbar: React.FC = () => {
                       <div className="text-soft-lavender font-medium mb-2">AI Tools</div>
                       <div className="pl-4 space-y-2">
                         {aiTools.map((tool) => (
-                          <button
+                          {tool.href.startsWith('/') ? (
+                            <Link
+                              key={tool.label}
+                              to={tool.href}
+                              className="w-full text-left text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200 py-1"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              {tool.label}
+                            </Link>
+                          ) : (
+                            <button
                             key={tool.label}
                             onClick={() => {
                               handleExternalLink(tool.href);
@@ -190,7 +211,8 @@ const Navbar: React.FC = () => {
                             className="w-full text-left text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200 py-1"
                           >
                             {tool.label}
-                          </button>
+                            </button>
+                          )}
                         ))}
                       </div>
                     </div>

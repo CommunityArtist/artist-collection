@@ -172,9 +172,7 @@ const Account: React.FC = () => {
               <h2 className="text-xl font-semibold text-soft-lavender mb-4">AI Tools</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <a
-                  href="https://promptextractor.lovable.app/auth"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/prompt-extractor"
                   className="block p-4 bg-deep-bg rounded-lg border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
                 >
                   <h3 className="text-electric-cyan font-semibold mb-2">Prompt Extractor</h3>
