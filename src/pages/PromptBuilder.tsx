@@ -283,7 +283,7 @@ const PromptBuilder: React.FC = () => {
                               <div key={category} className="relative group">
                                 <button
                                   type="button"
-                                  className="text-xs px-2 py-1 bg-cosmic-purple/20 text-cosmic-purple rounded-full hover:bg-cosmic-purple/30 transition-colors"
+                                  className="text-xs px-2 py-1 bg-electric-cyan/20 text-electric-cyan rounded-full hover:bg-electric-cyan/30 transition-colors"
                                 >
                                   {category}
                                 </button>
@@ -323,8 +323,8 @@ const PromptBuilder: React.FC = () => {
                       onClick={() => handleTagToggle(tag)}
                       className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
                         selectedTags.includes(tag)
-                          ? 'bg-electric-cyan/20 text-electric-cyan shadow-md'
-                          : 'bg-cosmic-purple/10 text-soft-lavender/70 hover:bg-cosmic-purple/20'
+                          ? 'bg-electric-cyan text-deep-bg shadow-md font-semibold'
+                          : 'bg-card-bg border border-border-color text-soft-lavender hover:bg-electric-cyan/10 hover:border-electric-cyan/40'
                       }`}
                     >
                       {tag}
@@ -354,7 +354,7 @@ const PromptBuilder: React.FC = () => {
                     <p className="text-sm font-medium text-soft-lavender mb-2">Selected Tags:</p>
                     <div className="flex flex-wrap gap-1">
                       {selectedTags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-cosmic-purple/20 text-cosmic-purple rounded text-xs">
+                        <span key={tag} className="px-2 py-1 bg-electric-cyan/20 text-electric-cyan rounded text-xs font-medium">
                           {tag}
                         </span>
                       ))}
