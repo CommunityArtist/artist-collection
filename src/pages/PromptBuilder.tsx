@@ -304,9 +304,31 @@ const PromptBuilder: React.FC = () => {
 
   const buildPromptData = () => {
     const data: Record<string, string | number> = {};
+    
+    // Create a mapping from field labels to expected backend keys
+    const fieldMapping: Record<string, string> = {
+      'Main Subject': 'subject',
+      'Physical Attributes': 'physical_attributes',
+      'Pose & Expression': 'pose_expression',
+      'Clothing & Accessories': 'clothing_accessories',
+      'Location & Setting': 'setting',
+      'Time & Atmosphere': 'time_atmosphere',
+      'Background Elements': 'background_elements',
+      'Camera & Lens': 'camera_lens',
+      'Camera Settings': 'camera_settings',
+      'Lighting Setup': 'lighting',
+      'Photography Style': 'style',
+      'Mood & Atmosphere': 'mood',
+      'Color Palette': 'color_palette',
+      'Post-Processing Style': 'post_processing',
+      'Quality & Detail': 'quality_detail',
+      'Special Effects': 'special_effects'
+    };
+    
     sections.forEach(section => {
       section.fields.forEach(field => {
-        data[field.label.toLowerCase()] = field.value.trim();
+        const mappedKey = fieldMapping[field.label] || field.label.toLowerCase().replace(/\s+/g, '_');
+        data[mappedKey] = field.value.trim();
       });
     });
     
