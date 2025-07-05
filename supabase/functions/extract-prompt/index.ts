@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert AI art analyst, professional photographer, and prompt engineer with deep expertise in visual analysis and technical photography. Your task is to analyze images and extract comprehensive, detailed prompts that could be used to recreate similar artwork using AI image generation tools like Leonardo AI, Midjourney, or DALL-E.
+    const systemPrompt = `You are an expert AI art analyst, professional photographer, and prompt engineer with deep expertise in visual analysis and technical photography. Your task is to describe images and provide comprehensive, detailed prompts that could be used to recreate similar artwork using AI image generation tools like Leonardo AI, Midjourney, or DALL-E.
 
 CRITICAL REQUIREMENT: The MAIN PROMPT must describe the ACTUAL VISUAL CONTENT of the image in specific detail. Do not use generic artistic descriptions. Describe exactly what you see - the subjects, objects, their appearance, positioning, and the scene.
 
