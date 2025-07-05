@@ -171,7 +171,7 @@ const PromptBuilder: React.FC = () => {
   ]);
   
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isGeneratingMetadata, setIsGeneratingMetadata] = useState(false);
@@ -286,7 +286,7 @@ const PromptBuilder: React.FC = () => {
       setIsLoading(true);
       setError(null);
       setCopySuccess(false);
-      setGeneratedImage(null);
+      setGeneratedImages([]);
       setSaveSuccess(false);
       
       // Clear previous metadata
@@ -352,10 +352,9 @@ const PromptBuilder: React.FC = () => {
 
       // Handle multiple images or single image
       if (imageData.imageUrls && imageData.imageUrls.length > 0) {
-        setGeneratedImage(imageData.imageUrls[0]); // Show first image in preview
-        // You could extend this to show all images in a gallery
+        setGeneratedImages(imageData.imageUrls); // Store all generated images
       } else {
-        setGeneratedImage(imageData.imageUrl);
+        setGeneratedImages(imageData.imageUrl ? [imageData.imageUrl] : []);
       }
       
       setIsGeneratingImage(false);
@@ -400,7 +399,7 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Please enter a title for the prompt');
       }
 
-      if (!generatedPrompt || !generatedImage) {
+      if (!generatedPrompt || generatedImages.length === 0) {
         throw new Error('Please generate a prompt and image first');
       }
 
@@ -418,7 +417,7 @@ const PromptBuilder: React.FC = () => {
           prompt: generatedPrompt,
           notes: promptNotes,
           sref: promptSref,
-          media_url: generatedImage,
+          media_url: generatedImages[0], // Save the first image as the main media
           user_id: user.id,
           tags: selectedTags,
           is_private: false
@@ -436,6 +435,7 @@ const PromptBuilder: React.FC = () => {
       setSelectedTags([]);
       setImageDimensions('1:1');
       setNumberOfImages(1);
+      setGeneratedImages([]);
 
     } catch (error) {
       console.error('Error saving prompt:', error);
@@ -704,28 +704,59 @@ const PromptBuilder: React.FC = () => {
             {/* Image Preview */}
             <div className="bg-card-bg rounded-lg p-6 border border-border-color">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-soft-lavender">Generated Image</h2>
+                <h2 className="text-xl font-bold text-soft-lavender">
+                  Generated Image{generatedImages.length > 1 ? 's' : ''}
+                  {generatedImages.length > 0 && (
+                    <span className="text-sm text-soft-lavender/70 ml-2">
+                      ({generatedImages.length} of {numberOfImages})
+                    </span>
+                  )}
+                </h2>
               </div>
-              <div className="bg-deep-bg border border-border-color rounded-lg overflow-hidden aspect-square">
-                {generatedImage ? (
-                  <img
-                    src={generatedImage}
-                    alt="Generated artwork"
-                    className="w-full h-full object-cover"
-                  />
+              <div className="bg-deep-bg border border-border-color rounded-lg overflow-hidden">
+                {generatedImages.length > 0 ? (
+                  <div className={`grid gap-4 p-4 ${
+                    generatedImages.length === 1 
+                      ? 'grid-cols-1' 
+                      : generatedImages.length === 2 
+                        ? 'grid-cols-2' 
+                        : generatedImages.length <= 4 
+                          ? 'grid-cols-2' 
+                          : 'grid-cols-3'
+                  }`}>
+                    {generatedImages.map((imageUrl, index) => (
+                      <div 
+                        key={index} 
+                        className={`relative group ${
+                          generatedImages.length === 1 ? 'aspect-square' : 'aspect-square'
+                        }`}
+                      >
+                        <img
+                          src={imageUrl}
+                          alt={`Generated artwork ${index + 1}`}
+                          className="w-full h-full object-cover rounded-lg hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                          {index + 1}
+                        </div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-lg"></div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-soft-lavender/50 p-4">
+                  <div className="w-full aspect-square flex flex-col items-center justify-center text-soft-lavender/50 p-4">
                     {isGeneratingImage ? (
                       <>
                         <div className="animate-spin mb-4">
                           <ImageIcon className="w-8 h-8" />
                         </div>
-                        <p>Generating image...</p>
+                        <p>Generating {numberOfImages} image{numberOfImages > 1 ? 's' : ''}...</p>
+                        <p className="text-xs mt-2">This may take a few moments</p>
                       </>
                     ) : (
                       <>
                         <ImageIcon className="w-8 h-8 mb-4" />
-                        <p>Generated image will appear here</p>
+                        <p>Generated image{numberOfImages > 1 ? 's' : ''} will appear here</p>
                       </>
                     )}
                   </div>
@@ -734,7 +765,7 @@ const PromptBuilder: React.FC = () => {
             </div>
 
             {/* Save Prompt Form */}
-            {generatedPrompt && generatedImage && (
+            {generatedPrompt && generatedImages.length > 0 && (
               <div className="bg-card-bg rounded-lg p-6 border border-border-color">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold text-soft-lavender">Save to Library</h2>
