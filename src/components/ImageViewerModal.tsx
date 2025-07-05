@@ -45,30 +45,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
   const handleDownloadClick = () => {
     if (onDownload && currentImage) {
-      // Create a temporary link to download the image
-      const link = document.createElement('a');
-      link.href = currentImage;
-      link.download = `generated-image-${currentIndex + 1}.png`;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      
-      // For cross-origin images, we need to fetch and create a blob
-      fetch(currentImage)
-        .then(response => response.blob())
-        .then(blob => {
-          const url = window.URL.createObjectURL(blob);
-          link.href = url;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        })
-        .catch(() => {
-          // Fallback: try direct download
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        });
+      // Use the onDownload prop which contains the fixed download logic
+      onDownload(currentImage, currentIndex);
     }
   };
 
