@@ -232,19 +232,19 @@ const PromptBuilder: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-deep-bg">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
-            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-3 rounded-2xl shadow-lg">
-              <Wand2 className="w-8 h-8 text-white" />
+            <div className="bg-gradient-to-r from-cosmic-purple to-electric-cyan p-3 rounded-2xl shadow-lg">
+              <Wand2 className="w-8 h-8 text-soft-lavender" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-electric-cyan to-cosmic-purple bg-clip-text text-transparent mb-4">
             AI Prompt Builder
           </h1>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+          <p className="text-soft-lavender/70 text-lg max-w-2xl mx-auto">
             Create detailed, professional prompts for AI image generation with our guided builder
           </p>
         </div>
@@ -254,15 +254,15 @@ const PromptBuilder: React.FC = () => {
             {/* Left Column - Prompt Sections */}
             <div className="lg:col-span-2 space-y-6">
               {sections.map((section, sectionIndex) => (
-                <div key={section.title} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                <div key={section.title} className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
+                  <div className="bg-deep-bg px-6 py-4 border-b border-border-color">
                     <div className="flex items-center space-x-3">
-                      <div className="text-purple-600">
+                      <div className="text-electric-cyan">
                         {section.icon}
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
-                        <p className="text-sm text-gray-600">{section.description}</p>
+                        <h3 className="text-lg font-semibold text-soft-lavender">{section.title}</h3>
+                        <p className="text-sm text-soft-lavender/70">{section.description}</p>
                       </div>
                     </div>
                   </div>
@@ -270,16 +270,16 @@ const PromptBuilder: React.FC = () => {
                   <div className="p-6 space-y-4">
                     {section.fields.map((field, fieldIndex) => (
                       <div key={field.label}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-soft-lavender mb-2">
                           {field.label}
-                          {field.required && <span className="text-red-500 ml-1">*</span>}
+                          {field.required && <span className="text-cosmic-purple ml-1">*</span>}
                         </label>
                         <div className="relative">
                           <textarea
                             value={field.value}
                             onChange={(e) => updateField(sectionIndex, fieldIndex, e.target.value)}
                             placeholder={field.placeholder}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all duration-200"
+                            className="w-full px-4 py-3 bg-deep-bg border border-border-color rounded-lg text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none transition-all duration-200"
                             rows={2}
                           />
                           {/* Cheat Code Suggestions */}
@@ -288,17 +288,17 @@ const PromptBuilder: React.FC = () => {
                               <div key={category} className="relative group">
                                 <button
                                   type="button"
-                                  className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
+                                  className="text-xs px-2 py-1 bg-cosmic-purple/20 text-cosmic-purple rounded-full hover:bg-cosmic-purple/30 transition-colors"
                                 >
                                   {category}
                                 </button>
-                                <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                <div className="absolute top-full left-0 mt-1 w-80 bg-card-bg border border-border-color rounded-lg shadow-lg z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                                   <div className="p-3 space-y-2 max-h-60 overflow-y-auto">
                                     {codes.map((code, idx) => (
                                       <button
                                         key={idx}
                                         onClick={() => insertCheatCode(code, sectionIndex, fieldIndex)}
-                                        className="w-full text-left text-xs p-2 hover:bg-gray-50 rounded border border-gray-100 transition-colors"
+                                        className="w-full text-left text-xs p-2 text-soft-lavender/80 hover:bg-cosmic-purple/10 rounded border border-border-color transition-colors"
                                       >
                                         {code}
                                       </button>
@@ -316,10 +316,10 @@ const PromptBuilder: React.FC = () => {
               ))}
 
               {/* Tags Section */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
                 <div className="flex items-center space-x-3 mb-4">
-                  <Palette className="w-5 h-5 text-purple-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Tags & Categories</h3>
+                  <Palette className="w-5 h-5 text-electric-cyan" />
+                  <h3 className="text-lg font-semibold text-soft-lavender">Tags & Categories</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {AVAILABLE_TAGS.map(tag => (
@@ -328,8 +328,8 @@ const PromptBuilder: React.FC = () => {
                       onClick={() => handleTagToggle(tag)}
                       className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
                         selectedTags.includes(tag)
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-cosmic-purple text-soft-lavender shadow-md'
+                          : 'bg-cosmic-purple/10 text-soft-lavender/70 hover:bg-cosmic-purple/20'
                       }`}
                     >
                       {tag}
@@ -342,24 +342,24 @@ const PromptBuilder: React.FC = () => {
             {/* Right Column - Preview & Actions */}
             <div className="space-y-6">
               {/* Generated Prompt Preview */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-6">
+              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6 sticky top-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Generated Prompt</h3>
-                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  <h3 className="text-lg font-semibold text-soft-lavender">Generated Prompt</h3>
+                  <Sparkles className="w-5 h-5 text-electric-cyan" />
                 </div>
                 
-                <div className="bg-gray-50 rounded-lg p-4 mb-4 min-h-[120px]">
-                  <p className="text-gray-700 text-sm leading-relaxed">
+                <div className="bg-deep-bg rounded-lg p-4 mb-4 min-h-[120px]">
+                  <p className="text-soft-lavender/80 text-sm leading-relaxed">
                     {getGeneratedPromptText() || 'Start filling in the fields to see your prompt preview...'}
                   </p>
                 </div>
 
                 {selectedTags.length > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Selected Tags:</p>
+                    <p className="text-sm font-medium text-soft-lavender mb-2">Selected Tags:</p>
                     <div className="flex flex-wrap gap-1">
                       {selectedTags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                        <span key={tag} className="px-2 py-1 bg-cosmic-purple/20 text-cosmic-purple rounded text-xs">
                           {tag}
                         </span>
                       ))}
@@ -397,26 +397,26 @@ const PromptBuilder: React.FC = () => {
               </div>
 
               {/* Quick Tips */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-                <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                  <Sparkles className="w-4 h-4 text-blue-600 mr-2" />
+              <div className="bg-gradient-to-br from-cosmic-purple/10 to-electric-cyan/10 rounded-2xl p-6 border border-cosmic-purple/20">
+                <h4 className="font-semibold text-soft-lavender mb-3 flex items-center">
+                  <Sparkles className="w-4 h-4 text-electric-cyan mr-2" />
                   Pro Tips
                 </h4>
-                <ul className="text-sm text-gray-700 space-y-2">
+                <ul className="text-sm text-soft-lavender/70 space-y-2">
                   <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
                     Be specific with your subject description
                   </li>
                   <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
                     Use the cheat codes for professional results
                   </li>
                   <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
                     Combine multiple styles for unique effects
                   </li>
                   <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
                     Add technical details for higher quality
                   </li>
                 </ul>
