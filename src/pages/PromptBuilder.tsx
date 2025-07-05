@@ -232,8 +232,8 @@ const PromptBuilder: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-deep-bg">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-deep-bg pt-24 pb-12">
+      <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-soft-lavender mb-6">
@@ -244,7 +244,7 @@ const PromptBuilder: React.FC = () => {
           </p>
         </div>
 
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column - Prompt Sections */}
             <div className="lg:col-span-2 space-y-6">
