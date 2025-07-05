@@ -160,12 +160,11 @@ const PromptBuilder: React.FC = () => {
     ));
   };
 
-  const generatePrompt = () => {
+  const getGeneratedPromptText = () => {
     const allFields = sections.flatMap(section => section.fields);
     const filledFields = allFields.filter(field => field.value.trim());
     
     if (filledFields.length === 0) {
-      setError('Please fill in at least one field to generate a prompt.');
       return '';
     }
 
@@ -190,8 +189,11 @@ const PromptBuilder: React.FC = () => {
   };
 
   const handleSavePrompt = async () => {
-    const prompt = generatePrompt();
-    if (!prompt) return;
+    const prompt = getGeneratedPromptText();
+    if (!prompt) {
+      setError('Please fill in at least one field to generate a prompt.');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -348,7 +350,7 @@ const PromptBuilder: React.FC = () => {
                 
                 <div className="bg-gray-50 rounded-lg p-4 mb-4 min-h-[120px]">
                   <p className="text-gray-700 text-sm leading-relaxed">
-                    {generatePrompt() || 'Start filling in the fields to see your prompt preview...'}
+                    {getGeneratedPromptText() || 'Start filling in the fields to see your prompt preview...'}
                   </p>
                 </div>
 
@@ -367,8 +369,8 @@ const PromptBuilder: React.FC = () => {
 
                 <div className="space-y-3">
                   <Button
-                    onClick={() => copyToClipboard(generatePrompt())}
-                    disabled={!generatePrompt()}
+                    onClick={() => copyToClipboard(getGeneratedPromptText())}
+                    disabled={!getGeneratedPromptText()}
                     className="w-full flex items-center justify-center space-x-2"
                     variant="outline"
                   >
@@ -378,7 +380,7 @@ const PromptBuilder: React.FC = () => {
 
                   <Button
                     onClick={handleSavePrompt}
-                    disabled={!generatePrompt() || isLoading}
+                    disabled={!getGeneratedPromptText() || isLoading}
                     className="w-full flex items-center justify-center space-x-2"
                   >
                     <Download className="w-4 h-4" />
