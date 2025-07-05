@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
@@ -107,6 +107,7 @@ const IMG_CHEAT_CODES = {
 
 const PromptBuilder: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sections, setSections] = useState<PromptSection[]>([
     {
       title: 'Core Elements',
@@ -279,6 +280,143 @@ const PromptBuilder: React.FC = () => {
   ];
 
   const imageCountOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  // Effect to handle transferred data from Prompt Extractor
+  React.useEffect(() => {
+    const extractedData = location.state?.extractedPromptData;
+    if (extractedData) {
+      // Map extracted data to form fields
+      const newSections = [...sections];
+      
+      // Core Elements section (index 0)
+      if (newSections[0]) {
+        // Extract subject from main prompt (first sentence usually contains the main subject)
+        const mainPromptSentences = extractedData.mainPrompt.split('.').filter(s => s.trim());
+        const subjectDescription = mainPromptSentences[0] || extractedData.mainPrompt.substring(0, 200);
+        
+        newSections[0].fields[0].value = subjectDescription; // Main Subject
+        
+        // Try to extract physical attributes from style elements or main prompt
+        const physicalAttributes = extractedData.styleElements
+          .filter(element => element.toLowerCase().includes('detail') || element.toLowerCase().includes('texture') || element.toLowerCase().includes('skin'))
+          .join(', ') || 'Natural skin texture, authentic expression, detailed features';
+        newSections[0].fields[1].value = physicalAttributes; // Physical Attributes
+        
+        // Extract pose/expression info from composition or mood
+        newSections[0].fields[2].value = extractedData.composition.substring(0, 150) || 'Natural pose and expression'; // Pose & Expression
+      }
+      
+      // Environment & Setting section (index 1)
+      if (newSections[1]) {
+        // Extract setting from main prompt (usually contains location info)
+        const settingInfo = extractedData.mainPrompt.match(/(?:in|on|at|placed on|positioned in|standing in|sitting on)([^.]*)/i);
+        const locationSetting = settingInfo ? settingInfo[1].trim() : 'Professional studio environment';
+        newSections[1].fields[0].value = locationSetting; // Location & Setting
+        
+        // Use lighting info for time & atmosphere
+        newSections[1].fields[1].value = extractedData.lighting; // Time & Atmosphere
+        
+        // Extract background elements from composition
+        const backgroundInfo = extractedData.composition.includes('background') 
+          ? extractedData.composition.split('background')[1].substring(0, 100)
+          : 'Carefully composed background elements';
+        newSections[1].fields[2].value = backgroundInfo; // Background Elements
+      }
+      
+      // Technical Photography section (index 2)
+      if (newSections[2]) {
+        // Combine camera and lens
+        const cameraLensCombo = `${extractedData.camera}, ${extractedData.lens}`;
+        newSections[2].fields[0].value = cameraLensCombo; // Camera & Lens
+        
+        // Extract technical settings from technical details
+        const technicalSettings = extractedData.technicalDetails
+          .filter(detail => detail.toLowerCase().includes('setting') || detail.toLowerCase().includes('aperture') || detail.toLowerCase().includes('iso'))
+          .join(', ') || 'Professional camera settings, optimal exposure';
+        newSections[2].fields[1].value = technicalSettings; // Camera Settings
+        
+        newSections[2].fields[2].value = extractedData.lighting; // Lighting Setup
+      }
+      
+      // Artistic Style & Mood section (index 3)
+      if (newSections[3]) {
+        // Use first style element as photography style
+        const photographyStyle = extractedData.styleElements[0] || 'Natural Portrait Photography';
+        newSections[3].fields[0].value = photographyStyle; // Photography Style
+        
+        newSections[3].fields[1].value = extractedData.mood; // Mood & Atmosphere
+        
+        // Join color palette
+        newSections[3].fields[2].value = extractedData.colorPalette.join(', '); // Color Palette
+      }
+      
+      // Post-Processing & Quality section (index 4)
+      if (newSections[4]) {
+        // Extract post-processing info from style elements
+        const postProcessing = extractedData.styleElements
+          .filter(element => element.toLowerCase().includes('processing') || element.toLowerCase().includes('grading') || element.toLowerCase().includes('color'))
+          .join(', ') || 'Natural color grading, minimal retouching';
+        newSections[4].fields[0].value = postProcessing; // Post-Processing Style
+        
+        // Use technical details for quality
+        const qualityDetails = extractedData.technicalDetails
+          .filter(detail => detail.toLowerCase().includes('quality') || detail.toLowerCase().includes('resolution') || detail.toLowerCase().includes('detail'))
+          .join(', ') || 'High resolution, professional quality';
+        newSections[4].fields[1].value = qualityDetails; // Quality & Detail
+        
+        // Use audio vibe for special effects
+        newSections[4].fields[2].value = extractedData.audioVibe || 'Natural depth of field, subtle atmospheric effects'; // Special Effects
+      }
+      
+      setSections(newSections);
+      
+      // Set appropriate tags based on extracted data
+      const relevantTags: PromptTag[] = [];
+      
+      // Check style elements for relevant tags
+      extractedData.styleElements.forEach((element: string) => {
+        const lowerElement = element.toLowerCase();
+        if (lowerElement.includes('photography')) relevantTags.push('Photography');
+        if (lowerElement.includes('food')) relevantTags.push('Food');
+        if (lowerElement.includes('portrait')) relevantTags.push('Photography');
+        if (lowerElement.includes('product')) relevantTags.push('Product');
+        if (lowerElement.includes('fashion')) relevantTags.push('Fashion');
+        if (lowerElement.includes('architecture')) relevantTags.push('Architecture');
+      });
+      
+      // Check technical details for AI platform tags
+      extractedData.technicalDetails.forEach((detail: string) => {
+        const lowerDetail = detail.toLowerCase();
+        if (lowerDetail.includes('leonardo')) relevantTags.push('Leonardo Ai');
+        if (lowerDetail.includes('midjourney')) relevantTags.push('Midjourney');
+        if (lowerDetail.includes('dall-e') || lowerDetail.includes('dalle')) relevantTags.push('DALL-E (OpenAI)');
+      });
+      
+      // Remove duplicates and set tags
+      const uniqueTags = [...new Set(relevantTags)];
+      setSelectedTags(uniqueTags);
+      
+      // Set enhancement category based on style
+      const firstStyle = extractedData.styleElements[0]?.toLowerCase() || '';
+      if (firstStyle.includes('portrait')) {
+        setSelectedCategory('Portrait Photography');
+      } else if (firstStyle.includes('product')) {
+        setSelectedCategory('Product Photography');
+      } else if (firstStyle.includes('fashion')) {
+        setSelectedCategory('Fashion Editorial');
+      } else if (firstStyle.includes('cinematic')) {
+        setSelectedCategory('Cinematic Style');
+      } else {
+        setSelectedCategory('Natural Realism');
+      }
+      
+      // Set a moderate enhancement level
+      setEnhanceLevel(2);
+      
+      // Clear the location state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleFieldChange = (sectionIndex: number, fieldIndex: number, value: string) => {
     const newSections = [...sections];

@@ -224,6 +224,16 @@ Mood: ${extractedPrompt.mood}`;
     URL.revokeObjectURL(url);
   };
 
+  const handleTransferToBuilder = () => {
+    if (!extractedPrompt) return;
+
+    // Navigate to prompt builder with extracted data
+    navigate('/prompt-builder', {
+      state: {
+        extractedPromptData: extractedPrompt
+      }
+    });
+  };
   return (
     <div className="min-h-screen bg-deep-bg pt-24 pb-12">
       <div className="container mx-auto px-4">
@@ -390,6 +400,14 @@ Mood: ${extractedPrompt.mood}`;
                     >
                       <Copy className="w-4 h-4 mr-2" />
                       {copySuccess ? 'Copied!' : 'Copy'}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleTransferToBuilder}
+                    >
+                      <Wand2 className="w-4 h-4 mr-2" />
+                      Transfer to Builder
                     </Button>
                     <Button
                       variant="outline"
