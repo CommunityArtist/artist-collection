@@ -32,10 +32,14 @@ const ApiConfig: React.FC = () => {
   const loadApiKey = async () => {
     try {
       setIsLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from('api_config')
         .select('key_value')
         .eq('key_name', 'openai_api_key')
+        .eq('user_id', user.id)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -61,6 +65,11 @@ const ApiConfig: React.FC = () => {
       setError(null);
       setSuccess(false);
 
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
       if (!openaiApiKey.trim()) {
         throw new Error('Please enter an OpenAI API key');
       }
@@ -74,9 +83,10 @@ const ApiConfig: React.FC = () => {
         .from('api_config')
         .upsert({
           key_name: 'openai_api_key',
-          key_value: openaiApiKey
+          key_value: openaiApiKey,
+          user_id: user.id
         }, {
-          onConflict: 'key_name'
+          onConflict: 'user_id,key_name'
         });
 
       if (upsertError) {
