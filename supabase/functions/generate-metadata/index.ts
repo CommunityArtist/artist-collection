@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 import OpenAI from 'npm:openai@4.28.0';
 
@@ -8,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -62,16 +61,34 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert content creator and metadata specialist for AI art generation. Your task is to create compelling titles, detailed notes, and appropriate SREF numbers based on the generated prompt and input data.
+    const systemPrompt = `You are an expert art curator and photography specialist who creates compelling metadata for professional photography and AI-generated artwork. Your expertise lies in crafting evocative titles and detailed technical descriptions that capture both the artistic vision and technical execution.
 
-Guidelines:
-1. TITLE: Create a catchy, descriptive title (3-8 words) that captures the essence and style of the image
-2. NOTES: Write detailed notes about the creation process, techniques used, and artistic choices (2-3 sentences)
-3. SREF: Generate a realistic SREF number in the format "SREF-XXXX" where XXXX is a 4-digit number
+TITLE CREATION GUIDELINES:
+- Create poetic, evocative titles that capture the mood and essence (2-4 words)
+- Use artistic language that suggests emotion, atmosphere, or narrative
+- Examples: "Serene Muse in Bloom", "Golden Hour Reverie", "Ethereal Garden Dreams", "Sunlit Contemplation"
+- Avoid generic terms like "AI Generated", "Portrait", "Woman", etc.
+- Focus on the emotional or atmospheric qualities
 
-The title should be engaging and suitable for social media sharing.
-The notes should be informative for other creators who want to understand the process.
-The SREF should feel authentic and professional.
+NOTES CREATION GUIDELINES:
+- Write 2-3 detailed sentences describing the technical approach and artistic vision
+- Include specific lighting techniques, camera settings, and compositional choices
+- Mention the mood, atmosphere, and emotional impact
+- Reference professional photography techniques used
+- Example format: "Using [lighting technique] and [camera setup], this portrait captures [subject description] in [emotional state/setting]. The composition highlights [specific elements] while emphasizing [artistic approach]. [Additional technical or artistic detail]."
+
+SREF GUIDELINES:
+- Generate realistic reference numbers in format "SREF-XXXX" where XXXX is 4 digits
+- Use numbers that feel professional and authentic (1000-9999 range)
+
+STYLE REQUIREMENTS:
+- Titles should be Instagram/social media ready
+- Notes should sound like professional photography descriptions
+- Use sophisticated, artistic language
+- Focus on the craft and technique behind the image
+- Emphasize the emotional and visual impact
+- Avoid mentioning "AI" or "generated" in titles or notes
+- Write as if describing a professional photographer's work
 
 Respond in JSON format with exactly these keys: "title", "notes", "sref"`;
 
@@ -80,15 +97,17 @@ Respond in JSON format with exactly these keys: "title", "notes", "sref"`;
 GENERATED PROMPT:
 ${prompt}
 
-ORIGINAL INPUT DATA:
-- Subject: ${promptData.subject || 'Not specified'}
-- Setting: ${promptData.setting || 'Not specified'}
-- Style: ${promptData.style || 'Not specified'}
-- Mood: ${promptData.mood || 'Not specified'}
-- Enhancement Level: ${promptData.enhanceLevel || 0}
-- Category: ${promptData.selectedCategory || 'General'}
+KEY ELEMENTS TO CONSIDER:
+- Main Subject: ${promptData.subject || 'Not specified'}
+- Setting/Environment: ${promptData.setting || 'Not specified'}  
+- Photography Style: ${promptData.style || 'Not specified'}
+- Mood & Atmosphere: ${promptData.mood || 'Not specified'}
+- Lighting Setup: ${promptData.lighting || 'Not specified'}
+- Camera & Technical: ${promptData.camera_lens || 'Professional camera setup'}
+- Enhancement Category: ${promptData.selectedCategory || 'Natural Photography'}
+- Enhancement Level: ${promptData.enhanceLevel || 0}/5
 
-Create engaging title, informative notes, and professional SREF number.`;
+Create a poetic title that captures the essence and mood, detailed professional notes about the photographic technique and artistic vision, and a realistic SREF number.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -112,9 +131,9 @@ Create engaging title, informative notes, and professional SREF number.`;
     } catch (parseError) {
       // Fallback if JSON parsing fails
       metadata = {
-        title: "AI Generated Artwork",
-        notes: "Created using advanced AI prompt engineering techniques with professional enhancement codes for maximum realism and quality.",
-        sref: `SREF-${Math.floor(1000 + Math.random() * 9000)}`
+        title: "Artistic Portrait Study",
+        notes: "Captured using professional lighting techniques and careful composition to create an intimate and contemplative mood. The natural lighting and shallow depth of field emphasize the subject's expression while maintaining authentic skin texture and detail.",
+        sref: `SREF-${Math.floor(2000 + Math.random() * 7000)}`
       };
     }
 
@@ -133,7 +152,7 @@ Create engaging title, informative notes, and professional SREF number.`;
   } catch (error) {
     console.error('Error:', error);
     
-    let errorMessage = 'An unexpected error occurred';
+    let errorMessage = 'Failed to generate metadata';
     
     if (error instanceof Error) {
       if (error.message.includes('Incorrect API key')) {
@@ -144,8 +163,14 @@ Create engaging title, informative notes, and professional SREF number.`;
         errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
       } else if (error.message.includes('insufficient_quota')) {
         errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
-      } else if (error.message.includes('invalid_api_key')) {
-        errorMessage = 'Invalid OpenAI API key format. Please check your API key in settings.';
+      if (error.message.includes('Incorrect API key')) {
+        errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
+      } else if (error.message.includes('You exceeded your current quota')) {
+        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
+      } else if (error.message.includes('API key not found')) {
+        errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
+      } else if (error.message.includes('insufficient_quota')) {
+        errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
       } else if (error.message.includes('network')) {
         errorMessage = 'Network error occurred while connecting to OpenAI';
       } else {
