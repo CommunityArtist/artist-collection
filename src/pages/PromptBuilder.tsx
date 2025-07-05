@@ -236,13 +236,8 @@ const PromptBuilder: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-4">
-            <div className="bg-gradient-to-r from-cosmic-purple to-electric-cyan p-3 rounded-2xl shadow-lg">
-              <Wand2 className="w-8 h-8 text-soft-lavender" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-electric-cyan to-cosmic-purple bg-clip-text text-transparent mb-4">
-            AI Prompt Builder
+          <h1 className="text-4xl md:text-5xl font-bold text-soft-lavender mb-6">
+            <span className="text-electric-cyan">AI</span> Prompt Builder
           </h1>
           <p className="text-soft-lavender/70 text-lg max-w-2xl mx-auto">
             Create detailed, professional prompts for AI image generation with our guided builder
@@ -328,7 +323,7 @@ const PromptBuilder: React.FC = () => {
                       onClick={() => handleTagToggle(tag)}
                       className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
                         selectedTags.includes(tag)
-                          ? 'bg-cosmic-purple text-soft-lavender shadow-md'
+                          ? 'bg-electric-cyan/20 text-electric-cyan shadow-md'
                           : 'bg-cosmic-purple/10 text-soft-lavender/70 hover:bg-cosmic-purple/20'
                       }`}
                     >
