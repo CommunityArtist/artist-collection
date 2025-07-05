@@ -14,11 +14,14 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Extract-prompt function called');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    console.log('Fetching API key from database...');
     const { data: apiConfig, error: fetchError } = await supabaseClient
       .from('api_config')
       .select('key_value')
@@ -26,14 +29,18 @@ serve(async (req) => {
       .single();
 
     if (fetchError || !apiConfig?.key_value) {
+      console.error('API key fetch error:', fetchError);
       throw new Error('Failed to fetch OpenAI API key from database');
     }
 
+    console.log('API key found, length:', apiConfig.key_value.length);
+    
     const openai = new OpenAI({
       apiKey: apiConfig.key_value,
     });
 
     const { imageUrl } = await req.json();
+    console.log('Received image URL:', imageUrl);
 
     if (!imageUrl) {
       return new Response(
@@ -66,6 +73,8 @@ For strings (mainPrompt, composition, lighting, mood), provide detailed, compreh
 
     const userPrompt = `Analyze this image and extract a comprehensive prompt that could be used to recreate similar artwork. Be extremely detailed and specific about all visual elements, technical aspects, and artistic choices you observe.`;
 
+    console.log('Calling OpenAI API...');
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -82,6 +91,8 @@ For strings (mainPrompt, composition, lighting, mood), provide detailed, compreh
       max_tokens: 1500,
     });
 
+    console.log('OpenAI response received');
+    
     const response = completion.choices[0]?.message?.content?.trim();
 
     if (!response) {
@@ -90,6 +101,7 @@ For strings (mainPrompt, composition, lighting, mood), provide detailed, compreh
 
     let extractedData;
     try {
+      console.log('Parsing OpenAI response:', response);
       extractedData = JSON.parse(response);
     } catch (parseError) {
       // Fallback if JSON parsing fails
@@ -112,6 +124,7 @@ For strings (mainPrompt, composition, lighting, mood), provide detailed, compreh
       }
     }
 
+    console.log('Returning extracted data:', extractedData);
     return new Response(
       JSON.stringify(extractedData),
       {

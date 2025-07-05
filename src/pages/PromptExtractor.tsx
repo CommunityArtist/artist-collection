@@ -95,6 +95,8 @@ const PromptExtractor: React.FC = () => {
         return;
       }
 
+      console.log('Starting image upload...');
+      
       // Upload image to Supabase storage
       const fileExt = selectedImage.name.split('.').pop();
       const fileName = `extract-${Date.now()}.${fileExt}`;
@@ -105,15 +107,21 @@ const PromptExtractor: React.FC = () => {
         .upload(filePath, selectedImage);
 
       if (uploadError) {
+        console.error('Upload error:', uploadError);
         throw new Error(`Failed to upload image: ${uploadError.message}`);
       }
 
+      console.log('Image uploaded successfully:', uploadData);
+      
       // Get public URL for the uploaded image
       const { data: { publicUrl } } = supabase.storage
         .from('prompt-media')
         .getPublicUrl(filePath);
 
+      console.log('Public URL:', publicUrl);
+      
       // Call the extract-prompt Edge Function
+      console.log('Calling extract-prompt function...');
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-prompt`, {
         method: 'POST',
         headers: {
@@ -123,7 +131,10 @@ const PromptExtractor: React.FC = () => {
         body: JSON.stringify({ imageUrl: publicUrl }),
       });
 
+      console.log('Response status:', response.status);
+      
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to extract prompt');
@@ -133,9 +144,11 @@ const PromptExtractor: React.FC = () => {
 
       // Clean up: delete the temporary image from storage
       try {
+        console.log('Cleaning up temporary image...');
         await supabase.storage
           .from('prompt-media')
           .remove([filePath]);
+        console.log('Cleanup successful');
       } catch (cleanupError) {
         console.warn('Failed to cleanup temporary image:', cleanupError);
         // Don't throw error for cleanup failure

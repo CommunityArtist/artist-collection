@@ -12,6 +12,8 @@ const ApiConfig: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -95,10 +97,40 @@ const ApiConfig: React.FC = () => {
     }
   };
 
+  const testApiKey = async () => {
+    try {
+      setIsTesting(true);
+      setTestResult(null);
+      setError(null);
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-api-key`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'API test failed');
+      }
+
+      setTestResult('✅ API key is working correctly!');
+    } catch (error) {
+      console.error('API test error:', error);
+      setTestResult(`❌ API test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const handleKeyChange = (value: string) => {
     setOpenaiApiKey(value);
     setError(null);
     setSuccess(false);
+    setTestResult(null);
   };
 
   if (!isAuthenticated) {
@@ -164,6 +196,20 @@ const ApiConfig: React.FC = () => {
               </div>
             )}
 
+            {testResult && (
+              <div className={`border rounded-lg p-4 ${
+                testResult.includes('✅') 
+                  ? 'bg-success-green/10 border-success-green/20' 
+                  : 'bg-red-500/10 border-red-500/20'
+              }`}>
+                <p className={`text-sm ${
+                  testResult.includes('✅') ? 'text-success-green' : 'text-red-500'
+                }`}>
+                  {testResult}
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-4">
               <Button
                 variant="primary"
@@ -176,6 +222,17 @@ const ApiConfig: React.FC = () => {
                 {isSaving ? 'Saving...' : 'Save API Key'}
               </Button>
 
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={testApiKey}
+                disabled={isLoading || isTesting || !openaiApiKey.trim()}
+              >
+                {isTesting ? 'Testing...' : 'Test API Key'}
+              </Button>
+            </div>
+
+            <div className="flex gap-4">
               <Button
                 variant="outline"
                 size="lg"
