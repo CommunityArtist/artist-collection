@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Wand2, Copy, Download, X, Eye, Sparkles, Zap, Camera, AlertCircle } from 'lucide-react';
+import { Upload, Image as ImageIcon, Wand2, Copy, Download, X, Eye, Sparkles, Zap, Camera, AlertCircle, Music } from 'lucide-react';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,9 @@ interface ExtractedPrompt {
   composition: string;
   lighting: string;
   mood: string;
+  camera: string;
+  lens: string;
+  audioVibe: string;
 }
 
 const PromptExtractor: React.FC = () => {
@@ -174,11 +177,15 @@ const PromptExtractor: React.FC = () => {
 
     const fullPrompt = `${extractedPrompt.mainPrompt}
 
+Camera: ${extractedPrompt.camera}
+Lens: ${extractedPrompt.lens}
+Lighting: ${extractedPrompt.lighting}
+Color Palette: ${extractedPrompt.colorPalette.join(', ')}
+Audio Vibe: ${extractedPrompt.audioVibe}
+
 Style Elements: ${extractedPrompt.styleElements.join(', ')}
 Technical Details: ${extractedPrompt.technicalDetails.join(', ')}
-Color Palette: ${extractedPrompt.colorPalette.join(', ')}
 Composition: ${extractedPrompt.composition}
-Lighting: ${extractedPrompt.lighting}
 Mood: ${extractedPrompt.mood}`;
 
     try {
@@ -195,11 +202,15 @@ Mood: ${extractedPrompt.mood}`;
 
     const fullPrompt = `${extractedPrompt.mainPrompt}
 
+Camera: ${extractedPrompt.camera}
+Lens: ${extractedPrompt.lens}
+Lighting: ${extractedPrompt.lighting}
+Color Palette: ${extractedPrompt.colorPalette.join(', ')}
+Audio Vibe: ${extractedPrompt.audioVibe}
+
 Style Elements: ${extractedPrompt.styleElements.join(', ')}
 Technical Details: ${extractedPrompt.technicalDetails.join(', ')}
-Color Palette: ${extractedPrompt.colorPalette.join(', ')}
 Composition: ${extractedPrompt.composition}
-Lighting: ${extractedPrompt.lighting}
 Mood: ${extractedPrompt.mood}`;
 
     const blob = new Blob([fullPrompt], { type: 'text/plain' });
@@ -344,7 +355,7 @@ Mood: ${extractedPrompt.mood}`;
                   <div className="w-8 h-8 rounded-full bg-electric-cyan/20 flex items-center justify-center">
                     <Camera className="w-4 h-4 text-electric-cyan" />
                   </div>
-                  <span className="text-soft-lavender/70 text-sm">Technical Details</span>
+                  <span className="text-soft-lavender/70 text-sm">Camera & Lens</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-neon-pink/20 flex items-center justify-center">
@@ -354,9 +365,9 @@ Mood: ${extractedPrompt.mood}`;
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-success-green/20 flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-success-green" />
+                    <Music className="w-4 h-4 text-success-green" />
                   </div>
-                  <span className="text-soft-lavender/70 text-sm">Composition</span>
+                  <span className="text-soft-lavender/70 text-sm">Audio Vibe</span>
                 </div>
               </div>
             </div>
@@ -409,6 +420,54 @@ Mood: ${extractedPrompt.mood}`;
                       <p className="text-soft-lavender/80 leading-relaxed">{extractedPrompt.mainPrompt}</p>
                     </div>
 
+                    {/* Camera & Lens */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-soft-lavender mb-2">Camera</h3>
+                        <div className="bg-cosmic-purple/20 text-cosmic-purple rounded-lg p-3">
+                          {extractedPrompt.camera}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-soft-lavender mb-2">Lens</h3>
+                        <div className="bg-electric-cyan/20 text-electric-cyan rounded-lg p-3">
+                          {extractedPrompt.lens}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lighting */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-soft-lavender mb-2">Lighting</h3>
+                      <p className="text-soft-lavender/80">{extractedPrompt.lighting}</p>
+                    </div>
+
+                    {/* Color Palette */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-soft-lavender mb-2">Color Palette</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {extractedPrompt.colorPalette.map((color, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-neon-pink/20 text-neon-pink rounded-full text-sm"
+                          >
+                            {color}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Audio Vibe */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-soft-lavender mb-2 flex items-center gap-2">
+                        <Music className="w-5 h-5 text-success-green" />
+                        Audio Vibe
+                      </h3>
+                      <div className="bg-success-green/20 text-success-green rounded-lg p-3">
+                        {extractedPrompt.audioVibe}
+                      </div>
+                    </div>
+
                     {/* Style Elements */}
                     <div>
                       <h3 className="text-lg font-semibold text-soft-lavender mb-2">Style Elements</h3>
@@ -439,31 +498,10 @@ Mood: ${extractedPrompt.mood}`;
                       </div>
                     </div>
 
-                    {/* Color Palette */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-soft-lavender mb-2">Color Palette</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {extractedPrompt.colorPalette.map((color, index) => (
-                          <span
-                            key={index}
-                            className="px-3 py-1 bg-neon-pink/20 text-neon-pink rounded-full text-sm"
-                          >
-                            {color}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* Composition */}
                     <div>
                       <h3 className="text-lg font-semibold text-soft-lavender mb-2">Composition</h3>
                       <p className="text-soft-lavender/80">{extractedPrompt.composition}</p>
-                    </div>
-
-                    {/* Lighting */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-soft-lavender mb-2">Lighting</h3>
-                      <p className="text-soft-lavender/80">{extractedPrompt.lighting}</p>
                     </div>
 
                     {/* Mood */}
