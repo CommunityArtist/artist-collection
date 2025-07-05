@@ -21,16 +21,32 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Fetching API key from database...');
+    // Get the authorization header to identify the user
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header is required');
+    }
+
+    // Extract the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user from the token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !user) {
+      throw new Error('Invalid authentication token');
+    }
+
+    console.log('Fetching user-specific API key from database...');
     const { data: apiConfig, error: fetchError } = await supabaseClient
       .from('api_config')
       .select('key_value')
       .eq('key_name', 'openai_api_key')
+      .eq('user_id', user.id)
       .single();
 
     if (fetchError || !apiConfig?.key_value) {
       console.error('API key fetch error:', fetchError);
-      throw new Error('Failed to fetch OpenAI API key from database');
+      throw new Error('OpenAI API key not found. Please configure your API key in the settings.');
     }
 
     console.log('API key found, length:', apiConfig.key_value.length);

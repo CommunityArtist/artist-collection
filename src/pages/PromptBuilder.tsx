@@ -324,13 +324,24 @@ const PromptBuilder: React.FC = () => {
 
       // Generate image
       setIsGeneratingImage(true);
+      
+      // Get auth token for the request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please sign in to generate images');
+      }
+
       const imageResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ prompt: data.prompt }),
+        body: JSON.stringify({ 
+          prompt: data.prompt,
+          imageDimensions: imageDimensions,
+          numberOfImages: numberOfImages
+        }),
       });
 
       const imageData = await imageResponse.json();
@@ -339,7 +350,14 @@ const PromptBuilder: React.FC = () => {
         throw new Error(imageData.error || 'Failed to generate image');
       }
 
-      setGeneratedImage(imageData.imageUrl);
+      // Handle multiple images or single image
+      if (imageData.imageUrls && imageData.imageUrls.length > 0) {
+        setGeneratedImage(imageData.imageUrls[0]); // Show first image in preview
+        // You could extend this to show all images in a gallery
+      } else {
+        setGeneratedImage(imageData.imageUrl);
+      }
+      
       setIsGeneratingImage(false);
 
       // Auto-generate metadata after successful image generation
@@ -604,6 +622,16 @@ const PromptBuilder: React.FC = () => {
                     </span>
                   </div>
                 </div>
+                {(imageDimensions === '2:3' || imageDimensions === '3:2' || imageDimensions === '4:5') && (
+                  <div className="mt-2 text-xs text-soft-lavender/50">
+                    Note: DALL-E 3 will generate this as 1:1 (square) format
+                  </div>
+                )}
+                {numberOfImages > 1 && (
+                  <div className="mt-2 text-xs text-soft-lavender/50">
+                    Note: Images will be generated sequentially (may take longer)
+                  </div>
+                )}
               </div>
             </div>
 

@@ -8,6 +8,24 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Map frontend dimension ratios to DALL-E 3 supported sizes
+const mapDimensionsToSize = (dimensions: string): string => {
+  switch (dimensions) {
+    case '1:1':
+      return '1024x1024';
+    case '16:9':
+      return '1792x1024';
+    case '9:16':
+      return '1024x1792';
+    case '2:3':
+    case '3:2':
+    case '4:5':
+    default:
+      // For unsupported ratios, default to square
+      return '1024x1024';
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -19,21 +37,38 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Get the authorization header to identify the user
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header is required');
+    }
+
+    // Extract the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user from the token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !user) {
+      throw new Error('Invalid authentication token');
+    }
+
+    // Fetch user-specific API key
     const { data: apiConfig, error: fetchError } = await supabaseClient
       .from('api_config')
       .select('key_value')
       .eq('key_name', 'openai_api_key')
+      .eq('user_id', user.id)
       .single();
 
     if (fetchError || !apiConfig?.key_value) {
-      throw new Error('Failed to fetch OpenAI API key from database');
+      throw new Error('OpenAI API key not found. Please configure your API key in the settings.');
     }
 
     const openai = new OpenAI({
       apiKey: apiConfig.key_value,
     });
 
-    const { prompt } = await req.json();
+    const { prompt, imageDimensions = '1:1', numberOfImages = 1 } = await req.json();
 
     if (!prompt) {
       return new Response(
@@ -45,23 +80,50 @@ serve(async (req) => {
       );
     }
 
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: prompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard",
-      style: "vivid",
-    });
+    // Map dimensions to DALL-E 3 supported size
+    const size = mapDimensionsToSize(imageDimensions);
+    
+    // DALL-E 3 only supports generating 1 image at a time
+    // For multiple images, we'll generate them sequentially
+    const imagesToGenerate = Math.min(numberOfImages, 4); // Limit to 4 for performance
+    const imageUrls: string[] = [];
 
-    const imageUrl = response.data[0]?.url;
+    for (let i = 0; i < imagesToGenerate; i++) {
+      try {
+        const response = await openai.images.generate({
+          model: "dall-e-3",
+          prompt: prompt,
+          n: 1, // DALL-E 3 only supports n=1
+          size: size as "1024x1024" | "1792x1024" | "1024x1792",
+          quality: "standard",
+          style: "vivid",
+        });
 
-    if (!imageUrl) {
-      throw new Error('OpenAI API did not return an image URL');
+        const imageUrl = response.data[0]?.url;
+        if (imageUrl) {
+          imageUrls.push(imageUrl);
+        }
+      } catch (imageError) {
+        console.error(`Error generating image ${i + 1}:`, imageError);
+        // Continue with other images if one fails
+      }
     }
 
+    if (imageUrls.length === 0) {
+      throw new Error('Failed to generate any images');
+    }
+
+    // Return the first image URL for backward compatibility
+    // and include all URLs in the response
     return new Response(
-      JSON.stringify({ imageUrl }),
+      JSON.stringify({ 
+        imageUrl: imageUrls[0],
+        imageUrls: imageUrls,
+        generatedCount: imageUrls.length,
+        requestedCount: numberOfImages,
+        dimensions: imageDimensions,
+        actualSize: size
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
@@ -74,9 +136,13 @@ serve(async (req) => {
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        errorMessage = 'Invalid OpenAI API key';
+        errorMessage = 'Invalid or missing OpenAI API key. Please check your API configuration.';
+      } else if (error.message.includes('quota')) {
+        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing.';
       } else if (error.message.includes('network')) {
         errorMessage = 'Network error occurred while connecting to OpenAI';
+      } else if (error.message.includes('authentication')) {
+        errorMessage = 'Authentication failed. Please sign in again.';
       } else {
         errorMessage = error.message;
       }
