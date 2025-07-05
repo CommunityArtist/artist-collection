@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle } from 'lucide-react';
+import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
@@ -468,12 +468,30 @@ const PromptBuilder: React.FC = () => {
   };
 
   const handleDownloadImage = (imageUrl: string, index: number) => {
+    // Create a temporary link to download the image
     const link = document.createElement('a');
-    link.href = imageUrl;
     link.download = `generated-image-${index + 1}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    
+    // For cross-origin images, we need to fetch and create a blob
+    fetch(imageUrl)
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(() => {
+        // Fallback: try direct download
+        link.href = imageUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
   };
 
   const getSectionIcon = (title: string) => {
@@ -746,39 +764,111 @@ const PromptBuilder: React.FC = () => {
               </div>
               <div className="bg-deep-bg border border-border-color rounded-lg overflow-hidden">
                 {generatedImages.length > 0 ? (
-                  <div className={`grid gap-4 p-4 ${
-                    generatedImages.length === 1 
-                      ? 'grid-cols-1' 
-                      : generatedImages.length === 2 
-                        ? 'grid-cols-2' 
-                        : generatedImages.length <= 4 
-                          ? 'grid-cols-2' 
-                          : 'grid-cols-3'
-                  }`}>
-                    {generatedImages.map((imageUrl, index) => (
+                  <div className="p-4">
+                    {generatedImages.length === 1 ? (
+                      // Single image display
                       <div 
-                        key={index} 
-                        className={`relative group cursor-pointer ${
-                          generatedImages.length === 1 ? 'aspect-square' : 'aspect-square'
-                        }`}
-                        onClick={() => handleImageClick(index)}
+                        className="relative group cursor-pointer aspect-square"
+                        onClick={() => handleImageClick(0)}
                       >
                         <img
-                          src={imageUrl}
-                          alt={`Generated artwork ${index + 1}`}
-                          className="w-full h-full object-cover rounded-lg hover:scale-105 transition-transform duration-300 cursor-pointer"
+                          src={generatedImages[0]}
+                          alt="Generated artwork"
+                          className="w-full h-full object-cover rounded-lg hover:scale-105 transition-transform duration-300"
                         />
-                        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                          {index + 1}
-                        </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-lg cursor-pointer"></div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-lg"></div>
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm">
                             Click to view
                           </div>
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      // Multiple images carousel
+                      <div className="space-y-4">
+                        {/* Main image display */}
+                        <div 
+                          className="relative group cursor-pointer aspect-square"
+                          onClick={() => handleImageClick(currentImageIndex)}
+                        >
+                          <img
+                            src={generatedImages[currentImageIndex]}
+                            alt={`Generated artwork ${currentImageIndex + 1}`}
+                            className="w-full h-full object-cover rounded-lg hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            {currentImageIndex + 1} of {generatedImages.length}
+                          </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 rounded-lg"></div>
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                              Click to view full size
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Navigation arrows */}
+                        <div className="flex justify-between items-center">
+                          <button
+                            onClick={() => setCurrentImageIndex(prev => Math.max(0, prev - 1))}
+                            disabled={currentImageIndex === 0}
+                            className={`p-2 rounded-full transition-colors ${
+                              currentImageIndex === 0
+                                ? 'bg-border-color/20 text-soft-lavender/30 cursor-not-allowed'
+                                : 'bg-cosmic-purple/20 text-cosmic-purple hover:bg-cosmic-purple/30'
+                            }`}
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+
+                          {/* Thumbnail strip */}
+                          <div className="flex gap-2 overflow-x-auto max-w-xs">
+                            {generatedImages.map((imageUrl, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`flex-shrink-0 w-12 h-12 rounded border-2 transition-all ${
+                                  index === currentImageIndex
+                                    ? 'border-electric-cyan scale-110'
+                                    : 'border-border-color hover:border-cosmic-purple/50'
+                                }`}
+                              >
+                                <img
+                                  src={imageUrl}
+                                  alt={`Thumbnail ${index + 1}`}
+                                  className="w-full h-full object-cover rounded"
+                                />
+                              </button>
+                            ))}
+                          </div>
+
+                          <button
+                            onClick={() => setCurrentImageIndex(prev => Math.min(generatedImages.length - 1, prev + 1))}
+                            disabled={currentImageIndex === generatedImages.length - 1}
+                            className={`p-2 rounded-full transition-colors ${
+                              currentImageIndex === generatedImages.length - 1
+                                ? 'bg-border-color/20 text-soft-lavender/30 cursor-not-allowed'
+                                : 'bg-cosmic-purple/20 text-cosmic-purple hover:bg-cosmic-purple/30'
+                            }`}
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Progress indicators */}
+                        <div className="flex justify-center gap-1">
+                          {generatedImages.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentImageIndex(index)}
+                              className={`w-2 h-2 rounded-full transition-colors ${
+                                index === currentImageIndex ? 'bg-electric-cyan' : 'bg-border-color hover:bg-cosmic-purple/50'
+                              }`}
+                          </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="w-full aspect-square flex flex-col items-center justify-center text-soft-lavender/50 p-4">
