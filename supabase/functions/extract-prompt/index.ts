@@ -157,9 +157,26 @@ The goal is to create a prompt that would generate a very similar-looking image 
     let extractedData;
     try {
       console.log('Parsing OpenAI response:', response);
-      extractedData = JSON.parse(response);
+      
+      // Extract JSON from response, handling markdown code blocks and other formatting
+      let jsonString = response.trim();
+      
+      // Check if response is wrapped in markdown code block
+      const jsonBlockMatch = jsonString.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+      if (jsonBlockMatch) {
+        jsonString = jsonBlockMatch[1].trim();
+      } else {
+        // Check if there's JSON content between other text
+        const jsonMatch = jsonString.match(/(\{[\s\S]*\})/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[1].trim();
+        }
+      }
+      
+      extractedData = JSON.parse(jsonString);
     } catch (parseError) {
       console.error('JSON parsing failed:', parseError);
+      console.error('Original response:', response);
       throw new Error('Failed to parse AI response. The AI returned invalid data. Please try again.');
     }
 
