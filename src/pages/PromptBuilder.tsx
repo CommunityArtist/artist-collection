@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw } from 'lucide-react';
+import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle } from 'lucide-react';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
 import { PromptTag } from '../types';
@@ -537,7 +537,24 @@ const PromptBuilder: React.FC = () => {
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                <p className="text-red-500 text-sm">{error}</p>
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                  <div>
+                    <p className="text-red-500 text-sm">{error}</p>
+                    {error.includes('OpenAI API key') && (
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate('/api-config')}
+                          className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                        >
+                          Configure API Key
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

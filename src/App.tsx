@@ -21,6 +21,7 @@ import TermsOfService from './pages/TermsOfService';
 import PromptEngineeringGuide from './pages/PromptEngineeringGuide';
 import PremiumPlans from './pages/PremiumPlans';
 import PromptExtractor from './pages/PromptExtractor';
+import ApiConfig from './pages/ApiConfig';
 
 function App() {
   React.useEffect(() => {
@@ -56,6 +57,7 @@ function App() {
           <Route path="/prompt-engineering-guide" element={<PromptEngineeringGuide />} />
           <Route path="/premium-plans" element={<PremiumPlans />} />
           <Route path="/prompt-extractor" element={<PromptExtractor />} />
+          <Route path="/api-config" element={<ApiConfig />} />
         </Routes>
       </MainLayout>
     </Router>
