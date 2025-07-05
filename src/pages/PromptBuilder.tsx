@@ -183,10 +183,23 @@ const PromptBuilder: React.FC = () => {
   const [promptSref, setPromptSref] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState('1:1');
+  const [numberOfImages, setNumberOfImages] = useState(1);
   
   // Enhancement slider state
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string>('Portrait Photography');
+
+  const dimensionOptions = [
+    { label: '1:1 (Square)', value: '1:1' },
+    { label: '2:3 (Portrait)', value: '2:3' },
+    { label: '3:2 (Landscape)', value: '3:2' },
+    { label: '4:5 (Portrait)', value: '4:5' },
+    { label: '16:9 (Widescreen)', value: '16:9' },
+    { label: '9:16 (Vertical)', value: '9:16' }
+  ];
+
+  const imageCountOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   const handleFieldChange = (sectionIndex: number, fieldIndex: number, value: string) => {
     const newSections = [...sections];
@@ -221,6 +234,8 @@ const PromptBuilder: React.FC = () => {
     // Add enhancement data
     data.enhanceLevel = enhanceLevel;
     data.selectedCategory = selectedCategory;
+    data.imageDimensions = imageDimensions;
+    data.numberOfImages = numberOfImages;
     
     return data;
   };
@@ -401,6 +416,8 @@ const PromptBuilder: React.FC = () => {
       setPromptNotes('');
       setPromptSref('');
       setSelectedTags([]);
+      setImageDimensions('1:1');
+      setNumberOfImages(1);
 
     } catch (error) {
       console.error('Error saving prompt:', error);
@@ -521,6 +538,72 @@ const PromptBuilder: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Image Settings Section */}
+            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+              <div className="flex items-center gap-2 mb-6">
+                <ImageIcon className="w-5 h-5 text-electric-cyan" />
+                <h2 className="text-xl font-bold text-soft-lavender">Image Settings</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Image Dimensions */}
+                <div>
+                  <label className="block text-soft-lavender mb-3 font-medium">Image Dimensions</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {dimensionOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setImageDimensions(option.value)}
+                        className={`p-3 rounded-lg border text-sm font-medium transition-all duration-200 ${
+                          imageDimensions === option.value
+                            ? 'bg-cosmic-purple border-cosmic-purple text-soft-lavender'
+                            : 'bg-deep-bg border-border-color text-soft-lavender/70 hover:border-cosmic-purple/40 hover:text-soft-lavender'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Number of Images */}
+                <div>
+                  <label className="block text-soft-lavender mb-3 font-medium">Number of Images</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {imageCountOptions.map((count) => (
+                      <button
+                        key={count}
+                        onClick={() => setNumberOfImages(count)}
+                        className={`p-3 rounded-lg border text-sm font-medium transition-all duration-200 ${
+                          numberOfImages === count
+                            ? 'bg-electric-cyan border-electric-cyan text-deep-bg'
+                            : 'bg-deep-bg border-border-color text-soft-lavender/70 hover:border-electric-cyan/40 hover:text-soft-lavender'
+                        }`}
+                      >
+                        {count}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Info */}
+              <div className="mt-6 p-4 bg-deep-bg rounded-lg border border-border-color">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-soft-lavender/70">Selected Configuration:</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-electric-cyan font-medium">
+                      {dimensionOptions.find(opt => opt.value === imageDimensions)?.label}
+                    </span>
+                    <span className="text-soft-lavender/50">•</span>
+                    <span className="text-cosmic-purple font-medium">
+                      {numberOfImages} image{numberOfImages > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
