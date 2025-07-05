@@ -17,7 +17,6 @@ const navItems: NavItem[] = [
 
 const aiTools = [
   { label: 'Prompt Extractor', href: '/prompt-extractor' },
-  { label: 'VirtuAide', href: 'https://virtuaide-assistant.lovable.app/' }
 ];
 
 const Navbar: React.FC = () => {

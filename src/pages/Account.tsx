@@ -178,15 +178,6 @@ const Account: React.FC = () => {
                   <h3 className="text-electric-cyan font-semibold mb-2">Prompt Extractor</h3>
                   <p className="text-soft-lavender/70 text-sm">Extract prompts from images</p>
                 </a>
-                <a
-                  href="https://virtuaide-assistant.lovable.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-4 bg-deep-bg rounded-lg border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
-                >
-                  <h3 className="text-electric-cyan font-semibold mb-2">VirtuAide</h3>
-                  <p className="text-soft-lavender/70 text-sm">AI-powered virtual assistant</p>
-                </a>
               </div>
             </div>
 
