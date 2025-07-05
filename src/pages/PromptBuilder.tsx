@@ -427,8 +427,12 @@ const PromptBuilder: React.FC = () => {
       {/* Image Viewer Modal */}
       {showImageViewer && generatedImageUrl && (
         <ImageViewerModal
-          imageUrl={generatedImageUrl}
+          images={[generatedImageUrl]}
+          currentIndex={0}
+          isOpen={showImageViewer}
           onClose={() => setShowImageViewer(false)}
+          onPrevious={() => {}}
+          onNext={() => {}}
         />
       )}
     </div>
