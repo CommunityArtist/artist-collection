@@ -19,6 +19,7 @@ import CookiePolicy from './pages/CookiePolicy';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import PromptEngineeringGuide from './pages/PromptEngineeringGuide';
+import PremiumPlans from './pages/PremiumPlans';
 
 function App() {
   React.useEffect(() => {
@@ -52,6 +53,7 @@ function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/prompt-engineering-guide" element={<PromptEngineeringGuide />} />
+          <Route path="/premium-plans" element={<PremiumPlans />} />
         </Routes>
       </MainLayout>
     </Router>
