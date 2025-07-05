@@ -40,15 +40,15 @@ const ApiConfig: React.FC = () => {
         .select('key_value')
         .eq('key_name', 'openai_api_key')
         .eq('user_id', user.id)
-        .single();
+        .limit(1);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw error;
       }
 
-      if (data?.key_value) {
+      if (data && data.length > 0 && data[0]?.key_value) {
         // Show only the last 4 characters for security
-        const maskedKey = '••••••••••••••••••••••••••••••••••••••••••••••••••••' + data.key_value.slice(-4);
+        const maskedKey = '••••••••••••••••••••••••••••••••••••••••••••••••••••' + data[0].key_value.slice(-4);
         setOpenaiApiKey(maskedKey);
       }
     } catch (error) {
