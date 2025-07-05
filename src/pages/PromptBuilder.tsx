@@ -65,11 +65,11 @@ const IMG_CHEAT_CODES = {
     "hero product shot, cinematic lighting, studio environment, reflection plane, ultra high-res textures"
   ],
   'Portrait Photography': [
-    "portrait, cinematic lighting, Sony A7R IV, 85mm lens, Rembrandt lighting, flawless skin texture",
-    "beauty shot, glossy lips, catchlight in eyes, skin pores visible, soft beauty dish lighting",
-    "medium close-up, f/1.4 aperture, warm skin tones, realistic hair strands, realistic freckles",
-    "close-up portrait, shallow depth of field, cinematic bokeh, high-end fashion makeup",
-    "realistic skin rendering, HDR lighting, subsurface scattering, natural skin imperfections visible"
+    "natural portrait, soft golden hour lighting, Canon EOS R5, 85mm lens, gentle natural shadows, authentic skin texture with visible pores",
+    "candid portrait, natural makeup, soft catchlight in eyes, real skin imperfections, warm natural lighting",
+    "medium close-up, f/2.8 aperture, warm natural skin tones, individual hair strands, subtle natural freckles",
+    "environmental portrait, natural depth of field, soft background blur, minimal retouching, authentic expression",
+    "photographic skin rendering, natural lighting, visible skin texture, authentic human imperfections, real photography feel"
   ],
   'Fashion Editorial': [
     "Vogue fashion shoot, full-body, studio cyclorama, soft spotlight, luxury outfit details",
@@ -93,11 +93,11 @@ const IMG_CHEAT_CODES = {
     "studio lighting rig: key light + fill light + hair light, soft rim lighting"
   ],
   'Realism Overdrive': [
-    "4K hyperrealism, photoreal skin pores, highly detailed, volumetric lighting, HDR rendering",
-    "skin subsurface scattering enabled, realistic skin translucency, highly natural tones",
-    "CGI-to-photoreal hybrid render, global shading accuracy, no waxy skin, no cartoon filter",
-    "ray traced reflections enabled, light bounce accuracy, perfect metallic surfaces",
-    "master realism pack: physically accurate materials, light interaction, natural shadows, optical realism"
+    "photographic realism, natural skin pores and texture, authentic lighting, real camera optics",
+    "natural skin translucency, realistic human features, authentic skin tones, no digital enhancement",
+    "true photographic quality, natural light interaction, authentic shadows, real camera characteristics",
+    "natural light reflections, authentic material properties, real-world lighting physics",
+    "authentic photography: natural materials, realistic lighting, genuine human features, unprocessed natural look"
   ]
 };
 
