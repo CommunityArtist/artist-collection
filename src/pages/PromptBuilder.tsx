@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
 import { PromptTag } from '../types';
+import ImageViewerModal from '../components/ImageViewerModal';
 
 interface PromptSection {
   title: string;
@@ -107,6 +108,7 @@ const IMG_CHEAT_CODES = {
 
 const PromptBuilder: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const location = useLocation();
   const [sections, setSections] = useState<PromptSection[]>([
     {
@@ -265,6 +267,11 @@ const PromptBuilder: React.FC = () => {
   const [imageDimensions, setImageDimensions] = useState('1:1');
   const [numberOfImages, setNumberOfImages] = useState(1);
   const [showImageModal, setShowImageModal] = useState(false);
+  // Image viewer state
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
   
   // Enhancement slider state
   const [enhanceLevel, setEnhanceLevel] = useState(0);
@@ -280,6 +287,45 @@ const PromptBuilder: React.FC = () => {
   ];
 
   const imageCountOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  // Handle extracted prompt data from prompt extractor
+  useEffect(() => {
+    const extractedPromptData = location.state?.extractedPromptData;
+    if (extractedPromptData) {
+      console.log('Received extracted prompt data:', extractedPromptData);
+      
+      // Pre-fill form fields with extracted data
+      const newSections = [...sections];
+      
+      // Core Elements section (index 0)
+      newSections[0].fields[0].value = extractedPromptData.mainPrompt || ''; // Subject
+      newSections[0].fields[1].value = extractedPromptData.composition || ''; // Setting
+      newSections[0].fields[2].value = extractedPromptData.lighting || ''; // Lighting
+      
+      // Artistic Direction section (index 1)
+      newSections[1].fields[0].value = extractedPromptData.styleElements?.join(', ') || ''; // Style
+      newSections[1].fields[1].value = extractedPromptData.mood || ''; // Mood
+      newSections[1].fields[2].value = extractedPromptData.colorPalette?.join(', ') || ''; // Color Palette
+      
+      // Technical Details section (index 2)
+      const cameraLensInfo = extractedPromptData.camera && extractedPromptData.lens 
+        ? `Shot on ${extractedPromptData.camera} with ${extractedPromptData.lens}`
+        : '';
+      newSections[2].fields[0].value = cameraLensInfo; // Camera Settings
+      
+      const additionalDetails = [
+        extractedPromptData.technicalDetails?.join(', '),
+        extractedPromptData.audioVibe ? `Audio Vibe: ${extractedPromptData.audioVibe}` : ''
+      ].filter(Boolean).join('. ');
+      
+      newSections[2].fields[2].value = additionalDetails; // Additional Details
+      
+      setSections(newSections);
+      
+      // Clear the location state to prevent re-filling on subsequent renders
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Effect to handle transferred data from Prompt Extractor
   React.useEffect(() => {
@@ -598,7 +644,8 @@ const PromptBuilder: React.FC = () => {
       // Handle multiple images or single image
       if (imageData.imageUrls && imageData.imageUrls.length > 0) {
         setGeneratedImages(imageData.imageUrls);
-      } else if (imageData.imageUrl) {
+        setGeneratedImage(imageData.imageUrls[0]); // Show first image in preview
+        setGeneratedImages([imageData.imageUrl]);
         setGeneratedImages([imageData.imageUrl]);
       }
       
@@ -687,6 +734,30 @@ const PromptBuilder: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleImageClick = () => {
+    if (generatedImages.length > 0) {
+      setCurrentImageIndex(0);
+      setImageViewerOpen(true);
+    }
+  };
+
+  const handleImageNavigation = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    } else if (direction === 'next' && currentImageIndex < generatedImages.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    }
+  };
+
+  const handleImageDownload = (imageUrl: string, index: number) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `generated-image-${index + 1}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getSectionIcon = (title: string) => {
@@ -1088,15 +1159,37 @@ const PromptBuilder: React.FC = () => {
                         {generatedImages.map((_, index) => (
                           <button
                             key={index}
-                            onClick={() => handleThumbnailClick(index)}
+                <h2 className="text-xl font-bold text-soft-lavender">
+                  Generated Image{generatedImages.length > 1 ? 's' : ''}
+                </h2>
+                {generatedImages.length > 1 && (
+                  <span className="text-soft-lavender/70 text-sm">
+                    {generatedImages.length} images generated
+                  </span>
+                )}
                             className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-                              index === currentImageIndex ? 'bg-electric-cyan' : 'bg-soft-lavender/30'
+              <div 
+                className="bg-deep-bg border border-border-color rounded-lg overflow-hidden aspect-square cursor-pointer relative group"
+                onClick={handleImageClick}
+              >
                             }`}
-                          />
-                        ))}
+                  <>
+                    <img
+                      src={generatedImage}
+                      alt="Generated artwork"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    {generatedImages.length > 1 && (
+                      <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
+                        1 of {generatedImages.length}
                       </div>
                     )}
-                  </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <span className="text-white text-sm">Click to view full size</span>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="aspect-square flex flex-col items-center justify-center text-soft-lavender/50 p-4">
                     {isGeneratingImage ? (
@@ -1222,6 +1315,17 @@ const PromptBuilder: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Image Viewer Modal */}
+      <ImageViewerModal
+        images={generatedImages}
+        currentIndex={currentImageIndex}
+        isOpen={imageViewerOpen}
+        onClose={() => setImageViewerOpen(false)}
+        onPrevious={() => handleImageNavigation('prev')}
+        onNext={() => handleImageNavigation('next')}
+        onDownload={handleImageDownload}
+      />
 
       {/* Image Viewer Modal */}
       <ImageViewerModal
