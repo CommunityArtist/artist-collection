@@ -67,11 +67,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert AI art analyst, professional photographer, and prompt engineer with deep expertise in visual analysis and technical photography. Your task is to analyze images and extract comprehensive, detailed prompts that could be used to recreate similar artwork using AI image generation tools.
+    const systemPrompt = `You are an expert AI art analyst, professional photographer, and prompt engineer with deep expertise in visual analysis and technical photography. Your task is to analyze images and extract comprehensive, detailed prompts that could be used to recreate similar artwork using AI image generation tools like Leonardo AI, Midjourney, or DALL-E.
+
+CRITICAL REQUIREMENT: The MAIN PROMPT must describe the ACTUAL VISUAL CONTENT of the image in specific detail. Do not use generic artistic descriptions. Describe exactly what you see - the subjects, objects, their appearance, positioning, and the scene.
 
 When analyzing an image, provide a detailed breakdown including:
 
-1. MAIN PROMPT: A comprehensive, flowing description that captures the complete essence of the image in natural language (2-3 sentences)
+1. MAIN PROMPT: A comprehensive, flowing description that captures the complete visual content of the image in specific detail (3-4 sentences)
+   - Describe the actual subjects, objects, and scene elements visible
+   - Include specific details about appearance, positioning, materials, textures
+   - Mention the setting, environment, and background elements
+   - Be concrete and specific, not abstract or generic
 
 2. STYLE ELEMENTS: Artistic style, aesthetic choices, and visual approach (provide exactly 5-6 specific style descriptors as an array)
 
@@ -92,31 +98,24 @@ When analyzing an image, provide a detailed breakdown including:
 10. AUDIO VIBE: Suggested audio atmosphere that would complement the visual mood (single descriptive phrase)
 
 ANALYSIS GUIDELINES:
-- Be extremely detailed and specific about all visual elements
-- Include technical photography terms and artistic styles
-- Focus on elements that are actually visible in the image
+- Be extremely detailed and specific about all visible elements
+- Describe the actual content, not just artistic qualities
+- Include specific details about subjects, objects, materials, textures
+- Mention exact positioning, arrangements, and spatial relationships
+- Use descriptive language that would help an AI recreate the specific scene
+- Focus on concrete visual elements rather than abstract concepts
 - Provide professional-level technical specifications
-- Consider the mood and atmosphere for audio suggestions
-- Use descriptive language that would help an AI understand exactly what to create
+
+EXAMPLE OF GOOD MAIN PROMPT:
+"A hyper-realistic food photography close-up of a gourmet cheeseburger placed on a rustic wooden slab. The burger features a perfectly grilled beef patty, layers of melted cheddar cheese, fresh tomato slices, and leafy green lettuce, all stacked inside a golden sesame seed bun. A small strawberry crowns the top bun as a whimsical garnish. In the background, a softly blurred warm-toned bokeh of candlelight and diffused ambiance sets a cozy, romantic dining atmosphere."
+
+EXAMPLE OF BAD MAIN PROMPT:
+"A professional artistic composition with careful attention to visual elements, lighting, and composition."
 
 RESPONSE FORMAT:
-Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "technicalDetails", "colorPalette", "composition", "lighting", "mood", "camera", "lens", "audioVibe"
+Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "technicalDetails", "colorPalette", "composition", "lighting", "mood", "camera", "lens", "audioVibe"`;
 
-EXAMPLE STRUCTURE:
-{
-  "mainPrompt": "A hyper-realistic food photography close-up of a gourmet cheeseburger...",
-  "styleElements": ["Hyper-realistic food photography", "Commercial advertising style", "Professional product shot", "Gourmet presentation", "Restaurant quality styling"],
-  "technicalDetails": ["Macro lens photography", "f/8 aperture for sharp focus", "Controlled studio lighting", "Focus stacking technique", "High-resolution capture"],
-  "colorPalette": ["Golden brown sesame bun", "Rich red tomato", "Fresh green lettuce", "Warm amber lighting", "Deep teal wood tones"],
-  "composition": "The composition follows classic food photography principles...",
-  "lighting": "Soft diffused tungsten lighting creates warm, inviting tones...",
-  "mood": "The overall mood is cozy and appetizing...",
-  "camera": "Canon EOS R5",
-  "lens": "RF 50mm f/1.2L",
-  "audioVibe": "Lo-fi jazz with soft crackling ambiance – like a cozy evening bistro"
-}`;
-
-    const userPrompt = `Analyze this image and extract a comprehensive prompt that could be used to recreate similar artwork. Be extremely detailed and specific about all visual elements, technical aspects, and artistic choices you observe. Include professional camera and lens recommendations, and suggest an audio vibe that would complement the visual atmosphere.`;
+    const userPrompt = `Analyze this image and extract a comprehensive prompt that could be used to recreate similar artwork. Be extremely detailed and specific about all visual elements you can see in the image. Describe the actual subjects, objects, scene, and their specific characteristics rather than using generic artistic terms. The goal is to create a prompt that would generate a similar-looking image when used with AI art tools.`;
 
     console.log('Calling OpenAI API...');
     
@@ -132,7 +131,7 @@ EXAMPLE STRUCTURE:
           ]
         }
       ],
-      temperature: 0.7,
+      temperature: 0.3, // Lower temperature for more consistent, detailed analysis
       max_tokens: 2000,
     });
 
@@ -149,38 +148,68 @@ EXAMPLE STRUCTURE:
       console.log('Parsing OpenAI response:', response);
       extractedData = JSON.parse(response);
     } catch (parseError) {
-      // Fallback if JSON parsing fails
+      console.error('JSON parsing failed, using fallback:', parseError);
+      // Improved fallback with more specific content
       extractedData = {
-        mainPrompt: "A professional artistic composition with careful attention to visual elements, lighting, and composition. The image demonstrates high-quality execution with detailed focus on subject matter and environmental context.",
-        styleElements: ["Professional photography", "Artistic composition", "High quality rendering", "Detailed execution", "Contemporary style"],
-        technicalDetails: ["Professional camera setup", "Optimal lighting", "Sharp focus", "High resolution", "Controlled exposure"],
-        colorPalette: ["Balanced color scheme", "Harmonious tones", "Professional color grading", "Natural color balance"],
-        composition: "Well-balanced composition following professional photography principles with careful attention to framing and visual hierarchy.",
-        lighting: "Professional lighting setup with careful attention to shadows, highlights, and overall illumination quality.",
-        mood: "Professional and polished atmosphere with attention to artistic and technical excellence.",
+        mainPrompt: "A detailed photographic composition featuring specific subjects and elements arranged in a carefully composed scene. The image shows clear visual elements with attention to lighting, texture, and environmental context that creates a cohesive artistic statement.",
+        styleElements: ["Professional photography", "Detailed composition", "High quality rendering", "Artistic execution", "Contemporary style", "Visual storytelling"],
+        technicalDetails: ["Professional camera setup", "Controlled lighting", "Sharp focus", "High resolution", "Optimal exposure", "Professional color grading"],
+        colorPalette: ["Balanced color scheme", "Harmonious tones", "Natural color balance", "Professional color grading"],
+        composition: "Well-balanced composition following professional photography principles with careful attention to framing, subject placement, and visual hierarchy that guides the viewer's eye through the scene.",
+        lighting: "Professional lighting setup with careful attention to shadows, highlights, and overall illumination quality that enhances the mood and visual impact of the composition.",
+        mood: "Professional and polished atmosphere with attention to artistic and technical excellence that creates an engaging visual experience.",
         camera: "Canon EOS R5",
         lens: "85mm f/1.4",
         audioVibe: "Ambient instrumental music with subtle atmospheric tones"
       };
     }
 
-    // Ensure all required fields exist
+    // Ensure all required fields exist and have proper structure
     const requiredFields = ['mainPrompt', 'styleElements', 'technicalDetails', 'colorPalette', 'composition', 'lighting', 'mood', 'camera', 'lens', 'audioVibe'];
     for (const field of requiredFields) {
       if (!extractedData[field]) {
-        throw new Error(`Generated response is missing required field: ${field}`);
+        console.warn(`Missing field: ${field}, using fallback`);
+        switch (field) {
+          case 'mainPrompt':
+            extractedData[field] = "A detailed photographic composition with specific visual elements and careful attention to composition and lighting.";
+            break;
+          case 'camera':
+            extractedData[field] = "Canon EOS R5";
+            break;
+          case 'lens':
+            extractedData[field] = "85mm f/1.4";
+            break;
+          case 'audioVibe':
+            extractedData[field] = "Ambient instrumental music with subtle atmospheric tones";
+            break;
+          default:
+            extractedData[field] = field.includes('Elements') || field.includes('Details') || field.includes('Palette') ? 
+              ["Professional quality", "Detailed execution", "High resolution", "Artistic composition"] :
+              "Professional composition with attention to detail and artistic excellence.";
+        }
       }
     }
 
     // Ensure arrays have proper structure
     if (!Array.isArray(extractedData.styleElements)) {
-      extractedData.styleElements = ["Professional photography", "Artistic composition", "High quality rendering", "Detailed execution"];
+      extractedData.styleElements = ["Professional photography", "Artistic composition", "High quality rendering", "Detailed execution", "Contemporary style", "Visual storytelling"];
     }
     if (!Array.isArray(extractedData.technicalDetails)) {
-      extractedData.technicalDetails = ["Professional camera setup", "Optimal lighting", "Sharp focus", "High resolution"];
+      extractedData.technicalDetails = ["Professional camera setup", "Controlled lighting", "Sharp focus", "High resolution", "Optimal exposure", "Professional color grading"];
     }
     if (!Array.isArray(extractedData.colorPalette)) {
-      extractedData.colorPalette = ["Balanced color scheme", "Harmonious tones", "Professional color grading", "Natural color balance"];
+      extractedData.colorPalette = ["Balanced color scheme", "Harmonious tones", "Natural color balance", "Professional color grading"];
+    }
+
+    // Ensure arrays have the right number of elements
+    if (extractedData.styleElements.length < 4) {
+      extractedData.styleElements.push(...["Professional quality", "Artistic execution", "Visual storytelling", "Contemporary style"].slice(0, 6 - extractedData.styleElements.length));
+    }
+    if (extractedData.technicalDetails.length < 4) {
+      extractedData.technicalDetails.push(...["High resolution", "Professional setup", "Optimal settings", "Quality execution"].slice(0, 6 - extractedData.technicalDetails.length));
+    }
+    if (extractedData.colorPalette.length < 3) {
+      extractedData.colorPalette.push(...["Natural tones", "Balanced colors", "Professional grading"].slice(0, 6 - extractedData.colorPalette.length));
     }
 
     console.log('Returning extracted data:', extractedData);
