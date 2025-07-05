@@ -98,10 +98,18 @@ When enhancement codes are provided, seamlessly integrate them into the prompt t
 
 Format your response as a clear, detailed prompt that reads naturally while incorporating all technical details and enhancements.`;
 
+    let userPrompt = `Create a detailed photography prompt with these specifications:
+- Subject: ${promptData.subject}
+- Lighting: ${promptData.lighting}
+- Style: ${promptData.style}
+- Mood: ${promptData.mood}
 - Setting: ${promptData.setting}
 
-${promptData['post-processing'] ? `- Post-Processing: ${promptData['post-processing']}\n` : ''}
+${promptData['post-processing'] ? `- Post-Processing: ${promptData['post-processing']}\n` : ''}`;
+
     if (promptData.enhancement) {
+      userPrompt += `- Enhancement Codes: ${promptData.enhancement}\n`;
+    }
 
     userPrompt += `\n\nCreate a cohesive, detailed prompt that incorporates all these elements naturally.
 Include specific camera and lens recommendations that would best capture this type of shot.
