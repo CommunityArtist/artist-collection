@@ -9,6 +9,8 @@ import { PromptTag } from '../types';
 interface PromptSection {
   title: string;
   fields: PromptField[];
+  icon: React.ReactNode;
+  description: string;
 }
 
 interface PromptField {
@@ -16,6 +18,8 @@ interface PromptField {
   value: string;
   placeholder: string;
   required?: boolean;
+  type?: 'text' | 'textarea' | 'select';
+  options?: string[];
 }
 
 const AVAILABLE_TAGS: PromptTag[] = [
@@ -58,46 +62,46 @@ const AVAILABLE_TAGS: PromptTag[] = [
 // Master IMG Cheat Codes organized by category
 const IMG_CHEAT_CODES = {
   'Product Photography': [
-    "hyperreal product render, ultra sharp, 85mm lens, studio lighting, perfect reflections, HDRI, glossy surface",
-    "product shot, floating, softbox lighting, subtle shadows, sharp focus, f/2.8, commercial advertising style",
-    "packaging mockup, photorealistic texture, sharp embossing, natural shadows, studio white background",
-    "macro shot, extreme detail, 100mm macro lens, crisp textures, depth of field, focus stacking effect",
-    "hero product shot, cinematic lighting, studio environment, reflection plane, ultra high-res textures"
+    "professional product photography, studio lighting setup with key and fill lights, clean white background",
+    "commercial product shot, 85mm lens, f/8 aperture, perfect focus, minimal shadows, high-end catalog style",
+    "product showcase, softbox lighting, natural reflections, sharp details, professional color accuracy",
+    "macro product detail, 100mm macro lens, extreme sharpness, texture emphasis, controlled lighting",
+    "hero product image, cinematic quality, studio environment, professional grade photography"
   ],
   'Portrait Photography': [
-    "natural portrait, soft golden hour lighting, Canon EOS R5, 85mm lens, gentle natural shadows, authentic skin texture with visible pores",
-    "candid portrait, natural makeup, soft catchlight in eyes, real skin imperfections, warm natural lighting",
-    "medium close-up, f/2.8 aperture, warm natural skin tones, individual hair strands, subtle natural freckles",
-    "environmental portrait, natural depth of field, soft background blur, minimal retouching, authentic expression",
-    "photographic skin rendering, natural lighting, visible skin texture, authentic human imperfections, real photography feel"
+    "professional portrait, Canon EOS R5, 85mm f/1.4 lens, natural skin texture, authentic lighting",
+    "environmental portrait, golden hour lighting, shallow depth of field, natural expression, real skin detail",
+    "studio portrait, controlled lighting setup, soft shadows, natural skin tones, professional quality",
+    "candid portrait style, natural makeup, authentic expression, visible skin texture, warm lighting",
+    "headshot photography, 85mm lens, f/2.8 aperture, professional lighting, natural skin rendering"
   ],
   'Fashion Editorial': [
-    "Vogue fashion shoot, full-body, studio cyclorama, soft spotlight, luxury outfit details",
-    "street style fashion shoot, candid walking pose, urban backdrop, overcast natural lighting",
-    "editorial glamour, high gloss fashion, high-end heels, glossy fabric textures, depth of field",
-    "high-fashion lookbook, pastel backgrounds, 50mm lens, crisp color separation, wardrobe focus",
-    "luxury catalog photo, jewelry reflections, macro fabric texture, expensive vibe"
+    "high fashion editorial, professional studio lighting, designer clothing focus, editorial composition",
+    "fashion photography, 85mm lens, dramatic lighting, fabric texture detail, professional styling",
+    "editorial fashion shoot, controlled environment, luxury brand aesthetic, professional model pose",
+    "fashion catalog photography, clean lighting, color accuracy, fabric detail, commercial quality",
+    "designer fashion showcase, studio setup, professional lighting, high-end fashion photography"
   ],
   'Cinematic Style': [
-    "cinematic poster style, dramatic lighting, wide-angle lens, depth haze, intense color grading",
-    "hero shot, backlit subject, glowing rim light, dark moody atmosphere, sharp facial contrast",
-    "movie teaser poster, dynamic diagonal composition, atmosphere particles, realistic shadows",
-    "RED Komodo 6K cinematic sensor, perfect skin tones, movie-grade lighting",
-    "cinematic color grading, teal & orange, subtle LUT applied, film grain overlay"
+    "cinematic photography, dramatic lighting, film-like quality, professional color grading",
+    "movie-style portrait, cinematic composition, dramatic shadows, professional film aesthetic",
+    "cinematic lighting setup, dramatic mood, film photography style, professional cinematography",
+    "film-inspired photography, cinematic color palette, dramatic lighting, movie-quality image",
+    "professional cinematic style, dramatic composition, film-like lighting, cinema photography"
   ],
   'Camera & Lighting': [
-    "Sony A7R IV, G-Master lens, f/1.2 aperture, ISO 100, ultra sharp focus",
-    "Canon EOS R5, 85mm f/1.2 RF lens, creamy bokeh, edge-to-edge sharpness",
-    "Zeiss Otus 100mm f/1.4, extreme lens clarity, flawless micro-contrast",
-    "global illumination, indirect bounce lighting, realistic light interaction",
-    "studio lighting rig: key light + fill light + hair light, soft rim lighting"
+    "professional camera setup, Canon EOS R5, 85mm f/1.4 lens, optimal settings, sharp focus",
+    "Sony A7R IV, professional lens, perfect exposure, natural lighting, high image quality",
+    "studio lighting setup, key light and fill light, professional photography equipment",
+    "natural lighting, golden hour, soft shadows, professional camera settings, optimal exposure",
+    "professional photography setup, controlled lighting, high-end camera equipment, perfect focus"
   ],
-  'Realism Overdrive': [
-    "photographic realism, natural skin pores and texture, authentic lighting, real camera optics",
-    "natural skin translucency, realistic human features, authentic skin tones, no digital enhancement",
-    "true photographic quality, natural light interaction, authentic shadows, real camera characteristics",
-    "natural light reflections, authentic material properties, real-world lighting physics",
-    "authentic photography: natural materials, realistic lighting, genuine human features, unprocessed natural look"
+  'Natural Realism': [
+    "natural photography, authentic skin texture, real lighting conditions, unprocessed natural look",
+    "photographic realism, natural skin detail, authentic lighting, real camera characteristics",
+    "natural portrait photography, authentic human features, real skin texture, natural lighting",
+    "realistic photography, natural materials, authentic shadows, real-world lighting physics",
+    "natural photographic style, authentic skin tones, real lighting interaction, genuine photography"
   ]
 };
 
@@ -106,66 +110,138 @@ const PromptBuilder: React.FC = () => {
   const [sections, setSections] = useState<PromptSection[]>([
     {
       title: 'Core Elements',
+      icon: <Camera className="w-5 h-5" />,
+      description: 'Detailed description of the main subject including physical attributes, pose, and expression',
       fields: [
         { 
-          label: 'Subject', 
+          label: 'Main Subject', 
           value: '', 
-          placeholder: 'Describe the main subject in detail (e.g., "a confident woman with long red hair")',
+          placeholder: 'young woman with long auburn hair, wearing a flowing mauve sundress',
           required: true
         },
         { 
-          label: 'Setting', 
+          label: 'Physical Attributes', 
           value: '', 
-          placeholder: 'Where is the subject located? (e.g., "lounging on a cream-colored couch in a cozy studio")',
+          placeholder: 'detailed facial features, natural skin texture, authentic expression',
           required: true
         },
         { 
-          label: 'Lighting', 
+          label: 'Pose & Expression', 
           value: '', 
-          placeholder: 'Describe the lighting conditions (e.g., "warm ambient lighting with soft shadows")',
+          placeholder: 'serene reflective expression, left hand holding sunflower, right hand on collarbone',
           required: true
+        },
+        { 
+          label: 'Clothing & Accessories', 
+          value: '', 
+          placeholder: 'straw hat with black floral embroidery, simple pendant necklace, silver bracelet'
         }
       ]
     },
     {
-      title: 'Artistic Direction',
+      title: 'Environment & Setting',
+      description: 'Location, time of day, atmospheric elements, and surrounding environment',
       fields: [
         { 
-          label: 'Style', 
+          label: 'Location & Setting', 
           value: '', 
-          placeholder: 'What artistic style should be used? (e.g., "glamour photography with cinematic qualities")',
+          placeholder: 'sunflower field in full summer bloom, tall flowers in symmetrical rows',
           required: true
         },
         { 
-          label: 'Mood', 
+          label: 'Time & Atmosphere', 
           value: '', 
-          placeholder: 'What emotions or atmosphere should be conveyed? (e.g., "playful and intimate yet sophisticated")',
+          placeholder: 'golden hour lighting, soft natural light, overcast sky',
+          required: true
+        },
+        { 
+          label: 'Background Elements', 
+          value: '', 
+          placeholder: 'narrow dirt path, blurred treeline in distance, natural depth'
+        }
+      ]
+    },
+    {
+      title: 'Technical Photography',
+      description: 'Camera specifications, lens details, and technical photography settings',
+      fields: [
+        { 
+          label: 'Camera & Lens', 
+          value: '', 
+          placeholder: 'Canon EOS R5, 85mm f/1.4 lens, professional camera setup',
+          type: 'select',
+          options: [
+            'Canon EOS R5, 85mm f/1.4 lens',
+            'Sony A7R IV, 85mm f/1.2 lens', 
+            'Nikon Z9, 85mm f/1.8 lens',
+            'Canon EOS R6, 50mm f/1.2 lens',
+            'Sony A7 III, 85mm f/1.8 lens'
+          ]
+        },
+        { 
+          label: 'Camera Settings', 
+          value: '', 
+          placeholder: 'f/1.8 aperture, 1/400s shutter speed, ISO 100, daylight white balance'
+        },
+        { 
+          label: 'Lighting Setup', 
+          value: '', 
+          placeholder: 'natural golden hour lighting, soft shadows, warm natural light'
+        }
+      ]
+    },
+    {
+      title: 'Artistic Style & Mood',
+      icon: <Sparkles className="w-5 h-5" />,
+      description: 'Artistic direction, mood, color palette, and overall aesthetic',
+      fields: [
+        { 
+          label: 'Photography Style', 
+          value: '', 
+          placeholder: 'natural portrait photography, environmental portrait, authentic style',
+          required: true,
+          type: 'select',
+          options: [
+            'Natural Portrait Photography',
+            'Environmental Portrait',
+            'Studio Portrait',
+            'Lifestyle Photography',
+            'Fashion Portrait',
+            'Artistic Portrait'
+          ]
+        },
+        { 
+          label: 'Mood & Atmosphere', 
+          value: '', 
+          placeholder: 'serene and contemplative, warm nostalgic feeling, peaceful summer mood',
           required: true
         },
         { 
           label: 'Color Palette', 
           value: '', 
-          placeholder: 'Specify the main colors (e.g., "warm tones with blush pink, cream, and gold accents")'
+          placeholder: 'warm natural tones, golden hour colors, soft earth tones'
         }
       ]
     },
     {
-      title: 'Technical Details',
+      title: 'Post-Processing & Quality',
+      icon: <Camera className="w-5 h-5" />,
+      description: 'Post-processing style, quality settings, and final image characteristics',
       fields: [
         { 
-          label: 'Camera Settings', 
+          label: 'Post-Processing Style', 
           value: '', 
-          placeholder: 'Specify camera and lens details (e.g., "shot on Canon EOS R5 with 85mm f/1.2 lens")'
+          placeholder: 'natural color grading, minimal retouching, authentic skin texture'
         },
         { 
-          label: 'Post-Processing', 
+          label: 'Quality & Detail', 
           value: '', 
-          placeholder: 'Describe any specific post-processing effects (e.g., "subtle grain, enhanced skin tones")'
+          placeholder: 'high resolution, sharp focus, natural skin detail, professional quality'
         },
         { 
-          label: 'Additional Details', 
+          label: 'Special Effects', 
           value: '', 
-          placeholder: 'Any other specific requirements or references'
+          placeholder: 'subtle vignette, natural depth of field, soft background blur'
         }
       ]
     }
@@ -191,7 +267,7 @@ const PromptBuilder: React.FC = () => {
   
   // Enhancement slider state
   const [enhanceLevel, setEnhanceLevel] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<string>('Portrait Photography');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Natural Realism');
 
   const dimensionOptions = [
     { label: '1:1 (Square)', value: '1:1' },
@@ -504,9 +580,11 @@ const PromptBuilder: React.FC = () => {
                 className="bg-card-bg rounded-lg p-6 border border-border-color"
               >
                 <div className="flex items-center gap-2 mb-6">
-                  {getSectionIcon(section.title)}
+                  {section.icon}
                   <h2 className="text-xl font-bold text-soft-lavender">{section.title}</h2>
                 </div>
+                
+                <p className="text-soft-lavender/70 text-sm mb-6">{section.description}</p>
                 
                 <div className="space-y-6">
                   {section.fields.map((field, fieldIndex) => (
@@ -515,13 +593,34 @@ const PromptBuilder: React.FC = () => {
                         {field.label}
                         {field.required && <span className="text-cosmic-purple ml-1">*</span>}
                       </label>
-                      <textarea
-                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
-                        rows={6}
-                        placeholder={field.placeholder}
-                        value={field.value}
-                        onChange={(e) => handleFieldChange(sectionIndex, fieldIndex, e.target.value)}
-                      />
+                      {field.type === 'select' ? (
+                        <select
+                          className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
+                          value={field.value}
+                          onChange={(e) => handleFieldChange(sectionIndex, fieldIndex, e.target.value)}
+                        >
+                          <option value="">{field.placeholder}</option>
+                          {field.options?.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      ) : field.type === 'text' ? (
+                        <input
+                          type="text"
+                          className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                          placeholder={field.placeholder}
+                          value={field.value}
+                          onChange={(e) => handleFieldChange(sectionIndex, fieldIndex, e.target.value)}
+                        />
+                      ) : (
+                        <textarea
+                          className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
+                          rows={4}
+                          placeholder={field.placeholder}
+                          value={field.value}
+                          onChange={(e) => handleFieldChange(sectionIndex, fieldIndex, e.target.value)}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -532,12 +631,16 @@ const PromptBuilder: React.FC = () => {
             <div className="bg-card-bg rounded-lg p-6 border border-border-color">
               <div className="flex items-center gap-2 mb-6">
                 <Sliders className="w-5 h-5 text-electric-cyan" />
-                <h2 className="text-xl font-bold text-soft-lavender">Image Enhancement</h2>
+                <h2 className="text-xl font-bold text-soft-lavender">Professional Enhancement</h2>
               </div>
+              
+              <p className="text-soft-lavender/70 text-sm mb-6">
+                Apply professional photography enhancement codes to improve realism and technical quality
+              </p>
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-soft-lavender mb-2">Enhancement Category</label>
+                  <label className="block text-soft-lavender mb-2">Photography Style Category</label>
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
@@ -551,7 +654,7 @@ const PromptBuilder: React.FC = () => {
 
                 <div>
                   <label className="block text-soft-lavender mb-2">
-                    Enhancement Level: {enhanceLevel}/5
+                    Professional Enhancement Level: {enhanceLevel}/5
                   </label>
                   <div className="relative">
                     <input
@@ -567,10 +670,10 @@ const PromptBuilder: React.FC = () => {
                     />
                     <div className="flex justify-between text-xs text-soft-lavender/50 mt-1">
                       <span>Off</span>
-                      <span>Basic</span>
-                      <span>Enhanced</span>
-                      <span>Pro</span>
-                      <span>Ultra</span>
+                      <span>Natural</span>
+                      <span>Professional</span>
+                      <span>Studio</span>
+                      <span>Commercial</span>
                       <span>Master</span>
                     </div>
                   </div>
@@ -578,7 +681,7 @@ const PromptBuilder: React.FC = () => {
 
                 {enhanceLevel > 0 && (
                   <div className="bg-deep-bg rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-soft-lavender mb-2">Active Enhancement Codes:</h3>
+                    <h3 className="text-sm font-medium text-soft-lavender mb-2">Active Professional Codes:</h3>
                     <div className="text-xs text-soft-lavender/70 space-y-1">
                       {IMG_CHEAT_CODES[selectedCategory as keyof typeof IMG_CHEAT_CODES]
                         ?.slice(0, enhanceLevel)

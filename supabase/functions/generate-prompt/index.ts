@@ -98,26 +98,10 @@ When enhancement codes are provided, seamlessly integrate them into the prompt t
 
 Format your response as a clear, detailed prompt that reads naturally while incorporating all technical details and enhancements.`;
 
-    let userPrompt = `Create a detailed image generation prompt using these elements:
-
-Main Elements:
-- Subject: ${promptData.subject}
 - Setting: ${promptData.setting}
-- Lighting: ${promptData.lighting}
-- Style: ${promptData.style}
-- Mood: ${promptData.mood}
 
-Additional Details:
-${promptData['color palette'] ? `- Color Palette: ${promptData['color palette']}\n` : ''}
-${promptData['camera settings'] ? `- Camera Settings: ${promptData['camera settings']}\n` : ''}
 ${promptData['post-processing'] ? `- Post-Processing: ${promptData['post-processing']}\n` : ''}
-${promptData['additional details'] ? `- Additional Details: ${promptData['additional details']}\n` : ''}`;
-
-    // Add enhancement codes if provided
     if (promptData.enhancement) {
-      userPrompt += `\n\nProfessional Enhancement Codes (integrate these seamlessly for maximum realism and quality):
-${promptData.enhancement}`;
-    }
 
     userPrompt += `\n\nCreate a cohesive, detailed prompt that incorporates all these elements naturally.
 Include specific camera and lens recommendations that would best capture this type of shot.
