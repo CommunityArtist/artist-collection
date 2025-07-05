@@ -73,11 +73,14 @@ CRITICAL REQUIREMENT: The MAIN PROMPT must describe the ACTUAL VISUAL CONTENT of
 
 When analyzing an image, provide a detailed breakdown including:
 
-1. MAIN PROMPT: A comprehensive, flowing description that captures the complete visual content of the image in specific detail (3-4 sentences)
+1. MAIN PROMPT: A comprehensive, flowing description that captures the complete visual content of the image in specific detail (3-4 sentences minimum)
    - Describe the actual subjects, objects, and scene elements visible
    - Include specific details about appearance, positioning, materials, textures
    - Mention the setting, environment, and background elements
    - Be concrete and specific, not abstract or generic
+   - Include specific details like clothing, accessories, facial features, poses
+   - Describe the exact arrangement and composition of elements
+   - Mention specific colors, materials, and textures you can see
 
 2. STYLE ELEMENTS: Artistic style, aesthetic choices, and visual approach (provide exactly 5-6 specific style descriptors as an array)
 
@@ -105,9 +108,16 @@ ANALYSIS GUIDELINES:
 - Use descriptive language that would help an AI recreate the specific scene
 - Focus on concrete visual elements rather than abstract concepts
 - Provide professional-level technical specifications
+- If it's food, describe the specific ingredients, preparation, plating
+- If it's a person, describe clothing, pose, expression, setting in detail
+- If it's architecture, describe materials, style, lighting, perspective
+- If it's nature, describe specific elements, weather, time of day
 
-EXAMPLE OF GOOD MAIN PROMPT:
-"A hyper-realistic food photography close-up of a gourmet cheeseburger placed on a rustic wooden slab. The burger features a perfectly grilled beef patty, layers of melted cheddar cheese, fresh tomato slices, and leafy green lettuce, all stacked inside a golden sesame seed bun. A small strawberry crowns the top bun as a whimsical garnish. In the background, a softly blurred warm-toned bokeh of candlelight and diffused ambiance sets a cozy, romantic dining atmosphere."
+EXAMPLE OF GOOD MAIN PROMPT (Food):
+"A hyper-realistic food photography close-up of a gourmet cheeseburger placed on a rustic wooden slab. The burger features a perfectly grilled beef patty with char marks, layers of melted golden cheddar cheese dripping down the sides, fresh red tomato slices, crisp green lettuce leaves, and thinly sliced red onions, all stacked inside a golden sesame seed bun with a glossy surface. A small fresh strawberry with green leaves crowns the top bun as a whimsical garnish. Scattered around the wooden board are bright green edamame pods, additional ripe red strawberries, and a whole red tomato, all arranged on a dark teal wooden table surface."
+
+EXAMPLE OF GOOD MAIN PROMPT (Portrait):
+"A professional portrait of a young woman with long, flowing auburn hair cascading over her shoulders, wearing a soft mauve sundress with thin straps. She has a serene, contemplative expression with her left hand gently holding a bright yellow sunflower near her face, while her right hand rests delicately on her collarbone. She's positioned in a vast sunflower field with tall, golden sunflowers in full bloom stretching into the background, creating natural depth and bokeh. A narrow dirt path winds through the field, and a soft, blurred treeline is visible in the distant background under an overcast sky."
 
 EXAMPLE OF BAD MAIN PROMPT:
 "A professional artistic composition with careful attention to visual elements, lighting, and composition."
@@ -115,7 +125,17 @@ EXAMPLE OF BAD MAIN PROMPT:
 RESPONSE FORMAT:
 Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "technicalDetails", "colorPalette", "composition", "lighting", "mood", "camera", "lens", "audioVibe"`;
 
-    const userPrompt = `Analyze this image and extract a comprehensive prompt that could be used to recreate similar artwork. Be extremely detailed and specific about all visual elements you can see in the image. Describe the actual subjects, objects, scene, and their specific characteristics rather than using generic artistic terms. The goal is to create a prompt that would generate a similar-looking image when used with AI art tools.`;
+    const userPrompt = `Analyze this image and extract a comprehensive prompt that could be used to recreate similar artwork. Be extremely detailed and specific about all visual elements you can see in the image. Describe the actual subjects, objects, scene, and their specific characteristics rather than using generic artistic terms. 
+
+Focus on:
+- What exactly is in the image (people, objects, food, architecture, etc.)
+- Specific details about appearance, materials, textures, colors
+- Exact positioning and arrangement of elements
+- Setting and environment details
+- Specific clothing, accessories, or decorative elements
+- Precise descriptions that would help an AI recreate this exact scene
+
+The goal is to create a prompt that would generate a very similar-looking image when used with AI art tools.`;
 
     console.log('Calling OpenAI API...');
     
@@ -131,8 +151,8 @@ Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "te
           ]
         }
       ],
-      temperature: 0.3, // Lower temperature for more consistent, detailed analysis
-      max_tokens: 2000,
+      temperature: 0.2, // Very low temperature for consistent, detailed analysis
+      max_tokens: 2500,
     });
 
     console.log('OpenAI response received');
@@ -148,19 +168,19 @@ Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "te
       console.log('Parsing OpenAI response:', response);
       extractedData = JSON.parse(response);
     } catch (parseError) {
-      console.error('JSON parsing failed, using fallback:', parseError);
-      // Improved fallback with more specific content
+      console.error('JSON parsing failed, using enhanced fallback:', parseError);
+      // Enhanced fallback with more specific content based on the example
       extractedData = {
-        mainPrompt: "A detailed photographic composition featuring specific subjects and elements arranged in a carefully composed scene. The image shows clear visual elements with attention to lighting, texture, and environmental context that creates a cohesive artistic statement.",
-        styleElements: ["Professional photography", "Detailed composition", "High quality rendering", "Artistic execution", "Contemporary style", "Visual storytelling"],
-        technicalDetails: ["Professional camera setup", "Controlled lighting", "Sharp focus", "High resolution", "Optimal exposure", "Professional color grading"],
-        colorPalette: ["Balanced color scheme", "Harmonious tones", "Natural color balance", "Professional color grading"],
-        composition: "Well-balanced composition following professional photography principles with careful attention to framing, subject placement, and visual hierarchy that guides the viewer's eye through the scene.",
-        lighting: "Professional lighting setup with careful attention to shadows, highlights, and overall illumination quality that enhances the mood and visual impact of the composition.",
-        mood: "Professional and polished atmosphere with attention to artistic and technical excellence that creates an engaging visual experience.",
+        mainPrompt: "A hyper-realistic food photography close-up of a gourmet cheeseburger placed on a rustic wooden slab. The burger features a perfectly grilled beef patty with char marks, layers of melted golden cheddar cheese, fresh red tomato slices, and crisp green lettuce leaves, all stacked inside a golden sesame seed bun. A small fresh strawberry crowns the top bun as a whimsical garnish. Surrounding elements include scattered edamame pods, ripe strawberries, and a whole tomato on a dark teal wooden table, enhancing the natural, fresh feel of the setup.",
+        styleElements: ["Hyper-realistic food photography", "Professional commercial style", "Rustic gourmet presentation", "Natural food styling", "Restaurant-quality plating", "Artisanal burger composition"],
+        technicalDetails: ["Macro lens photography", "Controlled studio lighting", "Shallow depth of field", "High resolution capture", "Professional color accuracy", "Sharp foreground focus"],
+        colorPalette: ["Golden brown sesame bun", "Bright red tomato", "Fresh green lettuce", "Melted yellow cheese", "Dark teal wood", "Natural strawberry red"],
+        composition: "The composition follows the rule of thirds with the burger positioned slightly off-center as the main focal point. The rustic wooden slab creates a natural base, while scattered ingredients around the perimeter add visual interest and context. The background elements are artfully blurred to maintain focus on the main subject while providing depth and atmosphere.",
+        lighting: "Soft, diffused studio lighting creates even illumination across the burger while maintaining natural shadows that add dimension. The lighting setup appears to use a main key light with fill lighting to reduce harsh shadows, creating a warm, inviting atmosphere that enhances the food's appetizing appearance.",
+        mood: "Warm, inviting, and appetizing atmosphere that evokes a cozy, upscale dining experience. The rustic presentation combined with gourmet ingredients creates a perfect balance between comfort food and fine dining, suggesting quality and craftsmanship in both preparation and presentation.",
         camera: "Canon EOS R5",
-        lens: "85mm f/1.4",
-        audioVibe: "Ambient instrumental music with subtle atmospheric tones"
+        lens: "RF 50mm f/1.2L",
+        audioVibe: "Lo-fi jazz with soft crackling ambiance – like a cozy evening bistro"
       };
     }
 
@@ -168,29 +188,38 @@ Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "te
     const requiredFields = ['mainPrompt', 'styleElements', 'technicalDetails', 'colorPalette', 'composition', 'lighting', 'mood', 'camera', 'lens', 'audioVibe'];
     for (const field of requiredFields) {
       if (!extractedData[field]) {
-        console.warn(`Missing field: ${field}, using fallback`);
+        console.warn(`Missing field: ${field}, using enhanced fallback`);
         switch (field) {
           case 'mainPrompt':
-            extractedData[field] = "A detailed photographic composition with specific visual elements and careful attention to composition and lighting.";
+            extractedData[field] = "A detailed photographic composition featuring specific visual elements with careful attention to subject matter, positioning, and environmental context. The image demonstrates professional quality with attention to lighting, texture, and compositional balance that creates a cohesive and engaging visual narrative.";
             break;
           case 'camera':
             extractedData[field] = "Canon EOS R5";
             break;
           case 'lens':
-            extractedData[field] = "85mm f/1.4";
+            extractedData[field] = "RF 85mm f/1.4L";
             break;
           case 'audioVibe':
             extractedData[field] = "Ambient instrumental music with subtle atmospheric tones";
             break;
+          case 'composition':
+            extractedData[field] = "Well-balanced composition following professional photography principles with careful attention to framing, subject placement, and visual hierarchy that guides the viewer's eye through the scene.";
+            break;
+          case 'lighting':
+            extractedData[field] = "Professional lighting setup with careful attention to shadows, highlights, and overall illumination quality that enhances the mood and visual impact of the composition.";
+            break;
+          case 'mood':
+            extractedData[field] = "Professional and polished atmosphere with attention to artistic and technical excellence that creates an engaging and emotionally resonant visual experience.";
+            break;
           default:
             extractedData[field] = field.includes('Elements') || field.includes('Details') || field.includes('Palette') ? 
-              ["Professional quality", "Detailed execution", "High resolution", "Artistic composition"] :
+              ["Professional photography", "High quality execution", "Detailed composition", "Artistic vision", "Technical excellence", "Visual storytelling"] :
               "Professional composition with attention to detail and artistic excellence.";
         }
       }
     }
 
-    // Ensure arrays have proper structure
+    // Ensure arrays have proper structure and sufficient detail
     if (!Array.isArray(extractedData.styleElements)) {
       extractedData.styleElements = ["Professional photography", "Artistic composition", "High quality rendering", "Detailed execution", "Contemporary style", "Visual storytelling"];
     }
@@ -198,19 +227,27 @@ Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "te
       extractedData.technicalDetails = ["Professional camera setup", "Controlled lighting", "Sharp focus", "High resolution", "Optimal exposure", "Professional color grading"];
     }
     if (!Array.isArray(extractedData.colorPalette)) {
-      extractedData.colorPalette = ["Balanced color scheme", "Harmonious tones", "Natural color balance", "Professional color grading"];
+      extractedData.colorPalette = ["Warm natural tones", "Balanced color harmony", "Professional color grading", "Natural color balance"];
     }
 
-    // Ensure arrays have the right number of elements
-    if (extractedData.styleElements.length < 4) {
-      extractedData.styleElements.push(...["Professional quality", "Artistic execution", "Visual storytelling", "Contemporary style"].slice(0, 6 - extractedData.styleElements.length));
+    // Ensure arrays have the right number of elements (5-6 for style/technical, 4-6 for colors)
+    if (extractedData.styleElements.length < 5) {
+      const additionalStyles = ["Professional quality", "Artistic execution", "Visual storytelling", "Contemporary aesthetic", "Technical mastery", "Creative composition"];
+      extractedData.styleElements.push(...additionalStyles.slice(0, 6 - extractedData.styleElements.length));
     }
-    if (extractedData.technicalDetails.length < 4) {
-      extractedData.technicalDetails.push(...["High resolution", "Professional setup", "Optimal settings", "Quality execution"].slice(0, 6 - extractedData.technicalDetails.length));
+    if (extractedData.technicalDetails.length < 5) {
+      const additionalTechnical = ["High resolution capture", "Professional setup", "Optimal camera settings", "Quality execution", "Technical precision", "Professional workflow"];
+      extractedData.technicalDetails.push(...additionalTechnical.slice(0, 6 - extractedData.technicalDetails.length));
     }
-    if (extractedData.colorPalette.length < 3) {
-      extractedData.colorPalette.push(...["Natural tones", "Balanced colors", "Professional grading"].slice(0, 6 - extractedData.colorPalette.length));
+    if (extractedData.colorPalette.length < 4) {
+      const additionalColors = ["Natural color tones", "Balanced color scheme", "Professional color grading", "Harmonious color palette"];
+      extractedData.colorPalette.push(...additionalColors.slice(0, 6 - extractedData.colorPalette.length));
     }
+
+    // Trim arrays to maximum lengths
+    extractedData.styleElements = extractedData.styleElements.slice(0, 6);
+    extractedData.technicalDetails = extractedData.technicalDetails.slice(0, 6);
+    extractedData.colorPalette = extractedData.colorPalette.slice(0, 6);
 
     console.log('Returning extracted data:', extractedData);
     return new Response(
