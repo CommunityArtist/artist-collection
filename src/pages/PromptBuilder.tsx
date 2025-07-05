@@ -140,6 +140,7 @@ const PromptBuilder: React.FC = () => {
           label: 'Mood', 
           value: '', 
           placeholder: 'What emotions or atmosphere should be conveyed? (e.g., "playful and intimate yet sophisticated")',
+          required: true
         },
         { 
           label: 'Color Palette', 
