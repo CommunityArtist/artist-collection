@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Wand2, Copy, Download, X, Eye, Sparkles, Zap, Camera } from 'lucide-react';
+import { Upload, Image as ImageIcon, Wand2, Copy, Download, X, Eye, Sparkles, Zap, Camera, AlertCircle } from 'lucide-react';
 import Button from '../components/Button';
+import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 interface ExtractedPrompt {
   mainPrompt: string;
@@ -13,23 +15,25 @@ interface ExtractedPrompt {
 }
 
 const PromptExtractor: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [extractedPrompt, setExtractedPrompt] = useState<ExtractedPrompt | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        setError('File size must be less than 10MB');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        alert('Only image files are allowed');
+        setError('Only image files are allowed');
         return;
       }
 
@@ -37,6 +41,7 @@ const PromptExtractor: React.FC = () => {
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
       setExtractedPrompt(null);
+      setError(null);
     }
   };
 
@@ -45,12 +50,12 @@ const PromptExtractor: React.FC = () => {
     const file = event.dataTransfer.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        setError('File size must be less than 10MB');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        alert('Only image files are allowed');
+        setError('Only image files are allowed');
         return;
       }
 
@@ -58,6 +63,7 @@ const PromptExtractor: React.FC = () => {
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
       setExtractedPrompt(null);
+      setError(null);
     }
   };
 
@@ -72,48 +78,75 @@ const PromptExtractor: React.FC = () => {
     setSelectedImage(null);
     setPreviewUrl(null);
     setExtractedPrompt(null);
+    setError(null);
   };
 
   const handleExtractPrompt = async () => {
     if (!selectedImage) return;
 
-    setIsAnalyzing(true);
-    
-    // Simulate AI analysis - in a real implementation, this would call an AI service
-    setTimeout(() => {
-      // Mock extracted prompt data
-      const mockPrompt: ExtractedPrompt = {
-        mainPrompt: "A professional portrait of a young woman with flowing auburn hair, wearing a cream-colored silk blouse, sitting in a modern minimalist studio setting with soft natural lighting from a large window. The composition follows the rule of thirds with the subject positioned slightly off-center. Shot with a Canon EOS R5 using an 85mm f/1.4 lens at f/2.8, creating a shallow depth of field with creamy bokeh in the background.",
-        styleElements: [
-          "Professional portrait photography",
-          "Minimalist aesthetic",
-          "Contemporary fashion",
-          "Clean composition",
-          "Soft natural lighting"
-        ],
-        technicalDetails: [
-          "Canon EOS R5 camera",
-          "85mm f/1.4 lens",
-          "Aperture: f/2.8",
-          "Shallow depth of field",
-          "Natural window lighting",
-          "ISO 200-400 range"
-        ],
-        colorPalette: [
-          "Warm cream tones",
-          "Soft auburn highlights",
-          "Neutral beige background",
-          "Golden hour warmth",
-          "Subtle skin tone variations"
-        ],
-        composition: "Rule of thirds positioning with subject slightly off-center, creating visual balance and drawing attention to the subject's eyes and expression",
-        lighting: "Soft, diffused natural light from a large window positioned at 45-degree angle, creating gentle shadows and highlighting facial features",
-        mood: "Professional yet approachable, confident and serene, with a contemporary and sophisticated atmosphere"
-      };
+    try {
+      setIsAnalyzing(true);
+      setError(null);
 
-      setExtractedPrompt(mockPrompt);
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+
+      // Upload image to Supabase storage
+      const fileExt = selectedImage.name.split('.').pop();
+      const fileName = `extract-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/temp/${fileName}`;
+
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from('prompt-media')
+        .upload(filePath, selectedImage);
+
+      if (uploadError) {
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
+      }
+
+      // Get public URL for the uploaded image
+      const { data: { publicUrl } } = supabase.storage
+        .from('prompt-media')
+        .getPublicUrl(filePath);
+
+      // Call the extract-prompt Edge Function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-prompt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ imageUrl: publicUrl }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to extract prompt');
+      }
+
+      setExtractedPrompt(data);
+
+      // Clean up: delete the temporary image from storage
+      try {
+        await supabase.storage
+          .from('prompt-media')
+          .remove([filePath]);
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup temporary image:', cleanupError);
+        // Don't throw error for cleanup failure
+      }
+
+    } catch (error) {
+      console.error('Error extracting prompt:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+    } finally {
       setIsAnalyzing(false);
-    }, 3000);
+    }
   };
 
   const handleCopyPrompt = async () => {
@@ -230,6 +263,30 @@ Mood: ${extractedPrompt.mood}`;
               </div>
             </div>
 
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                  <div>
+                    <p className="text-red-500 text-sm">{error}</p>
+                    {error.includes('OpenAI API key') && (
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate('/api-config')}
+                          className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                        >
+                          Configure API Key
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Analysis Button */}
             {selectedImage && (
               <Button
@@ -321,7 +378,7 @@ Mood: ${extractedPrompt.mood}`;
                     <div className="animate-spin mb-4">
                       <Sparkles className="w-8 h-8 text-electric-cyan" />
                     </div>
-                    <p>Analyzing your image...</p>
+                    <p>Analyzing your image with AI...</p>
                     <p className="text-sm mt-2">This may take a few moments</p>
                   </div>
                 ) : extractedPrompt ? (
