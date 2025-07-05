@@ -124,7 +124,7 @@ const Navbar: React.FC = () => {
                       className="absolute top-full mt-2 w-48 bg-card-bg rounded-lg shadow-lg border border-border-color py-2"
                     >
                       {aiTools.map((tool) => (
-                        {tool.href.startsWith('/') ? (
+                        tool.href.startsWith('/') ? (
                           <Link
                             key={tool.label}
                             to={tool.href}
@@ -141,7 +141,7 @@ const Navbar: React.FC = () => {
                         >
                           {tool.label}
                           </button>
-                        )}
+                        )
                       ))}
                     </div>
                   )}
@@ -192,7 +192,7 @@ const Navbar: React.FC = () => {
                       <div className="text-soft-lavender font-medium mb-2">AI Tools</div>
                       <div className="pl-4 space-y-2">
                         {aiTools.map((tool) => (
-                          {tool.href.startsWith('/') ? (
+                          tool.href.startsWith('/') ? (
                             <Link
                               key={tool.label}
                               to={tool.href}
@@ -212,7 +212,7 @@ const Navbar: React.FC = () => {
                           >
                             {tool.label}
                             </button>
-                          )}
+                          )
                         ))}
                       </div>
                     </div>
