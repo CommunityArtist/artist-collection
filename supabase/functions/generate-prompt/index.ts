@@ -124,7 +124,7 @@ Include specific camera and lens recommendations that would best capture this ty
 Focus on creating vivid imagery while maintaining technical accuracy and professional quality.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
