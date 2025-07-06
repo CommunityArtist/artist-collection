@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Download, Grid3X3 } from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
@@ -109,10 +109,13 @@ const PromptBuilder: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<PromptTag[]>([]);
   const [showImageViewer, setShowImageViewer] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [generationProgress, setGenerationProgress] = useState(0);
 
   const [sections, setSections] = useState<PromptSection[]>([
     {
@@ -282,10 +285,124 @@ const PromptBuilder: React.FC = () => {
     }
   };
 
+  const handleGenerate4Images = async () => {
+    const prompt = getGeneratedPromptText();
+    if (!prompt) {
+      setError('Please fill in at least one field to generate images.');
+      return;
+    }
+
+    setIsGeneratingImages(true);
+    setError(null);
+    setGeneratedImages([]);
+    setGenerationProgress(0);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please sign in to generate images');
+      }
+
+      const imageUrls: string[] = [];
+
+      // Generate 4 images sequentially
+      for (let i = 0; i < 4; i++) {
+        try {
+          setGenerationProgress(((i) / 4) * 100);
+          
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ 
+              prompt: prompt,
+              imageDimensions: '1:1',
+              numberOfImages: 1
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || `Failed to generate image ${i + 1}`);
+          }
+
+          if (data.imageUrl) {
+            imageUrls.push(data.imageUrl);
+            setGeneratedImages([...imageUrls]); // Update state with current images
+          }
+        } catch (imageError) {
+          console.error(`Error generating image ${i + 1}:`, imageError);
+          // Continue with other images if one fails
+        }
+      }
+
+      setGenerationProgress(100);
+
+      if (imageUrls.length === 0) {
+        throw new Error('Failed to generate any images');
+      }
+
+      setGeneratedImages(imageUrls);
+
+    } catch (error) {
+      console.error('Error:', error);
+      
+      let errorMessage = 'An unexpected error occurred';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          errorMessage = 'Invalid or missing OpenAI API key. Please check your API configuration.';
+        } else if (error.message.includes('quota')) {
+          errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing.';
+        } else if (error.message.includes('authentication')) {
+          errorMessage = 'Authentication failed. Please sign in again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsGeneratingImages(false);
+      setGenerationProgress(0);
+    }
+  };
+
   const insertCheatCode = (code: string, sectionIndex: number, fieldIndex: number) => {
     const currentValue = sections[sectionIndex].fields[fieldIndex].value;
     const newValue = currentValue ? `${currentValue}, ${code}` : code;
     updateField(sectionIndex, fieldIndex, newValue);
+  };
+
+  const handleImageDownload = (imageUrl: string, index: number) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `generated-image-${index + 1}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const openImageViewer = (index: number) => {
+    setCurrentImageIndex(index);
+    setShowImageViewer(true);
+  };
+
+  const handlePreviousImage = () => {
+    setCurrentImageIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex(prev => Math.min(generatedImages.length - 1, prev + 1));
   };
 
   return (
@@ -389,6 +506,55 @@ const PromptBuilder: React.FC = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Generated Images Gallery */}
+              {generatedImages.length > 0 && (
+                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Grid3X3 className="w-5 h-5 text-electric-cyan" />
+                    <h3 className="text-lg font-semibold text-soft-lavender">Generated Images</h3>
+                    <span className="text-sm text-soft-lavender/70">({generatedImages.length}/4)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {generatedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={imageUrl}
+                          alt={`Generated image ${index + 1}`}
+                          className="w-full aspect-square object-cover rounded-lg cursor-pointer transition-transform duration-200 hover:scale-105"
+                          onClick={() => openImageViewer(index)}
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleImageDownload(imageUrl, index);
+                            }}
+                            className="bg-black/50 border-white/20 text-white hover:bg-white/10"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Placeholder slots for remaining images */}
+                    {Array.from({ length: 4 - generatedImages.length }).map((_, index) => (
+                      <div
+                        key={`placeholder-${index}`}
+                        className="aspect-square bg-deep-bg border-2 border-dashed border-border-color rounded-lg flex items-center justify-center"
+                      >
+                        <div className="text-center text-soft-lavender/50">
+                          <ImageIcon className="w-8 h-8 mx-auto mb-2" />
+                          <p className="text-sm">Image {generatedImages.length + index + 1}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Column - Preview & Actions */}
@@ -420,6 +586,32 @@ const PromptBuilder: React.FC = () => {
                 )}
 
                 <div className="space-y-3">
+                  {/* Generate 4 Images Button */}
+                  <Button
+                    onClick={handleGenerate4Images}
+                    disabled={!getGeneratedPromptText() || isGeneratingImages}
+                    className="w-full flex items-center justify-center space-x-2"
+                    variant="primary"
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                    <span>
+                      {isGeneratingImages 
+                        ? `Generating... ${Math.round(generationProgress)}%` 
+                        : 'Generate 4 Images'
+                      }
+                    </span>
+                  </Button>
+
+                  {/* Progress Bar */}
+                  {isGeneratingImages && (
+                    <div className="w-full bg-deep-bg rounded-full h-2">
+                      <div 
+                        className="bg-electric-cyan h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${generationProgress}%` }}
+                      />
+                    </div>
+                  )}
+
                   <Button
                     onClick={() => copyToClipboard(getGeneratedPromptText())}
                     disabled={!getGeneratedPromptText()}
@@ -434,6 +626,7 @@ const PromptBuilder: React.FC = () => {
                     onClick={handleSavePrompt}
                     disabled={!getGeneratedPromptText() || isLoading}
                     className="w-full flex items-center justify-center space-x-2"
+                    variant="outline"
                   >
                     <Download className="w-4 h-4" />
                     <span>{isLoading ? 'Saving...' : 'Save to Library'}</span>
@@ -441,9 +634,23 @@ const PromptBuilder: React.FC = () => {
                 </div>
 
                 {error && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
+                  <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start space-x-2">
                     <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-red-700">{error}</p>
+                    <div>
+                      <p className="text-sm text-red-500">{error}</p>
+                      {error.includes('OpenAI API key') && (
+                        <div className="mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate('/api-config')}
+                            className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                          >
+                            Configure API Key
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -465,7 +672,7 @@ const PromptBuilder: React.FC = () => {
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Combine multiple styles for unique effects
+                    Generate 4 images to compare variations
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
@@ -479,14 +686,15 @@ const PromptBuilder: React.FC = () => {
       </div>
 
       {/* Image Viewer Modal */}
-      {showImageViewer && generatedImageUrl && (
+      {showImageViewer && generatedImages.length > 0 && (
         <ImageViewerModal
-          images={[generatedImageUrl]}
-          currentIndex={0}
+          images={generatedImages}
+          currentIndex={currentImageIndex}
           isOpen={showImageViewer}
           onClose={() => setShowImageViewer(false)}
-          onPrevious={() => {}}
-          onNext={() => {}}
+          onPrevious={handlePreviousImage}
+          onNext={handleNextImage}
+          onDownload={handleImageDownload}
         />
       )}
     </div>
