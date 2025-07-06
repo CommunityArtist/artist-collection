@@ -55,7 +55,10 @@ const CommunityLibrary: React.FC = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('prompts')
-        .select('*')
+        .select(`
+          *,
+          profiles!inner(username)
+        `)
         .eq('is_private', false)
         .order('created_at', { ascending: false });
 
@@ -224,6 +227,11 @@ const CommunityLibrary: React.FC = () => {
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-soft-lavender font-medium">{prompt.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-soft-lavender/50">
+                          by @{prompt.profiles?.username || 'unknown'}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-soft-lavender/70 text-sm line-clamp-3 mb-3">{prompt.prompt}</p>
                     {prompt.tags && prompt.tags.length > 0 && (
@@ -253,6 +261,9 @@ const CommunityLibrary: React.FC = () => {
             <div className="flex justify-between items-center p-4 border-b border-border-color">
               <div className="flex items-center gap-4">
                 <h2 className="text-2xl font-bold text-soft-lavender">{selectedPrompt.title}</h2>
+                <span className="text-sm text-soft-lavender/50">
+                  by @{selectedPrompt.profiles?.username || 'unknown'}
+                </span>
               </div>
               <button
                 onClick={() => setSelectedPrompt(null)}

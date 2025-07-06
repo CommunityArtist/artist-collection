@@ -76,8 +76,8 @@ export interface Prompt {
   user_id: string;
   seed?: string;
   tags?: PromptTag[];
-  user?: {
-    email: string;
+  profiles?: {
+    username: string;
   };
   collections?: Collection[];
 }
