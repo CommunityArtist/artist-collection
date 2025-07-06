@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Download, Grid3X3 } from 'lucide-react';
+import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Grid3X3, Check } from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
@@ -116,6 +116,7 @@ const PromptBuilder: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<PromptTag[]>([]);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
@@ -326,6 +327,11 @@ const PromptBuilder: React.FC = () => {
       return;
     }
 
+    if (selectedImageIndex === null && generatedImages.length > 0) {
+      setError('Please select an image to save with the prompt.');
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -336,6 +342,8 @@ const PromptBuilder: React.FC = () => {
         return;
       }
 
+      const selectedImageUrl = selectedImageIndex !== null ? generatedImages[selectedImageIndex] : null;
+
       const { error: saveError } = await supabase
         .from('prompts')
         .insert({
@@ -343,7 +351,7 @@ const PromptBuilder: React.FC = () => {
           prompt: prompt,
           notes: promptNotes,
           sref: promptSref,
-          media_url: generatedImages.length > 0 ? generatedImages[0] : null,
+          media_url: selectedImageUrl,
           tags: selectedTags,
           user_id: user.id,
           is_private: false
@@ -357,6 +365,7 @@ const PromptBuilder: React.FC = () => {
       setPromptSref('');
       setSelectedTags([]);
       setGeneratedImages([]);
+      setSelectedImageIndex(null);
       setGeneratedPrompt('');
       
       // Reset sections
@@ -383,6 +392,7 @@ const PromptBuilder: React.FC = () => {
     setIsGeneratingImages(true);
     setError(null);
     setGeneratedImages([]);
+    setSelectedImageIndex(null);
     setGenerationProgress(0);
     setGeneratedPrompt(prompt);
 
@@ -441,6 +451,8 @@ const PromptBuilder: React.FC = () => {
       }
 
       setGeneratedImages(imageUrls);
+      // Auto-select the first image
+      setSelectedImageIndex(0);
 
       // Auto-generate metadata after successful image generation
       const promptData = buildPromptData();
@@ -470,15 +482,6 @@ const PromptBuilder: React.FC = () => {
     }
   };
 
-  const handleImageDownload = (imageUrl: string, index: number) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `generated-image-${index + 1}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const openImageViewer = (index: number) => {
     setCurrentImageIndex(index);
     setShowImageViewer(true);
@@ -490,6 +493,10 @@ const PromptBuilder: React.FC = () => {
 
   const handleNextImage = () => {
     setCurrentImageIndex(prev => Math.min(generatedImages.length - 1, prev + 1));
+  };
+
+  const handleImageSelect = (index: number) => {
+    setSelectedImageIndex(index);
   };
 
   return (
@@ -612,28 +619,43 @@ const PromptBuilder: React.FC = () => {
                     <h3 className="text-lg font-semibold text-soft-lavender">Generated Images</h3>
                     <span className="text-sm text-soft-lavender/70">({generatedImages.length}/4)</span>
                   </div>
+                  <p className="text-sm text-soft-lavender/70 mb-4">
+                    Click on an image to select it for saving to your library
+                  </p>
                   <div className="grid grid-cols-2 gap-4">
                     {generatedImages.map((imageUrl, index) => (
                       <div key={index} className="relative group">
-                        <img
-                          src={imageUrl}
-                          alt={`Generated image ${index + 1}`}
-                          className="w-full aspect-square object-cover rounded-lg cursor-pointer transition-transform duration-200 hover:scale-105"
-                          onClick={() => openImageViewer(index)}
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleImageDownload(imageUrl, index);
-                            }}
-                            className="bg-black/50 border-white/20 text-white hover:bg-white/10"
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            Download
-                          </Button>
+                        <div 
+                          className={`relative cursor-pointer transition-all duration-200 rounded-lg overflow-hidden ${
+                            selectedImageIndex === index 
+                              ? 'ring-4 ring-electric-cyan shadow-lg shadow-electric-cyan/30' 
+                              : 'hover:ring-2 hover:ring-cosmic-purple/50'
+                          }`}
+                          onClick={() => handleImageSelect(index)}
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`Generated image ${index + 1}`}
+                            className="w-full aspect-square object-cover"
+                          />
+                          {selectedImageIndex === index && (
+                            <div className="absolute top-2 right-2 bg-electric-cyan text-deep-bg rounded-full p-1">
+                              <Check className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openImageViewer(index);
+                              }}
+                              className="bg-black/50 border-white/20 text-white hover:bg-white/10"
+                            >
+                              View Full Size
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -673,7 +695,10 @@ const PromptBuilder: React.FC = () => {
                       Pro Tip
                     </h4>
                     <p className="text-sm text-soft-lavender/70">
-                      Fill in the title and notes below for better organization in your library. These help you and others understand the prompt's purpose and technique.
+                      {generatedImages.length > 0 && selectedImageIndex === null 
+                        ? 'Select an image above to save with your prompt. The selected image will be highlighted with a blue border.'
+                        : 'Fill in the title and notes below for better organization in your library. These help you and others understand the prompt\'s purpose and technique.'
+                      }
                     </p>
                   </div>
 
@@ -730,7 +755,7 @@ const PromptBuilder: React.FC = () => {
                       size="lg"
                       className="w-full"
                       onClick={handleSavePrompt}
-                      disabled={isSaving || !promptTitle.trim()}
+                      disabled={isSaving || !promptTitle.trim() || (generatedImages.length > 0 && selectedImageIndex === null)}
                     >
                       <Plus className="w-5 h-5 mr-2" />
                       {isSaving ? 'Saving...' : 'Save to Library'}
@@ -858,7 +883,7 @@ const PromptBuilder: React.FC = () => {
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Add technical details for higher quality
+                    Select your favorite image before saving
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
@@ -880,7 +905,6 @@ const PromptBuilder: React.FC = () => {
           onClose={() => setShowImageViewer(false)}
           onPrevious={handlePreviousImage}
           onNext={handleNextImage}
-          onDownload={handleImageDownload}
         />
       )}
     </div>

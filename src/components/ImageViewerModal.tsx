@@ -1,7 +1,6 @@
 import React from 'react';
-import { X, ChevronLeft, ChevronRight, Download, ArrowLeft } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import Button from './Button';
-import { useNavigate } from 'react-router-dom';
 
 interface ImageViewerModalProps {
   images: string[];
@@ -10,7 +9,6 @@ interface ImageViewerModalProps {
   onClose: () => void;
   onPrevious: () => void;
   onNext: () => void;
-  onDownload?: (imageUrl: string, index: number) => void;
 }
 
 const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
@@ -19,11 +17,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   isOpen,
   onClose,
   onPrevious,
-  onNext,
-  onDownload
+  onNext
 }) => {
-  const navigate = useNavigate();
-
   if (!isOpen || images.length === 0) return null;
 
   const currentImage = images[currentIndex];
@@ -43,13 +38,6 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   const handleBackdropClick = (event: React.MouseEvent) => {
     if (event.target === event.currentTarget) {
       onClose();
-    }
-  };
-
-  const handleDownloadClick = () => {
-    if (onDownload && currentImage) {
-      // Use the onDownload prop which contains the fixed download logic
-      onDownload(currentImage, currentIndex);
     }
   };
 
@@ -84,17 +72,6 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {onDownload && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadClick}
-              className="bg-black/50 border-white/20 text-white hover:bg-white/10"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download
-            </Button>
-          )}
           <Button
             variant="primary"
             size="sm"
