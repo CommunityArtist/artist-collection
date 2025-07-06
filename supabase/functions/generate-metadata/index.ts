@@ -64,11 +64,17 @@ Deno.serve(async (req) => {
     const systemPrompt = `You are an expert art curator and photography specialist who creates compelling metadata for professional photography and AI-generated artwork. Your expertise lies in crafting evocative titles and detailed technical descriptions that capture both the artistic vision and technical execution.
 
 TITLE CREATION GUIDELINES:
-- Create poetic, evocative titles that capture the mood and essence (2-4 words)
-- Use artistic language that suggests emotion, atmosphere, or narrative
-- Examples: "Serene Muse in Bloom", "Golden Hour Reverie", "Ethereal Garden Dreams", "Sunlit Contemplation"
-- Avoid generic terms like "AI Generated", "Portrait", "Woman", etc.
-- Focus on the emotional or atmospheric qualities
+- Create titles that primarily describe the MAIN SUBJECT with artistic flair (2-5 words)
+- Focus on the subject itself, enhanced with mood or setting descriptors
+- Examples based on subjects:
+  * "Confident Woman" → "Radiant Portrait Study"
+  * "Mountain Landscape" → "Majestic Alpine Vista" 
+  * "Vintage Car" → "Classic Chrome Beauty"
+  * "Garden Scene" → "Blooming Garden Sanctuary"
+  * "Urban Architecture" → "Modern Steel Cathedral"
+- Start with the subject, then add atmospheric or artistic qualifiers
+- Avoid generic terms like "AI Generated", "Image", "Photo", etc.
+- Make it descriptive of what the subject actually is, enhanced with artistic language
 
 NOTES CREATION GUIDELINES:
 - Write 2-3 detailed sentences describing the technical approach and artistic vision
@@ -92,22 +98,24 @@ STYLE REQUIREMENTS:
 
 Respond in JSON format with exactly these keys: "title", "notes", "sref"`;
 
-    const userPrompt = `Based on this generated prompt and input data, create metadata:
+    const userPrompt = `Based on this generated prompt and input data, create metadata with a title that primarily describes the main subject:
 
 GENERATED PROMPT:
 ${prompt}
 
 KEY ELEMENTS TO CONSIDER:
-- Main Subject: ${promptData.subject || 'Not specified'}
+- Main Subject: ${promptData.main_subject || promptData.subject || 'Not specified'}
 - Setting/Environment: ${promptData.setting || 'Not specified'}  
-- Photography Style: ${promptData.style || 'Not specified'}
-- Mood & Atmosphere: ${promptData.mood || 'Not specified'}
-- Lighting Setup: ${promptData.lighting || 'Not specified'}
-- Camera & Technical: ${promptData.camera_lens || 'Professional camera setup'}
+- Photography Style: ${promptData.art_style || promptData.style || 'Not specified'}
+- Mood & Atmosphere: ${promptData['mood_&_atmosphere'] || promptData.mood || 'Not specified'}
+- Lighting Setup: ${promptData.lighting_setup || promptData.lighting || 'Not specified'}
+- Camera & Technical: ${promptData['camera_&_lens'] || promptData.camera_lens || 'Professional camera setup'}
 - Enhancement Category: ${promptData.selectedCategory || 'Natural Photography'}
 - Enhancement Level: ${promptData.enhanceLevel || 0}/5
 
-Create a poetic title that captures the essence and mood, detailed professional notes about the photographic technique and artistic vision, and a realistic SREF number.`;
+IMPORTANT: Create a title that describes the main subject (${promptData.main_subject || promptData.subject || 'the subject'}) with artistic enhancement. The title should make it clear what the subject is while adding poetic or atmospheric qualities.
+
+Create a descriptive title focused on the main subject, detailed professional notes about the photographic technique and artistic vision, and a realistic SREF number.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -129,9 +137,12 @@ Create a poetic title that captures the essence and mood, detailed professional 
     try {
       metadata = JSON.parse(response);
     } catch (parseError) {
-      // Fallback if JSON parsing fails
+      // Fallback if JSON parsing fails - create subject-focused title
+      const subject = promptData.main_subject || promptData.subject || 'Artistic Subject';
+      const subjectWords = subject.split(' ').slice(0, 3).join(' '); // Take first 3 words
+      
       metadata = {
-        title: "Artistic Portrait Study",
+        title: `${subjectWords} Study`,
         notes: "Captured using professional lighting techniques and careful composition to create an intimate and contemplative mood. The natural lighting and shallow depth of field emphasize the subject's expression while maintaining authentic skin texture and detail.",
         sref: `SREF-${Math.floor(2000 + Math.random() * 7000)}`
       };
@@ -155,15 +166,6 @@ Create a poetic title that captures the essence and mood, detailed professional 
     let errorMessage = 'Failed to generate metadata';
     
     if (error instanceof Error) {
-      if (error.message.includes('Incorrect API key')) {
-        errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
-      } else if (error.message.includes('You exceeded your current quota')) {
-        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
-      } else if (error.message.includes('API key not found')) {
-        errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
-      } else if (error.message.includes('insufficient_quota')) {
-        errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
-      }
       if (error.message.includes('Incorrect API key')) {
         errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
       } else if (error.message.includes('You exceeded your current quota')) {
