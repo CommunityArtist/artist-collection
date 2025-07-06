@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, ArrowLeft } from 'lucide-react';
 import Button from './Button';
+import { useNavigate } from 'react-router-dom';
 
 interface ImageViewerModalProps {
   images: string[];
@@ -21,6 +22,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   onNext,
   onDownload
 }) => {
+  const navigate = useNavigate();
+
   if (!isOpen || images.length === 0) return null;
 
   const currentImage = images[currentIndex];
@@ -48,6 +51,10 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
       // Use the onDownload prop which contains the fixed download logic
       onDownload(currentImage, currentIndex);
     }
+  };
+
+  const handleDoneClick = () => {
+    onClose();
   };
 
   return (
@@ -88,6 +95,15 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
               Download
             </Button>
           )}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleDoneClick}
+            className="bg-electric-cyan text-deep-bg hover:bg-electric-cyan/90"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Done
+          </Button>
           <button
             onClick={onClose}
             className="p-2 rounded-full bg-black/50 text-white hover:bg-white/10 transition-colors"

@@ -119,33 +119,33 @@ const PromptBuilder: React.FC = () => {
 
   const [sections, setSections] = useState<PromptSection[]>([
     {
-      title: 'Subject & Style',
+      title: 'Subject & Composition',
       icon: <Wand2 className="w-5 h-5" />,
-      description: 'Define the main subject and artistic style',
+      description: 'Define your main subject and how it should be framed',
       fields: [
-        { label: 'Main Subject', value: '', placeholder: 'e.g., a majestic lion, futuristic cityscape, portrait of a woman', required: true },
-        { label: 'Art Style', value: '', placeholder: 'e.g., photorealistic, oil painting, digital art, watercolor' },
-        { label: 'Mood/Atmosphere', value: '', placeholder: 'e.g., dramatic, serene, mysterious, vibrant' }
+        { label: 'Main Subject', value: '', placeholder: 'e.g., a confident woman with flowing red hair, a majestic mountain landscape, a vintage sports car', required: true },
+        { label: 'Pose & Expression', value: '', placeholder: 'e.g., looking directly at camera with a gentle smile, dramatic side profile, action pose mid-jump' },
+        { label: 'Composition Style', value: '', placeholder: 'e.g., close-up portrait, full body shot, rule of thirds, symmetrical composition' }
       ]
     },
     {
-      title: 'Visual Details',
+      title: 'Visual Style & Mood',
+      icon: <Palette className="w-5 h-5" />,
+      description: 'Set the artistic direction and emotional tone',
+      fields: [
+        { label: 'Art Style', value: '', placeholder: 'e.g., photorealistic, oil painting, digital art, watercolor, anime style, vintage film photography' },
+        { label: 'Color Palette', value: '', placeholder: 'e.g., warm golden tones, vibrant neon colors, muted pastels, monochromatic blue scheme' },
+        { label: 'Mood & Atmosphere', value: '', placeholder: 'e.g., serene and peaceful, dramatic and intense, playful and energetic, mysterious and moody' }
+      ]
+    },
+    {
+      title: 'Technical Excellence',
       icon: <Camera className="w-5 h-5" />,
-      description: 'Specify colors, lighting, and composition',
+      description: 'Professional camera settings and quality specifications',
       fields: [
-        { label: 'Color Palette', value: '', placeholder: 'e.g., warm earth tones, vibrant neon colors, monochromatic blue' },
-        { label: 'Lighting', value: '', placeholder: 'e.g., golden hour, studio lighting, dramatic shadows' },
-        { label: 'Composition', value: '', placeholder: 'e.g., close-up, wide angle, rule of thirds, symmetrical' }
-      ]
-    },
-    {
-      title: 'Technical Settings',
-      icon: <Settings className="w-5 h-5" />,
-      description: 'Camera and rendering specifications',
-      fields: [
-        { label: 'Camera/Lens', value: '', placeholder: 'e.g., 85mm lens, macro photography, wide-angle shot' },
-        { label: 'Quality/Resolution', value: '', placeholder: 'e.g., 8K, ultra-detailed, high resolution, sharp focus' },
-        { label: 'Rendering Style', value: '', placeholder: 'e.g., octane render, unreal engine, ray tracing' }
+        { label: 'Camera & Lens', value: '', placeholder: 'e.g., Canon EOS R5 with 85mm f/1.4 lens, Sony A7R IV with 24-70mm, macro photography setup' },
+        { label: 'Lighting Setup', value: '', placeholder: 'e.g., golden hour natural light, studio lighting with softbox, dramatic side lighting, rim lighting' },
+        { label: 'Quality & Details', value: '', placeholder: 'e.g., 8K ultra-detailed, sharp focus, professional color grading, high dynamic range' }
       ]
     }
   ]);
@@ -157,42 +157,42 @@ const PromptBuilder: React.FC = () => {
     if (extractedData) {
       // Map extracted data to form fields
       setSections(prevSections => prevSections.map(section => {
-        if (section.title === 'Subject & Style') {
+        if (section.title === 'Subject & Composition') {
           return {
             ...section,
             fields: section.fields.map(field => {
               if (field.label === 'Main Subject') {
                 return { ...field, value: extractedData.mainPrompt || '' };
-              } else if (field.label === 'Art Style') {
-                return { ...field, value: extractedData.styleElements?.join(', ') || '' };
-              } else if (field.label === 'Mood/Atmosphere') {
-                return { ...field, value: extractedData.mood || '' };
-              }
-              return field;
-            })
-          };
-        } else if (section.title === 'Visual Details') {
-          return {
-            ...section,
-            fields: section.fields.map(field => {
-              if (field.label === 'Color Palette') {
-                return { ...field, value: extractedData.colorPalette?.join(', ') || '' };
-              } else if (field.label === 'Lighting') {
-                return { ...field, value: extractedData.lighting || '' };
-              } else if (field.label === 'Composition') {
+              } else if (field.label === 'Composition Style') {
                 return { ...field, value: extractedData.composition || '' };
               }
               return field;
             })
           };
-        } else if (section.title === 'Technical Settings') {
+        } else if (section.title === 'Visual Style & Mood') {
           return {
             ...section,
             fields: section.fields.map(field => {
-              if (field.label === 'Camera/Lens') {
+              if (field.label === 'Art Style') {
+                return { ...field, value: extractedData.styleElements?.join(', ') || '' };
+              } else if (field.label === 'Color Palette') {
+                return { ...field, value: extractedData.colorPalette?.join(', ') || '' };
+              } else if (field.label === 'Mood & Atmosphere') {
+                return { ...field, value: extractedData.mood || '' };
+              }
+              return field;
+            })
+          };
+        } else if (section.title === 'Technical Excellence') {
+          return {
+            ...section,
+            fields: section.fields.map(field => {
+              if (field.label === 'Camera & Lens') {
                 const cameraLens = [extractedData.camera, extractedData.lens].filter(Boolean).join(', ');
                 return { ...field, value: cameraLens };
-              } else if (field.label === 'Quality/Resolution') {
+              } else if (field.label === 'Lighting Setup') {
+                return { ...field, value: extractedData.lighting || '' };
+              } else if (field.label === 'Quality & Details') {
                 return { ...field, value: extractedData.technicalDetails?.join(', ') || '' };
               }
               return field;
@@ -377,12 +377,6 @@ const PromptBuilder: React.FC = () => {
     }
   };
 
-  const insertCheatCode = (code: string, sectionIndex: number, fieldIndex: number) => {
-    const currentValue = sections[sectionIndex].fields[fieldIndex].value;
-    const newValue = currentValue ? `${currentValue}, ${code}` : code;
-    updateField(sectionIndex, fieldIndex, newValue);
-  };
-
   const handleImageDownload = (imageUrl: string, index: number) => {
     const link = document.createElement('a');
     link.href = imageUrl;
@@ -443,46 +437,58 @@ const PromptBuilder: React.FC = () => {
                           {field.label}
                           {field.required && <span className="text-cosmic-purple ml-1">*</span>}
                         </label>
-                        <div className="relative">
-                          <textarea
-                            value={field.value}
-                            onChange={(e) => updateField(sectionIndex, fieldIndex, e.target.value)}
-                            placeholder={field.placeholder}
-                            className="w-full px-4 py-3 bg-deep-bg border border-border-color rounded-lg text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none transition-all duration-200"
-                            rows={2}
-                          />
-                          {/* Cheat Code Suggestions */}
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {Object.entries(IMG_CHEAT_CODES).map(([category, codes]) => (
-                              <div key={category} className="relative group">
-                                <button
-                                  type="button"
-                                  className="text-xs px-2 py-1 bg-electric-cyan/20 text-electric-cyan rounded-full hover:bg-electric-cyan/30 transition-colors"
-                                >
-                                  {category}
-                                </button>
-                                <div className="absolute top-full left-0 mt-1 w-80 bg-card-bg border border-border-color rounded-lg shadow-lg z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                                  <div className="p-3 space-y-2 max-h-60 overflow-y-auto">
-                                    {codes.map((code, idx) => (
-                                      <button
-                                        key={idx}
-                                        onClick={() => insertCheatCode(code, sectionIndex, fieldIndex)}
-                                        className="w-full text-left text-xs p-2 text-soft-lavender/80 hover:bg-cosmic-purple/10 rounded border border-border-color transition-colors"
-                                      >
-                                        {code}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        <textarea
+                          value={field.value}
+                          onChange={(e) => updateField(sectionIndex, fieldIndex, e.target.value)}
+                          placeholder={field.placeholder}
+                          className="w-full px-4 py-3 bg-deep-bg border border-border-color rounded-lg text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none transition-all duration-200"
+                          rows={3}
+                        />
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
+
+              {/* Enhancement Section */}
+              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <Sliders className="w-5 h-5 text-electric-cyan" />
+                  <h3 className="text-lg font-semibold text-soft-lavender">Professional Enhancement Codes</h3>
+                </div>
+                <p className="text-sm text-soft-lavender/70 mb-4">
+                  Click any enhancement code below to add professional photography techniques to your prompt
+                </p>
+                <div className="space-y-4">
+                  {Object.entries(IMG_CHEAT_CODES).map(([category, codes]) => (
+                    <div key={category}>
+                      <h4 className="text-sm font-medium text-soft-lavender mb-2">{category}</h4>
+                      <div className="grid gap-2">
+                        {codes.map((code, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              const currentPrompt = getGeneratedPromptText();
+                              const newPrompt = currentPrompt ? `${currentPrompt}, ${code}` : code;
+                              // Add to the first available field or create a new technical field
+                              const firstEmptyField = sections.findIndex(section => 
+                                section.fields.some(field => !field.value.trim())
+                              );
+                              if (firstEmptyField !== -1) {
+                                const fieldIndex = sections[firstEmptyField].fields.findIndex(field => !field.value.trim());
+                                updateField(firstEmptyField, fieldIndex, code);
+                              }
+                            }}
+                            className="w-full text-left text-xs p-3 text-soft-lavender/80 hover:bg-cosmic-purple/10 rounded-lg border border-border-color transition-colors hover:border-cosmic-purple/40"
+                          >
+                            {code}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Tags Section */}
               <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
@@ -612,6 +618,15 @@ const PromptBuilder: React.FC = () => {
                     </div>
                   )}
 
+                  {/* User Guidance During Generation */}
+                  {isGeneratingImages && (
+                    <div className="bg-electric-cyan/10 border border-electric-cyan/20 rounded-lg p-3">
+                      <p className="text-electric-cyan text-sm text-center">
+                        ⬇️ Scroll down to see your generated images as they appear
+                      </p>
+                    </div>
+                  )}
+
                   <Button
                     onClick={() => copyToClipboard(getGeneratedPromptText())}
                     disabled={!getGeneratedPromptText()}
@@ -668,7 +683,7 @@ const PromptBuilder: React.FC = () => {
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Use the cheat codes for professional results
+                    Use the enhancement codes for professional results
                   </li>
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
