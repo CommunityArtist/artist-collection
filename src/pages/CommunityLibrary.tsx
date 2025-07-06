@@ -53,17 +53,44 @@ const CommunityLibrary: React.FC = () => {
   const fetchPrompts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // First, fetch all public prompts
+      const { data: promptsData, error: promptsError } = await supabase
         .from('prompts')
-        .select(`
-          *,
-          profiles!inner(username)
-        `)
+        .select('*')
         .eq('is_private', false)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setPrompts(data || []);
+      if (promptsError) throw promptsError;
+      
+      if (!promptsData || promptsData.length === 0) {
+        setPrompts([]);
+        return;
+      }
+
+      // Get unique user IDs from the prompts
+      const userIds = [...new Set(promptsData.map(prompt => prompt.user_id))];
+      
+      // Fetch profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to username for quick lookup
+      const profilesMap = new Map(
+        (profilesData || []).map(profile => [profile.id, profile])
+      );
+
+      // Combine prompts with profile data
+      const promptsWithProfiles = promptsData.map(prompt => ({
+        ...prompt,
+        profiles: profilesMap.get(prompt.user_id) || null
+      }));
+
+      setPrompts(promptsWithProfiles);
     } catch (error) {
       console.error('Error fetching prompts:', error);
     } finally {
