@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
-import { PromptTag } from '../types';
+import { PromptTag, ExtractedPrompt } from '../types';
 
 interface PromptSection {
   title: string;
@@ -146,6 +146,63 @@ const PromptBuilder: React.FC = () => {
       ]
     }
   ]);
+
+  // Effect to handle extracted prompt data from location state
+  useEffect(() => {
+    const extractedData = location.state?.extractedPromptData as ExtractedPrompt;
+    
+    if (extractedData) {
+      // Map extracted data to form fields
+      setSections(prevSections => prevSections.map(section => {
+        if (section.title === 'Subject & Style') {
+          return {
+            ...section,
+            fields: section.fields.map(field => {
+              if (field.label === 'Main Subject') {
+                return { ...field, value: extractedData.mainPrompt || '' };
+              } else if (field.label === 'Art Style') {
+                return { ...field, value: extractedData.styleElements?.join(', ') || '' };
+              } else if (field.label === 'Mood/Atmosphere') {
+                return { ...field, value: extractedData.mood || '' };
+              }
+              return field;
+            })
+          };
+        } else if (section.title === 'Visual Details') {
+          return {
+            ...section,
+            fields: section.fields.map(field => {
+              if (field.label === 'Color Palette') {
+                return { ...field, value: extractedData.colorPalette?.join(', ') || '' };
+              } else if (field.label === 'Lighting') {
+                return { ...field, value: extractedData.lighting || '' };
+              } else if (field.label === 'Composition') {
+                return { ...field, value: extractedData.composition || '' };
+              }
+              return field;
+            })
+          };
+        } else if (section.title === 'Technical Settings') {
+          return {
+            ...section,
+            fields: section.fields.map(field => {
+              if (field.label === 'Camera/Lens') {
+                const cameraLens = [extractedData.camera, extractedData.lens].filter(Boolean).join(', ');
+                return { ...field, value: cameraLens };
+              } else if (field.label === 'Quality/Resolution') {
+                return { ...field, value: extractedData.technicalDetails?.join(', ') || '' };
+              }
+              return field;
+            })
+          };
+        }
+        return section;
+      }));
+
+      // Clear the location state to prevent re-population on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const updateField = (sectionIndex: number, fieldIndex: number, value: string) => {
     setSections(prev => prev.map((section, sIdx) => 
