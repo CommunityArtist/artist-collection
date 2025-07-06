@@ -110,12 +110,20 @@ const PromptBuilder: React.FC = () => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [isGeneratingMetadata, setIsGeneratingMetadata] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<PromptTag[]>([]);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
+  
+  // Metadata fields
+  const [promptTitle, setPromptTitle] = useState('');
+  const [promptNotes, setPromptNotes] = useState('');
+  const [promptSref, setPromptSref] = useState('');
 
   const [sections, setSections] = useState<PromptSection[]>([
     {
@@ -124,6 +132,7 @@ const PromptBuilder: React.FC = () => {
       description: 'Define your main subject and how it should be framed',
       fields: [
         { label: 'Main Subject', value: '', placeholder: 'e.g., a confident woman with flowing red hair, a majestic mountain landscape, a vintage sports car', required: true },
+        { label: 'Setting', value: '', placeholder: 'e.g., cozy studio apartment, misty forest clearing, urban rooftop at sunset', required: true },
         { label: 'Pose & Expression', value: '', placeholder: 'e.g., looking directly at camera with a gentle smile, dramatic side profile, action pose mid-jump' },
         { label: 'Composition Style', value: '', placeholder: 'e.g., close-up portrait, full body shot, rule of thirds, symmetrical composition' }
       ]
@@ -133,9 +142,9 @@ const PromptBuilder: React.FC = () => {
       icon: <Palette className="w-5 h-5" />,
       description: 'Set the artistic direction and emotional tone',
       fields: [
-        { label: 'Art Style', value: '', placeholder: 'e.g., photorealistic, oil painting, digital art, watercolor, anime style, vintage film photography' },
+        { label: 'Art Style', value: '', placeholder: 'e.g., photorealistic, oil painting, digital art, watercolor, anime style, vintage film photography', required: true },
         { label: 'Color Palette', value: '', placeholder: 'e.g., warm golden tones, vibrant neon colors, muted pastels, monochromatic blue scheme' },
-        { label: 'Mood & Atmosphere', value: '', placeholder: 'e.g., serene and peaceful, dramatic and intense, playful and energetic, mysterious and moody' }
+        { label: 'Mood & Atmosphere', value: '', placeholder: 'e.g., serene and peaceful, dramatic and intense, playful and energetic, mysterious and moody', required: true }
       ]
     },
     {
@@ -144,7 +153,7 @@ const PromptBuilder: React.FC = () => {
       description: 'Professional camera settings and quality specifications',
       fields: [
         { label: 'Camera & Lens', value: '', placeholder: 'e.g., Canon EOS R5 with 85mm f/1.4 lens, Sony A7R IV with 24-70mm, macro photography setup' },
-        { label: 'Lighting Setup', value: '', placeholder: 'e.g., golden hour natural light, studio lighting with softbox, dramatic side lighting, rim lighting' },
+        { label: 'Lighting Setup', value: '', placeholder: 'e.g., golden hour natural light, studio lighting with softbox, dramatic side lighting, rim lighting', required: true },
         { label: 'Quality & Details', value: '', placeholder: 'e.g., 8K ultra-detailed, sharp focus, professional color grading, high dynamic range' }
       ]
     }
@@ -163,6 +172,8 @@ const PromptBuilder: React.FC = () => {
             fields: section.fields.map(field => {
               if (field.label === 'Main Subject') {
                 return { ...field, value: extractedData.mainPrompt || '' };
+              } else if (field.label === 'Setting') {
+                return { ...field, value: extractedData.composition || '' };
               } else if (field.label === 'Composition Style') {
                 return { ...field, value: extractedData.composition || '' };
               }
@@ -248,14 +259,74 @@ const PromptBuilder: React.FC = () => {
     }
   };
 
+  const generateMetadata = async (prompt: string, promptData: any) => {
+    try {
+      setIsGeneratingMetadata(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please sign in to generate metadata');
+      }
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-metadata`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ prompt, promptData }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate metadata');
+      }
+
+      // Auto-fill the form fields
+      setPromptTitle(data.title);
+      setPromptNotes(data.notes);
+      setPromptSref(data.sref);
+
+    } catch (error) {
+      console.error('Error generating metadata:', error);
+      // Don't throw error here, just log it - metadata generation is optional
+    } finally {
+      setIsGeneratingMetadata(false);
+    }
+  };
+
+  const handleRegenerateMetadata = async () => {
+    if (generatedPrompt) {
+      const promptData = buildPromptData();
+      await generateMetadata(generatedPrompt, promptData);
+    }
+  };
+
+  const buildPromptData = () => {
+    const data: Record<string, string | number> = {};
+    sections.forEach(section => {
+      section.fields.forEach(field => {
+        data[field.label.toLowerCase().replace(/\s+/g, '_')] = field.value.trim();
+      });
+    });
+    
+    return data;
+  };
+
   const handleSavePrompt = async () => {
-    const prompt = getGeneratedPromptText();
+    const prompt = generatedPrompt || getGeneratedPromptText();
     if (!prompt) {
-      setError('Please fill in at least one field to generate a prompt.');
+      setError('Please generate a prompt first.');
       return;
     }
 
-    setIsLoading(true);
+    if (!promptTitle.trim()) {
+      setError('Please enter a title for the prompt.');
+      return;
+    }
+
+    setIsSaving(true);
     setError(null);
 
     try {
@@ -268,8 +339,11 @@ const PromptBuilder: React.FC = () => {
       const { error: saveError } = await supabase
         .from('prompts')
         .insert({
-          title: `Generated Prompt - ${new Date().toLocaleDateString()}`,
-          prompt,
+          title: promptTitle,
+          prompt: prompt,
+          notes: promptNotes,
+          sref: promptSref,
+          media_url: generatedImages.length > 0 ? generatedImages[0] : null,
           tags: selectedTags,
           user_id: user.id,
           is_private: false
@@ -277,11 +351,25 @@ const PromptBuilder: React.FC = () => {
 
       if (saveError) throw saveError;
 
-      navigate('/library');
+      // Clear form after successful save
+      setPromptTitle('');
+      setPromptNotes('');
+      setPromptSref('');
+      setSelectedTags([]);
+      setGeneratedImages([]);
+      setGeneratedPrompt('');
+      
+      // Reset sections
+      setSections(prevSections => prevSections.map(section => ({
+        ...section,
+        fields: section.fields.map(field => ({ ...field, value: '' }))
+      })));
+
+      navigate('/library/my');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save prompt');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -296,6 +384,7 @@ const PromptBuilder: React.FC = () => {
     setError(null);
     setGeneratedImages([]);
     setGenerationProgress(0);
+    setGeneratedPrompt(prompt);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -352,6 +441,10 @@ const PromptBuilder: React.FC = () => {
       }
 
       setGeneratedImages(imageUrls);
+
+      // Auto-generate metadata after successful image generation
+      const promptData = buildPromptData();
+      await generateMetadata(prompt, promptData);
 
     } catch (error) {
       console.error('Error:', error);
@@ -468,8 +561,6 @@ const PromptBuilder: React.FC = () => {
                           <button
                             key={idx}
                             onClick={() => {
-                              const currentPrompt = getGeneratedPromptText();
-                              const newPrompt = currentPrompt ? `${currentPrompt}, ${code}` : code;
                               // Add to the first available field or create a new technical field
                               const firstEmptyField = sections.findIndex(section => 
                                 section.fields.some(field => !field.value.trim())
@@ -561,6 +652,92 @@ const PromptBuilder: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Save to Library Section */}
+              {(generatedPrompt || generatedImages.length > 0) && (
+                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-soft-lavender">Save to Library</h3>
+                    {isGeneratingMetadata && (
+                      <div className="flex items-center text-electric-cyan text-sm">
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Generating metadata...
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pro Tip */}
+                  <div className="bg-gradient-to-br from-cosmic-purple/10 to-electric-cyan/10 rounded-lg p-4 mb-6 border border-cosmic-purple/20">
+                    <h4 className="font-semibold text-soft-lavender mb-2 flex items-center">
+                      <Sparkles className="w-4 h-4 text-electric-cyan mr-2" />
+                      Pro Tip
+                    </h4>
+                    <p className="text-sm text-soft-lavender/70">
+                      Fill in the title and notes below for better organization in your library. These help you and others understand the prompt's purpose and technique.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-soft-lavender">
+                          Title <span className="text-cosmic-purple">*</span>
+                        </label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRegenerateMetadata}
+                          disabled={isGeneratingMetadata || !generatedPrompt}
+                          className="text-xs"
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Regenerate
+                        </Button>
+                      </div>
+                      <input
+                        type="text"
+                        value={promptTitle}
+                        onChange={(e) => setPromptTitle(e.target.value)}
+                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                        placeholder="Enter a title for your prompt"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-soft-lavender mb-2">Notes</label>
+                      <textarea
+                        value={promptNotes}
+                        onChange={(e) => setPromptNotes(e.target.value)}
+                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
+                        rows={3}
+                        placeholder="Add any notes about the prompt (optional)"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-soft-lavender mb-2">SREF Number</label>
+                      <input
+                        type="text"
+                        value={promptSref}
+                        onChange={(e) => setPromptSref(e.target.value)}
+                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                        placeholder="Enter SREF number (optional)"
+                      />
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      className="w-full"
+                      onClick={handleSavePrompt}
+                      disabled={isSaving || !promptTitle.trim()}
+                    >
+                      <Plus className="w-5 h-5 mr-2" />
+                      {isSaving ? 'Saving...' : 'Save to Library'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Column - Preview & Actions */}
@@ -636,16 +813,6 @@ const PromptBuilder: React.FC = () => {
                     <Copy className="w-4 h-4" />
                     <span>Copy Prompt</span>
                   </Button>
-
-                  <Button
-                    onClick={handleSavePrompt}
-                    disabled={!getGeneratedPromptText() || isLoading}
-                    className="w-full flex items-center justify-center space-x-2"
-                    variant="outline"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>{isLoading ? 'Saving...' : 'Save to Library'}</span>
-                  </Button>
                 </div>
 
                 {error && (
@@ -692,6 +859,10 @@ const PromptBuilder: React.FC = () => {
                   <li className="flex items-start">
                     <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
                     Add technical details for higher quality
+                  </li>
+                  <li className="flex items-start">
+                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                    Fill in title and notes for better organization
                   </li>
                 </ul>
               </div>
