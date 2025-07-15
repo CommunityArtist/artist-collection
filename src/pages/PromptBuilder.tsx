@@ -58,6 +58,7 @@ const PromptBuilder: React.FC = () => {
 
   // UI state
   const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [negativePrompt, setNegativePrompt] = useState('');
   const [enhancedPrompt, setEnhancedPrompt] = useState('');
   const [promptEnhancementEnabled, setPromptEnhancementEnabled] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
@@ -139,6 +140,7 @@ const PromptBuilder: React.FC = () => {
       }
 
       setGeneratedPrompt(data.prompt);
+      setNegativePrompt(data.negativePrompt);
     } catch (error) {
       console.error('Error generating prompt:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
@@ -212,6 +214,11 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Please generate a prompt first');
       }
 
+      // Combine positive and negative prompts for DALL-E 3
+      const combinedPrompt = negativePrompt 
+        ? `${promptToUse}. Avoid: ${negativePrompt}`
+        : promptToUse;
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
         method: 'POST',
         headers: {
@@ -219,7 +226,7 @@ const PromptBuilder: React.FC = () => {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          prompt: promptToUse,
+          prompt: combinedPrompt,
           imageDimensions,
           numberOfImages
         }),
@@ -325,6 +332,7 @@ const PromptBuilder: React.FC = () => {
       enhancement: ''
     });
     setGeneratedPrompt('');
+    setNegativePrompt('');
     setEnhancedPrompt('');
     setGeneratedImages([]);
     setError(null);
@@ -724,6 +732,26 @@ const PromptBuilder: React.FC = () => {
                       <Save className="w-4 h-4 mr-2" />
                       Save
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Negative Prompt Section */}
+              {negativePrompt && (
+                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+                  <h3 className="text-lg font-semibold text-soft-lavender mb-4 flex items-center gap-2">
+                    <X className="w-5 h-5 text-error-red" />
+                    Negative Prompt (What to Avoid)
+                  </h3>
+                  
+                  <div className="bg-deep-bg border border-error-red/20 rounded-lg p-4 mb-4 max-h-32 overflow-y-auto">
+                    <p className="text-error-red/80 whitespace-pre-wrap leading-relaxed text-sm">
+                      {negativePrompt}
+                    </p>
+                  </div>
+
+                  <div className="text-xs text-soft-lavender/50">
+                    These concepts will be automatically excluded when generating images
                   </div>
                 </div>
               )}
