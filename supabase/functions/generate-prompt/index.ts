@@ -71,10 +71,13 @@ Deno.serve(async (req) => {
     const systemPrompt = `You are an expert professional photographer and prompt engineer specializing in creating detailed prompts for AI image generation that produce photorealistic, human-like results.
 
 CRITICAL OUTPUT FORMAT REQUIREMENT:
-Generate your response as a single, flowing, cohesive paragraph of text. Do NOT use any markdown formatting, bold text, headings, bullet points, numbered lists, asterisks, or any special symbols. Write everything as continuous prose in a natural, descriptive narrative format.
+You must respond with a valid JSON object containing exactly two keys: "prompt" and "negativePrompt". Do not include any other text, markdown formatting, or explanations outside of this JSON structure.
 
-NEGATIVE PROMPT INTEGRATION REQUIREMENT:
-You must naturally integrate negative concepts throughout your prompt to guide the AI away from artificial or stylized results. Seamlessly weave in phrases that instruct the model to avoid: rendered appearance, digital art aesthetics, CGI-like features, smooth or perfect skin, artificial lighting effects, overly stylized features, plastic-like skin texture, airbrushed appearance, synthetic materials, glossy or shiny skin, cartoon-like qualities, illustration style, painting-like effects, fantasy elements, surreal characteristics, overly saturated colors, artificial enhancement, digital manipulation appearance, computer-generated look, and polished or retouched aesthetic. These should be integrated naturally as "avoid" or "not" statements within the flowing description.
+POSITIVE PROMPT REQUIREMENTS:
+The "prompt" key should contain a single, flowing, cohesive paragraph describing the desired visual elements. Focus purely on what you WANT to see in the image. Include detailed descriptions of subject, setting, lighting, mood, technical specifications, and photorealistic qualities. Write as continuous prose without any formatting symbols.
+
+NEGATIVE PROMPT REQUIREMENTS:
+The "negativePrompt" key should contain a comprehensive list of concepts to avoid, formatted as a flowing sentence with comma-separated terms. Include concepts like: rendered appearance, digital art aesthetics, CGI-like features, smooth or perfect skin, artificial lighting effects, overly stylized features, plastic-like skin texture, airbrushed appearance, synthetic materials, glossy or shiny skin, cartoon-like qualities, illustration style, painting-like effects, fantasy elements, surreal characteristics, overly saturated colors, artificial enhancement, digital manipulation appearance, computer-generated look, polished or retouched aesthetic, fake appearance, synthetic look, overly processed, artificial perfection, digital artifacts, unrealistic proportions, and stylized rendering.
 
 REALISM REQUIREMENTS FOR HUMAN SUBJECTS:
 Always emphasize photorealistic and natural human features. Include specific details about natural skin texture with visible pores and subtle imperfections. Mention realistic lighting that shows natural shadows and highlights on skin. Focus on authentic human expressions and natural poses. Include environmental details that enhance realism. Describe natural skin texture, authentic expressions, realistic hair details, natural lighting effects, and environmental realism.
@@ -113,14 +116,33 @@ Write your response as one continuous, descriptive paragraph that reads naturall
       max_tokens: 600,
     });
 
-    const generatedPrompt = completion.choices[0]?.message?.content?.trim();
+    const response = completion.choices[0]?.message?.content?.trim();
 
-    if (!generatedPrompt) {
+    if (!response) {
       throw new Error('OpenAI API returned an empty response');
     }
 
+    let promptData;
+    try {
+      // Parse the JSON response
+      promptData = JSON.parse(response);
+      
+      // Validate the response structure
+      if (!promptData.prompt || !promptData.negativePrompt) {
+        throw new Error('Invalid response structure: missing prompt or negativePrompt');
+      }
+      
+      if (typeof promptData.prompt !== 'string' || typeof promptData.negativePrompt !== 'string') {
+        throw new Error('Invalid response structure: prompt and negativePrompt must be strings');
+      }
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', parseError);
+      console.error('Raw response:', response);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+
     return new Response(
-      JSON.stringify({ prompt: generatedPrompt }),
+      JSON.stringify(promptData),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
