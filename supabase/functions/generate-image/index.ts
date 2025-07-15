@@ -106,6 +106,11 @@ Deno.serve(async (req) => {
       } catch (imageError) {
         console.error(`Error generating image ${i + 1}:`, imageError);
         lastError = imageError instanceof Error ? imageError : new Error(String(imageError));
+        
+        // If it's a content filter error, stop trying to generate more images
+        if (imageError instanceof Error && imageError.message.includes('content filters')) {
+          break;
+        }
         // Continue with other images if one fails
       }
     }
@@ -138,6 +143,8 @@ Deno.serve(async (req) => {
     if (error instanceof Error) {
       if (error.message.includes('Incorrect API key')) {
         errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
+      } else if (error.message.includes('content filters')) {
+        errorMessage = 'Your prompt was blocked by OpenAI\'s content filters. Please modify your prompt to comply with OpenAI\'s usage policies and avoid content that may be considered inappropriate, violent, sexual, or hateful.';
       } else if (error.message.includes('You exceeded your current quota')) {
         errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
       } else if (error.message.includes('API key not found')) {
