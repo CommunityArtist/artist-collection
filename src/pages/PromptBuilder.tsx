@@ -499,13 +499,33 @@ const PromptBuilder: React.FC = () => {
     setSelectedImageIndex(index);
   };
 
+  const getDynamicTitle = () => {
+    // Find the values of the key fields
+    const mainSubject = sections[0]?.fields.find(field => field.label === 'Main Subject')?.value?.trim() || '';
+    const artStyle = sections[1]?.fields.find(field => field.label === 'Art Style')?.value?.trim() || '';
+    const mood = sections[1]?.fields.find(field => field.label === 'Mood & Atmosphere')?.value?.trim() || '';
+
+    // If all three fields have values, combine them
+    if (mainSubject && artStyle && mood) {
+      return `${mainSubject} in ${artStyle} style with ${mood} mood`;
+    }
+    
+    // If only Main Subject has a value, use it directly
+    if (mainSubject) {
+      return mainSubject;
+    }
+    
+    // Default title for all other cases
+    return 'Professional AI Prompt Builder';
+  };
+
   return (
     <div className="min-h-screen bg-deep-bg pt-24 pb-12">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-soft-lavender mb-6">
-            <span className="text-electric-cyan">Professional</span> AI Prompt Builder
+            <span className="text-electric-cyan">{getDynamicTitle()}</span>
           </h1>
           <p className="text-soft-lavender/70 text-lg max-w-3xl mx-auto">
             Generate studio-quality prompts for Midjourney, DALL-E, Leonardo AI & Stable Diffusion with professional photography techniques and artistic enhancement codes
