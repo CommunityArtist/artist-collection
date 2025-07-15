@@ -42,7 +42,7 @@ interface PromptData {
 }
 
 const PromptBuilder: React.FC = () => {
-  // ... [rest of the code remains unchanged until handleSavePrompt]
+  // ... [rest of the component code remains unchanged until handleSavePrompt]
 
   const handleSavePrompt = async (selectedImageUrl?: string) => {
     const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
@@ -64,7 +64,7 @@ const PromptBuilder: React.FC = () => {
     });
   };
 
-  // ... [rest of the code remains unchanged]
+  // ... [rest of the component code remains unchanged]
 
   return (
     // ... [rest of the JSX remains unchanged]
