@@ -150,16 +150,36 @@ const PromptBuilder: React.FC = () => {
         throw new Error('VITE_SUPABASE_URL environment variable is not set');
       }
 
+      // More detailed debugging
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/generate-prompt`;
+      
+      console.log('=== DEBUGGING EDGE FUNCTION CONNECTION ===');
+      console.log('Supabase URL:', supabaseUrl);
+      console.log('Function URL:', functionUrl);
+      console.log('Environment check:', {
+        VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+        VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'
+      });
+
       // Get authenticated session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Please sign in to generate prompts');
       }
 
-      console.log('Making request to:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`);
+      console.log('Session check:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        tokenLength: session?.access_token?.length || 0
+      });
+      
       console.log('Request payload:', promptData);
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`, {
+      // Test if the function endpoint exists first
+      console.log('Testing function endpoint...');
+      
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,11 +190,17 @@ const PromptBuilder: React.FC = () => {
 
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       const data = await response.json();
       console.log('Response data:', data);
 
       if (!response.ok) {
+        console.error('Response not OK:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        });
         throw new Error(data.error || 'Failed to generate prompt');
       }
 
@@ -194,12 +220,35 @@ const PromptBuilder: React.FC = () => {
       }
     } catch (error) {
       console.error('Error generating prompt:', error);
+      console.error('Full error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        cause: error?.cause
+      });
       
       let errorMessage = 'An unexpected error occurred';
       
       if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch')) {
-          errorMessage = 'Unable to connect to the prompt generation service. This could be because:\n\n1. The Supabase Edge Function is not deployed\n2. Your internet connection is unstable\n3. The service is temporarily unavailable\n\nPlease try again in a moment or contact support if the issue persists.';
+        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+          errorMessage = `Connection failed to: ${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt
+
+Possible causes:
+1. Edge Function 'generate-prompt' is not deployed in Supabase
+2. Function name mismatch (check if it's exactly 'generate-prompt')
+3. CORS issues with the function
+4. Network connectivity problems
+5. Supabase project URL is incorrect
+
+Debug info:
+- URL: ${import.meta.env.VITE_SUPABASE_URL}
+- Function: generate-prompt
+- Error: ${error.message}
+
+Next steps:
+1. Check Supabase Dashboard → Edge Functions
+2. Verify 'generate-prompt' function exists and is active
+3. Test the function directly in Supabase dashboard`;
         } else {
           errorMessage = error.message;
         }
