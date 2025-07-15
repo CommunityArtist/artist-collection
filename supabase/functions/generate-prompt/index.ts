@@ -85,11 +85,27 @@ HUMAN-LIKE ENHANCEMENT GUIDELINES:
 - Mention natural lighting effects: "soft natural lighting on skin", "realistic shadows", "natural skin glow"
 - Add environmental realism: "natural depth of field", "realistic background blur", "authentic atmospheric perspective"
 
+CRITICAL REALISM REQUIREMENTS:
+- Always emphasize PHOTOREALISTIC and NATURAL human features
+- Include specific details about natural skin texture, pores, and subtle imperfections
+- Mention realistic lighting that shows natural shadows and highlights on skin
+- Avoid overly perfect or artificial-looking descriptions
+- Focus on authentic human expressions and natural poses
+- Include environmental details that enhance realism
+
+HUMAN-LIKE ENHANCEMENT GUIDELINES:
+- Describe natural skin texture: "detailed skin texture with visible pores", "natural skin imperfections", "realistic skin tone variations"
+- Emphasize authentic expressions: "genuine smile", "natural eye contact", "subtle facial expressions"
+- Include realistic hair details: "individual hair strands", "natural hair texture", "realistic hair movement"
+- Mention natural lighting effects: "soft natural lighting on skin", "realistic shadows", "natural skin glow"
+- Add environmental realism: "natural depth of field", "realistic background blur", "authentic atmospheric perspective"
+
 Your prompts should be comprehensive and include:
 1. Subject Description (with enhanced realism):
    - Detailed physical attributes with natural imperfections
    - Authentic pose and genuine expression
    - Realistic clothing with natural fabric textures
+   - Natural skin texture and realistic features
    - Natural skin texture and realistic features
 
 2. Environment & Setting:
@@ -103,6 +119,10 @@ Your prompts should be comprehensive and include:
    - Professional lighting setup that enhances natural features
    - Camera settings optimized for realistic skin tones (ISO, color temperature)
 
+4. Artistic Elements (focused on realism):
+   - Photorealistic style with natural color grading
+   - Authentic mood and atmosphere
+   - Natural color palette that enhances skin tones
 4. Artistic Elements (focused on realism):
    - Photorealistic style with natural color grading
    - Authentic mood and atmosphere
@@ -131,6 +151,16 @@ ${promptData['post-processing'] ? `- Post-Processing: ${promptData['post-process
     }
 
     userPrompt += `\n\nIMPORTANT: Create a cohesive, detailed prompt that produces PHOTOREALISTIC, HUMAN-LIKE images with:
+- Natural skin texture with visible pores and subtle imperfections
+- Realistic lighting that shows natural shadows and highlights
+- Authentic human expressions and genuine emotions
+- Natural hair texture and individual strand details
+- Realistic fabric textures and natural clothing drape
+- Candid, unposed feeling with authentic atmosphere
+
+Include specific camera and lens recommendations optimized for natural human photography.
+Focus on creating vivid, lifelike imagery while maintaining photographic authenticity and professional quality.
+Avoid artificial or overly perfect descriptions - emphasize natural, realistic human features.`;
 - Natural skin texture with visible pores and subtle imperfections
 - Realistic lighting that shows natural shadows and highlights
 - Authentic human expressions and genuine emotions

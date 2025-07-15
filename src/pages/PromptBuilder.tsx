@@ -333,11 +333,13 @@ Return an enhanced version that will generate higher quality, more realistic ima
       return;
     }
 
-    // Navigate to create prompt page with the generated prompt
+    // Navigate to create prompt page with the generated prompt and form data
     navigate('/create-prompt', {
       state: {
         generatedPrompt: promptToUse,
-        promptData: promptData
+        promptData: promptData,
+        imageDimensions: imageDimensions,
+        numberOfImages: numberOfImages
       }
     });
   };

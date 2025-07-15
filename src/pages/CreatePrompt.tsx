@@ -96,6 +96,57 @@ const CreatePrompt: React.FC = () => {
     fetchPrompt();
   }, [editId, navigate]);
 
+  // Handle data from Prompt Builder
+  useEffect(() => {
+    if (location.state?.generatedPrompt && location.state?.promptData) {
+      const { generatedPrompt, promptData, imageDimensions, numberOfImages } = location.state;
+      
+      // Generate a title based on the subject
+      const subjectWords = promptData.subject.split(' ').slice(0, 3).join(' ');
+      setTitle(subjectWords || 'Generated Prompt');
+      
+      // Set the generated prompt
+      setPrompt(generatedPrompt);
+      
+      // Create detailed notes from the prompt data
+      const notesArray = [];
+      if (promptData.setting) notesArray.push(`Setting: ${promptData.setting}`);
+      if (promptData.lighting) notesArray.push(`Lighting: ${promptData.lighting}`);
+      if (promptData.style) notesArray.push(`Style: ${promptData.style}`);
+      if (promptData.mood) notesArray.push(`Mood: ${promptData.mood}`);
+      if (promptData['post-processing']) notesArray.push(`Post-processing: ${promptData['post-processing']}`);
+      if (promptData.enhancement) notesArray.push(`Enhancement: ${promptData.enhancement}`);
+      if (imageDimensions) notesArray.push(`Dimensions: ${imageDimensions}`);
+      if (numberOfImages) notesArray.push(`Images generated: ${numberOfImages}`);
+      
+      setNotes(notesArray.join('\n'));
+      
+      // Set default privacy to false for shared prompts
+      setIsPrivate(false);
+      
+      // Add relevant tags based on the prompt data
+      const autoTags = [];
+      if (promptData.style) {
+        if (promptData.style.toLowerCase().includes('photography')) autoTags.push('Photography');
+        if (promptData.style.toLowerCase().includes('portrait')) autoTags.push('Character');
+        if (promptData.style.toLowerCase().includes('fashion')) autoTags.push('Fashion');
+        if (promptData.style.toLowerCase().includes('cinematic')) autoTags.push('Photography');
+      }
+      if (promptData.subject) {
+        if (promptData.subject.toLowerCase().includes('woman') || promptData.subject.toLowerCase().includes('man') || promptData.subject.toLowerCase().includes('person')) {
+          autoTags.push('Character');
+        }
+      }
+      // Add Prompt Builder tag to indicate source
+      autoTags.push('Prompt Builder');
+      
+      setSelectedTags(autoTags.filter((tag, index, self) => self.indexOf(tag) === index) as PromptTag[]);
+      
+      // Clear the location state to prevent re-population on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
