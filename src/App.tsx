@@ -25,7 +25,7 @@ import ApiConfig from './pages/ApiConfig';
 
 function App() {
   React.useEffect(() => {
-    document.title = "Community Artists - AI Art Generation";
+    document.title = "Community Artist - AI Art Generation";
     
     const favicon = document.querySelector('link[rel="icon"]');
     if (favicon) {

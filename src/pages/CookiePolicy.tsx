@@ -58,7 +58,7 @@ const CookiePolicy: React.FC = () => {
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-soft-lavender">Contact Us</h2>
               <p>
-                If you have any questions about our Cookie Policy, please contact us at privacy@communityartists.com
+                If you have any questions about our Cookie Policy, please contact us at privacy@communityartist.com
               </p>
             </section>
           </div>

@@ -78,12 +78,12 @@ const Navbar: React.FC = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2">
               <img 
-                src="https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" 
-                alt="Community Artists Logo" 
+                src="https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                alt="Community Artist Logo" 
                 className="w-8 h-8 rounded-full object-cover"
               />
               <span className="bg-gradient-to-r from-electric-cyan via-cosmic-purple to-neon-pink bg-clip-text text-transparent inline-block text-3xl font-bold">
-                Community Artists
+                Community Artist
               </span>
             </Link>
           </div>

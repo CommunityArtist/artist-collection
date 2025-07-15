@@ -7,7 +7,7 @@ const About: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-soft-lavender mb-4">About Community Artists</h1>
+            <h1 className="text-4xl font-bold text-soft-lavender mb-4">About Community Artist</h1>
             <p className="text-soft-lavender/70 text-lg">
               Empowering creators with AI-powered tools and a vibrant community
             </p>
@@ -49,7 +49,7 @@ const About: React.FC = () => {
             <h2 className="text-2xl font-bold text-soft-lavender mb-6">Our Story</h2>
             <div className="space-y-4 text-soft-lavender/70">
               <p>
-                Founded in 2025, Community Artists emerged from a simple idea: making AI art creation accessible to everyone. 
+                Founded in 2025, Community Artist emerged from a simple idea: making AI art creation accessible to everyone. 
                 What started as a small group of enthusiasts has grown into a global community of creators pushing the 
                 boundaries of digital art.
               </p>

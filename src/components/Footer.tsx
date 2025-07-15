@@ -38,12 +38,12 @@ const Footer: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <img 
-                src="https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" 
-                alt="Community Artists Logo" 
+                src="https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                alt="Community Artist Logo" 
                 className="w-8 h-8 rounded-full object-cover"
               />
               <span className="bg-gradient-to-r from-electric-cyan via-cosmic-purple to-neon-pink bg-clip-text text-transparent inline-block text-3xl font-bold">
-                Community Artists
+                Community Artist
               </span>
             </div>
             <p className="text-soft-lavender/70 mb-6">
@@ -91,7 +91,7 @@ const Footer: React.FC = () => {
         </div>
         
         <div className="pt-8 mt-8 border-t border-border-color text-center text-soft-lavender/50 text-sm">
-          © 2025 Community Artists. All rights reserved.
+          © 2025 Community Artist. All rights reserved.
         </div>
       </div>
     </footer>
