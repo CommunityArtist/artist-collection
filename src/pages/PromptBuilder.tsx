@@ -118,11 +118,19 @@ const PromptBuilder: React.FC = () => {
       setIsGeneratingPrompt(true);
       setError(null);
 
+      // Check if we have the required environment variables
+      if (!import.meta.env.VITE_SUPABASE_URL) {
+        throw new Error('VITE_SUPABASE_URL environment variable is not set');
+      }
+
       // Get authenticated session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Please sign in to generate prompts');
       }
+
+      console.log('Making request to:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`);
+      console.log('Request payload:', promptData);
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`, {
         method: 'POST',
@@ -133,17 +141,44 @@ const PromptBuilder: React.FC = () => {
         body: JSON.stringify(promptData),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to generate prompt');
       }
 
-      setGeneratedPrompt(data.prompt);
-      setNegativePrompt(data.negativePrompt);
+      // Handle both old and new response formats for backward compatibility
+      if (typeof data === 'string') {
+        // Old format - single string response
+        setGeneratedPrompt(data);
+        setNegativePrompt('');
+      } else if (data.prompt && data.negativePrompt) {
+        // New format - JSON with separate prompts
+        setGeneratedPrompt(data.prompt);
+        setNegativePrompt(data.negativePrompt);
+      } else {
+        // Fallback - treat as single prompt
+        setGeneratedPrompt(data.prompt || data);
+        setNegativePrompt('');
+      }
     } catch (error) {
       console.error('Error generating prompt:', error);
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      
+      let errorMessage = 'An unexpected error occurred';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to connect to the prompt generation service. This could be because:\n\n1. The Supabase Edge Function is not deployed\n2. Your internet connection is unstable\n3. The service is temporarily unavailable\n\nPlease try again in a moment or contact support if the issue persists.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsGeneratingPrompt(false);
     }
