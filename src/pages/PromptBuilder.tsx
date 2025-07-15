@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Grid3X3, Check } from 'lucide-react';
+import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Grid3X3, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
@@ -168,6 +168,7 @@ const PromptBuilder: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
+  const [sectionStates, setSectionStates] = useState<boolean[]>([true, false, false]); // First section open, others collapsed
   
   // Metadata fields
   const [promptTitle, setPromptTitle] = useState('');
@@ -298,6 +299,12 @@ const PromptBuilder: React.FC = () => {
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
+  };
+
+  const toggleSection = (sectionIndex: number) => {
+    setSectionStates(prev => prev.map((state, index) => 
+      index === sectionIndex ? !state : state
+    ));
   };
 
   const copyToClipboard = async (text: string) => {
@@ -545,6 +552,9 @@ const PromptBuilder: React.FC = () => {
 
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
+    // Auto-fill the title with the current H1 title when an image is selected
+    const currentTitle = getDynamicTitle();
+    setPromptTitle(currentTitle);
   };
 
   const getDynamicTitle = () => {
@@ -572,249 +582,381 @@ const PromptBuilder: React.FC = () => {
             <div className="lg:col-span-2 space-y-6">
               {sections.map((section, sectionIndex) => (
                 <div key={section.title} className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
-                  <div className="bg-deep-bg px-6 py-4 border-b border-border-color">
+                  <div 
+                    className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
+                    onClick={() => toggleSection(sectionIndex)}
+                  >
                     <div className="flex items-center space-x-3">
                       <div className="text-electric-cyan">
                         {section.icon}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-lg font-semibold text-soft-lavender">{section.title}</h3>
                         <p className="text-sm text-soft-lavender/70">{section.description}</p>
+                      </div>
+                      <div className="text-soft-lavender/70">
+                        {sectionStates[sectionIndex] ? (
+                          <ChevronUp className="w-5 h-5" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5" />
+                        )}
                       </div>
                     </div>
                   </div>
                   
-                  <div className="p-6 space-y-4">
-                    {section.fields.map((field, fieldIndex) => (
-                      <div key={field.label}>
-                        <label className="block text-sm font-medium text-soft-lavender mb-2">
-                          {field.label}
-                          {field.required && <span className="text-cosmic-purple ml-1">*</span>}
-                        </label>
-                        <textarea
-                          value={field.value}
-                          onChange={(e) => updateField(sectionIndex, fieldIndex, e.target.value)}
-                          placeholder={field.placeholder}
-                          className="w-full px-4 py-3 bg-deep-bg border border-border-color rounded-lg text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none transition-all duration-200"
-                          rows={3}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  {sectionStates[sectionIndex] && (
+                    <div className="p-6 space-y-4">
+                      {section.fields.map((field, fieldIndex) => (
+                        <div key={field.label}>
+                          <label className="block text-sm font-medium text-soft-lavender mb-2">
+                            {field.label}
+                            {field.required && <span className="text-cosmic-purple ml-1">*</span>}
+                          </label>
+                          <textarea
+                            value={field.value}
+                            onChange={(e) => updateField(sectionIndex, fieldIndex, e.target.value)}
+                            placeholder={field.placeholder}
+                            className="w-full px-4 py-3 bg-deep-bg border border-border-color rounded-lg text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none transition-all duration-200"
+                            rows={3}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
 
               {/* Enhancement Section */}
-              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <Sliders className="w-5 h-5 text-electric-cyan" />
-                  <h3 className="text-lg font-semibold text-soft-lavender">Professional Enhancement Codes</h3>
-                </div>
-                <p className="text-sm text-soft-lavender/70 mb-4">
-                  Click any enhancement code below to add professional photography techniques to your prompt
-                </p>
-                <div className="space-y-4">
-                  {Object.entries(IMG_CHEAT_CODES).map(([category, codes]) => (
-                    <div key={category}>
-                      <h4 className="text-sm font-medium text-soft-lavender mb-2">{category}</h4>
-                      <div className="grid gap-2">
-                        {codes.map((code, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => {
-                              // Add to the first available field or create a new technical field
-                              const firstEmptyField = sections.findIndex(section => 
-                                section.fields.some(field => !field.value.trim())
-                              );
-                              if (firstEmptyField !== -1) {
-                                const fieldIndex = sections[firstEmptyField].fields.findIndex(field => !field.value.trim());
-                                updateField(firstEmptyField, fieldIndex, code);
-                              }
-                            }}
-                            className="w-full text-left text-xs p-3 text-soft-lavender/80 hover:bg-cosmic-purple/10 rounded-lg border border-border-color transition-colors hover:border-cosmic-purple/40"
-                          >
-                            {code}
-                          </button>
-                        ))}
-                      </div>
+              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
+                <div 
+                  className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
+                  onClick={() => {
+                    // Add enhancement section to sectionStates if not already there
+                    if (sectionStates.length === 3) {
+                      setSectionStates(prev => [...prev, false]);
+                    } else {
+                      setSectionStates(prev => prev.map((state, index) => 
+                        index === 3 ? !state : state
+                      ));
+                    }
+                  }}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="text-electric-cyan">
+                      <Sliders className="w-5 h-5" />
                     </div>
-                  ))}
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-soft-lavender">Professional Enhancement Codes</h3>
+                      <p className="text-sm text-soft-lavender/70">Click any enhancement code to add professional photography techniques</p>
+                    </div>
+                    <div className="text-soft-lavender/70">
+                      {(sectionStates[3] !== undefined ? sectionStates[3] : false) ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </div>
+                  </div>
                 </div>
+                
+                {(sectionStates[3] !== undefined ? sectionStates[3] : false) && (
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {Object.entries(IMG_CHEAT_CODES).map(([category, codes]) => (
+                        <div key={category}>
+                          <h4 className="text-sm font-medium text-soft-lavender mb-2">{category}</h4>
+                          <div className="grid gap-2">
+                            {codes.map((code, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  // Add to the first available field or create a new technical field
+                                  const firstEmptyField = sections.findIndex(section => 
+                                    section.fields.some(field => !field.value.trim())
+                                  );
+                                  if (firstEmptyField !== -1) {
+                                    const fieldIndex = sections[firstEmptyField].fields.findIndex(field => !field.value.trim());
+                                    updateField(firstEmptyField, fieldIndex, code);
+                                  }
+                                }}
+                                className="w-full text-left text-xs p-3 text-soft-lavender/80 hover:bg-cosmic-purple/10 rounded-lg border border-border-color transition-colors hover:border-cosmic-purple/40"
+                              >
+                                {code}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Tags Section */}
-              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <Palette className="w-5 h-5 text-electric-cyan" />
-                  <h3 className="text-lg font-semibold text-soft-lavender">Tags & Categories</h3>
+              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
+                <div 
+                  className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
+                  onClick={() => {
+                    // Add tags section to sectionStates if not already there
+                    if (sectionStates.length === 4) {
+                      setSectionStates(prev => [...prev, false]);
+                    } else {
+                      setSectionStates(prev => prev.map((state, index) => 
+                        index === 4 ? !state : state
+                      ));
+                    }
+                  }}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="text-electric-cyan">
+                      <Palette className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-soft-lavender">Tags & Categories</h3>
+                      <p className="text-sm text-soft-lavender/70">Select relevant tags for better organization</p>
+                    </div>
+                    <div className="text-soft-lavender/70">
+                      {(sectionStates[4] !== undefined ? sectionStates[4] : false) ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_TAGS.map(tag => (
-                    <button
-                      key={tag}
-                      onClick={() => handleTagToggle(tag)}
-                      className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
-                        selectedTags.includes(tag)
-                          ? 'bg-electric-cyan text-deep-bg shadow-md font-semibold'
-                          : 'bg-card-bg border border-border-color text-soft-lavender hover:bg-electric-cyan/10 hover:border-electric-cyan/40'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
+                
+                {(sectionStates[4] !== undefined ? sectionStates[4] : false) && (
+                  <div className="p-6">
+                    <div className="flex flex-wrap gap-2">
+                      {AVAILABLE_TAGS.map(tag => (
+                        <button
+                          key={tag}
+                          onClick={() => handleTagToggle(tag)}
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
+                            selectedTags.includes(tag)
+                              ? 'bg-electric-cyan text-deep-bg shadow-md font-semibold'
+                              : 'bg-card-bg border border-border-color text-soft-lavender hover:bg-electric-cyan/10 hover:border-electric-cyan/40'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Generated Images Gallery */}
               {generatedImages.length > 0 && (
-                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Grid3X3 className="w-5 h-5 text-electric-cyan" />
-                    <h3 className="text-lg font-semibold text-soft-lavender">Generated Images</h3>
-                    <span className="text-sm text-soft-lavender/70">({generatedImages.length}/4)</span>
+                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
+                  <div 
+                    className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
+                    onClick={() => {
+                      // Add images section to sectionStates if not already there
+                      if (sectionStates.length === 5) {
+                        setSectionStates(prev => [...prev, true]); // Default open for images
+                      } else {
+                        setSectionStates(prev => prev.map((state, index) => 
+                          index === 5 ? !state : state
+                        ));
+                      }
+                    }}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="text-electric-cyan">
+                        <Grid3X3 className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-soft-lavender">Generated Images</h3>
+                        <p className="text-sm text-soft-lavender/70">({generatedImages.length}/4) Click on an image to select it</p>
+                      </div>
+                      <div className="text-soft-lavender/70">
+                        {(sectionStates[5] !== undefined ? sectionStates[5] : true) ? (
+                          <ChevronUp className="w-5 h-5" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5" />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-soft-lavender/70 mb-4">
-                    Click on an image to select it for saving to your library
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    {generatedImages.map((imageUrl, index) => (
-                      <div key={index} className="relative group">
-                        <div 
-                          className={`relative cursor-pointer transition-all duration-200 rounded-lg overflow-hidden ${
-                            selectedImageIndex === index 
-                              ? 'ring-4 ring-electric-cyan shadow-lg shadow-electric-cyan/30' 
-                              : 'hover:ring-2 hover:ring-cosmic-purple/50'
-                          }`}
-                          onClick={() => handleImageSelect(index)}
-                        >
-                          <img
-                            src={imageUrl}
-                            alt={`Generated image ${index + 1}`}
-                            className="w-full aspect-square object-cover"
-                          />
-                          {selectedImageIndex === index && (
-                            <div className="absolute top-2 right-2 bg-electric-cyan text-deep-bg rounded-full p-1">
-                              <Check className="w-4 h-4" />
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openImageViewer(index);
-                              }}
-                              className="bg-black/50 border-white/20 text-white hover:bg-white/10"
+                  
+                  {(sectionStates[5] !== undefined ? sectionStates[5] : true) && (
+                    <div className="p-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        {generatedImages.map((imageUrl, index) => (
+                          <div key={index} className="relative group">
+                            <div 
+                              className={`relative cursor-pointer transition-all duration-200 rounded-lg overflow-hidden ${
+                                selectedImageIndex === index 
+                                  ? 'ring-4 ring-electric-cyan shadow-lg shadow-electric-cyan/30' 
+                                  : 'hover:ring-2 hover:ring-cosmic-purple/50'
+                              }`}
+                              onClick={() => handleImageSelect(index)}
                             >
-                              View Full Size
-                            </Button>
+                              <img
+                                src={imageUrl}
+                                alt={`Generated image ${index + 1}`}
+                                className="w-full aspect-square object-cover"
+                              />
+                              {selectedImageIndex === index && (
+                                <div className="absolute top-2 right-2 bg-electric-cyan text-deep-bg rounded-full p-1">
+                                  <Check className="w-4 h-4" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openImageViewer(index);
+                                  }}
+                                  className="bg-black/50 border-white/20 text-white hover:bg-white/10"
+                                >
+                                  View Full Size
+                                </Button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ))}
+                        {/* Placeholder slots for remaining images */}
+                        {Array.from({ length: 4 - generatedImages.length }).map((_, index) => (
+                          <div
+                            key={`placeholder-${index}`}
+                            className="aspect-square bg-deep-bg border-2 border-dashed border-border-color rounded-lg flex items-center justify-center"
+                          >
+                            <div className="text-center text-soft-lavender/50">
+                              <ImageIcon className="w-8 h-8 mx-auto mb-2" />
+                              <p className="text-sm">Image {generatedImages.length + index + 1}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    {/* Placeholder slots for remaining images */}
-                    {Array.from({ length: 4 - generatedImages.length }).map((_, index) => (
-                      <div
-                        key={`placeholder-${index}`}
-                        className="aspect-square bg-deep-bg border-2 border-dashed border-border-color rounded-lg flex items-center justify-center"
-                      >
-                        <div className="text-center text-soft-lavender/50">
-                          <ImageIcon className="w-8 h-8 mx-auto mb-2" />
-                          <p className="text-sm">Image {generatedImages.length + index + 1}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Save to Library Section */}
               {(generatedPrompt || generatedImages.length > 0) && (
-                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-soft-lavender">Save to Library</h3>
-                    {isGeneratingMetadata && (
-                      <div className="flex items-center text-electric-cyan text-sm">
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Generating metadata...
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Pro Tip */}
-                  <div className="bg-gradient-to-br from-cosmic-purple/10 to-electric-cyan/10 rounded-lg p-4 mb-6 border border-cosmic-purple/20">
-                    <h4 className="font-semibold text-soft-lavender mb-2 flex items-center">
-                      <Sparkles className="w-4 h-4 text-electric-cyan mr-2" />
-                      Pro Tip
-                    </h4>
-                    <p className="text-sm text-soft-lavender/70">
-                      {generatedImages.length > 0 && selectedImageIndex === null 
-                        ? 'Select an image above to save with your prompt. The selected image will be highlighted with a blue border.'
-                        : 'Fill in the title and notes below for better organization in your library. These help you and others understand the prompt\'s purpose and technique.'
+                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
+                  <div 
+                    className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
+                    onClick={() => {
+                      // Add save section to sectionStates if not already there
+                      if (sectionStates.length === 6) {
+                        setSectionStates(prev => [...prev, true]); // Default open for save section
+                      } else {
+                        setSectionStates(prev => prev.map((state, index) => 
+                          index === 6 ? !state : state
+                        ));
                       }
-                    </p>
+                    }}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="text-electric-cyan">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-soft-lavender">Save to Library</h3>
+                        <p className="text-sm text-soft-lavender/70">Save your prompt and selected image to your library</p>
+                      </div>
+                      <div className="text-soft-lavender/70">
+                        {(sectionStates[6] !== undefined ? sectionStates[6] : true) ? (
+                          <ChevronUp className="w-5 h-5" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5" />
+                        )}
+                      </div>
+                    </div>
                   </div>
+                  
+                  {(sectionStates[6] !== undefined ? sectionStates[6] : true) && (
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        {isGeneratingMetadata && (
+                          <div className="flex items-center text-electric-cyan text-sm">
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Generating metadata...
+                          </div>
+                        )}
+                      </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="block text-soft-lavender">
-                          Title <span className="text-cosmic-purple">*</span>
-                        </label>
+                      {/* Pro Tip */}
+                      <div className="bg-gradient-to-br from-cosmic-purple/10 to-electric-cyan/10 rounded-lg p-4 mb-6 border border-cosmic-purple/20">
+                        <h4 className="font-semibold text-soft-lavender mb-2 flex items-center">
+                          <Sparkles className="w-4 h-4 text-electric-cyan mr-2" />
+                          Pro Tip
+                        </h4>
+                        <p className="text-sm text-soft-lavender/70">
+                          {generatedImages.length > 0 && selectedImageIndex === null 
+                            ? 'Select an image above to save with your prompt. The selected image will be highlighted with a blue border.'
+                            : 'Fill in the title and notes below for better organization in your library. These help you and others understand the prompt\'s purpose and technique.'
+                          }
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <label className="block text-soft-lavender">
+                              Title <span className="text-cosmic-purple">*</span>
+                            </label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleRegenerateMetadata}
+                              disabled={isGeneratingMetadata || !generatedPrompt}
+                              className="text-xs"
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Regenerate
+                            </Button>
+                          </div>
+                          <input
+                            type="text"
+                            value={promptTitle}
+                            onChange={(e) => setPromptTitle(e.target.value)}
+                            className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                            placeholder="Enter a title for your prompt"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-soft-lavender mb-2">Notes</label>
+                          <textarea
+                            value={promptNotes}
+                            onChange={(e) => setPromptNotes(e.target.value)}
+                            className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
+                            rows={3}
+                            placeholder="Add any notes about the prompt (optional)"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-soft-lavender mb-2">SREF Number</label>
+                          <input
+                            type="text"
+                            value={promptSref}
+                            onChange={(e) => setPromptSref(e.target.value)}
+                            className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                            placeholder="Enter SREF number (optional)"
+                          />
+                        </div>
+
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRegenerateMetadata}
-                          disabled={isGeneratingMetadata || !generatedPrompt}
-                          className="text-xs"
+                          variant="primary"
+                          size="lg"
+                          className="w-full"
+                          onClick={handleSavePrompt}
+                          disabled={isSaving || !promptTitle.trim() || (generatedImages.length > 0 && selectedImageIndex === null)}
                         >
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                          Regenerate
+                          <Plus className="w-5 h-5 mr-2" />
+                          {isSaving ? 'Saving...' : 'Save to Library'}
                         </Button>
                       </div>
-                      <input
-                        type="text"
-                        value={promptTitle}
-                        onChange={(e) => setPromptTitle(e.target.value)}
-                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                        placeholder="Enter a title for your prompt"
-                      />
                     </div>
-
-                    <div>
-                      <label className="block text-soft-lavender mb-2">Notes</label>
-                      <textarea
-                        value={promptNotes}
-                        onChange={(e) => setPromptNotes(e.target.value)}
-                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
-                        rows={3}
-                        placeholder="Add any notes about the prompt (optional)"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-soft-lavender mb-2">SREF Number</label>
-                      <input
-                        type="text"
-                        value={promptSref}
-                        onChange={(e) => setPromptSref(e.target.value)}
-                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                        placeholder="Enter SREF number (optional)"
-                      />
-                    </div>
-
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      className="w-full"
-                      onClick={handleSavePrompt}
-                      disabled={isSaving || !promptTitle.trim() || (generatedImages.length > 0 && selectedImageIndex === null)}
-                    >
-                      <Plus className="w-5 h-5 mr-2" />
-                      {isSaving ? 'Saving...' : 'Save to Library'}
-                    </Button>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
