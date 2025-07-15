@@ -96,7 +96,7 @@ const PremiumPlans: React.FC = () => {
       navigate('/auth');
     } else if (planName === 'Enterprise') {
       // In a real app, this would open a contact form or redirect to sales
-      alert('Contact our sales team at sales@communityartists.com');
+      alert('Contact our sales team at sales@communityartist.com');
     } else {
       // In a real app, this would integrate with Stripe or another payment processor
       alert('Payment integration would be implemented here');

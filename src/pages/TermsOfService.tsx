@@ -78,7 +78,7 @@ const TermsOfService: React.FC = () => {
             <section className="space-y-4">
               <h2 className="text-xl font-semibold text-soft-lavender">7. Contact Us</h2>
               <p>
-                If you have any questions about these Terms, please contact us at legal@communityartists.com
+                If you have any questions about these Terms, please contact us at legal@communityartist.com
               </p>
             </section>
           </div>

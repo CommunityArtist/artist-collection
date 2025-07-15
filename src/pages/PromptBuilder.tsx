@@ -505,10 +505,10 @@ const PromptBuilder: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-soft-lavender mb-6">
-            <span className="text-electric-cyan">AI</span> Prompt Builder
+            <span className="text-electric-cyan">Professional</span> AI Prompt Builder
           </h1>
-          <p className="text-soft-lavender/70 text-lg max-w-2xl mx-auto">
-            Create detailed, professional prompts for AI image generation with our guided builder
+          <p className="text-soft-lavender/70 text-lg max-w-3xl mx-auto">
+            Generate studio-quality prompts for Midjourney, DALL-E, Leonardo AI & Stable Diffusion with professional photography techniques and artistic enhancement codes
           </p>
         </div>
 
