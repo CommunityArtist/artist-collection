@@ -161,6 +161,9 @@ ${promptData['post-processing'] ? `- Post-Processing: ${promptData['post-process
 Include specific camera and lens recommendations optimized for natural human photography.
 Focus on creating vivid, lifelike imagery while maintaining photographic authenticity and professional quality.
 Avoid artificial or overly perfect descriptions - emphasize natural, realistic human features.`;
+  }
+}
+)
 - Natural skin texture with visible pores and subtle imperfections
 - Realistic lighting that shows natural shadows and highlights
 - Authentic human expressions and genuine emotions
