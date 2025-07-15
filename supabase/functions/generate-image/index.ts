@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
     // For multiple images, we'll generate them sequentially
     const imagesToGenerate = Math.min(numberOfImages, 4); // Limit to 4 for performance
     const imageUrls: string[] = [];
+    let lastError: Error | null = null;
 
     for (let i = 0; i < imagesToGenerate; i++) {
       try {
@@ -104,12 +105,13 @@ Deno.serve(async (req) => {
         }
       } catch (imageError) {
         console.error(`Error generating image ${i + 1}:`, imageError);
+        lastError = imageError instanceof Error ? imageError : new Error(String(imageError));
         // Continue with other images if one fails
       }
     }
 
     if (imageUrls.length === 0) {
-      throw new Error('Failed to generate any images');
+      throw lastError || new Error('Failed to generate any images');
     }
 
     // Return the first image URL for backward compatibility
