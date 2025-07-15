@@ -50,7 +50,7 @@ serve(async (req) => {
     }
 
     if (!apiConfig?.key_value) {
-      throw new Error('No OpenAI API key found. Please configure your API key in the settings.');
+      throw new Error('No OpenAI API key found. Please configure your API key in the API Configuration page. Go to Account > API Config to set up your OpenAI API key.');
     }
 
     console.log('API key found, testing with OpenAI...');

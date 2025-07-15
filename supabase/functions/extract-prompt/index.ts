@@ -46,7 +46,7 @@ serve(async (req) => {
 
     if (fetchError || !apiConfig?.key_value) {
       console.error('API key fetch error:', fetchError);
-      throw new Error('OpenAI API key not found. Please configure your API key in the settings.');
+      throw new Error('OpenAI API key not found. Please configure your API key in the API Configuration page. Go to Account > API Config to set up your OpenAI API key.');
     }
 
     console.log('API key found, length:', apiConfig.key_value.length);

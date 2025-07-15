@@ -1,567 +1,345 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Wand2, Camera, Palette, Sparkles, Settings, Copy, Image as ImageIcon, Plus, Sliders, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Grid3X3, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { 
+  Wand2, 
+  Copy, 
+  Download, 
+  Sparkles, 
+  Settings, 
+  RefreshCw, 
+  Save,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Zap,
+  Camera,
+  Palette,
+  Sun,
+  Moon,
+  Lightbulb,
+  Target,
+  Film,
+  Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Plus,
+  Minus
+} from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
-import { PromptTag, ExtractedPrompt } from '../types';
+import { ExtractedPrompt } from '../types';
 
-// Title generation functions
-function extractKeywords(text: string) {
-  const matches = text.match(/(fist|graffiti|poster|illustration|street art|cyberpunk|comic|neon|motivational|defiance|urban|portrait|landscape|character|fashion|architecture|product|photography|digital art|oil painting|watercolor|anime|realistic|abstract|vintage|modern|dramatic|cinematic|studio|natural|professional)/gi) || [];
-  return { main: [...new Set(matches)].join(' ') || 'AI Artwork' };
+interface PromptData {
+  subject: string;
+  setting: string;
+  lighting: string;
+  style: string;
+  mood: string;
+  'post-processing': string;
+  enhancement: string;
 }
-
-function detectThemes(text: string) {
-  if (/fist|defiance|rebel|resistance|power|strength/i.test(text)) return { main: "Urban Resistance" };
-  if (/motivational|poster|power|inspiration/i.test(text)) return { main: '"NEVER GIVE UP"' };
-  if (/comic|superhero|graphic novel/i.test(text)) return { main: "Comic-Style Art" };
-  if (/portrait|headshot|face|person|model/i.test(text)) return { main: "Portrait Study" };
-  if (/landscape|nature|mountain|forest|ocean|sky/i.test(text)) return { main: "Landscape Art" };
-  if (/fashion|clothing|style|runway|editorial/i.test(text)) return { main: "Fashion Photography" };
-  if (/architecture|building|structure|interior|exterior/i.test(text)) return { main: "Architectural Design" };
-  if (/product|commercial|studio|catalog/i.test(text)) return { main: "Product Photography" };
-  if (/character|fantasy|creature|concept art/i.test(text)) return { main: "Character Design" };
-  if (/abstract|geometric|pattern|texture/i.test(text)) return { main: "Abstract Art" };
-  return { main: "AI Art Creation" };
-}
-
-function detectMood(text: string) {
-  if (/cyberpunk|neon|futuristic|sci-fi/i.test(text)) return "Cyberpunk";
-  if (/gritty|urban|street|raw|edgy/i.test(text)) return "Gritty";
-  if (/dramatic|intense|powerful|bold/i.test(text)) return "Dramatic";
-  if (/cinematic|movie|film|epic/i.test(text)) return "Cinematic";
-  if (/peaceful|serene|calm|gentle|soft/i.test(text)) return "Serene";
-  if (/vintage|retro|classic|nostalgic/i.test(text)) return "Vintage";
-  if (/professional|studio|commercial|clean/i.test(text)) return "Professional";
-  if (/natural|organic|authentic|realistic/i.test(text)) return "Natural";
-  if (/fantasy|magical|mystical|ethereal/i.test(text)) return "Fantasy";
-  if (/minimalist|simple|clean|modern/i.test(text)) return "Minimalist";
-  return "Creative";
-}
-
-function generatePromptTitle(promptText: string) {
-  if (!promptText.trim()) {
-    return 'Professional AI Prompt Builder';
-  }
-  
-  // Extract key elements
-  const keywords = extractKeywords(promptText);
-  const themes = detectThemes(promptText);
-  const mood = detectMood(promptText);
-  
-  // Format title with theme and mood
-  return `${themes.main} – ${mood} Style`;
-}
-
-interface PromptSection {
-  title: string;
-  fields: PromptField[];
-  icon: React.ReactNode;
-  description: string;
-}
-
-interface PromptField {
-  label: string;
-  value: string;
-  placeholder: string;
-  required?: boolean;
-  type?: 'text' | 'textarea' | 'select';
-  options?: string[];
-}
-
-const AVAILABLE_TAGS: PromptTag[] = [
-  '3D',
-  'Animals',
-  'Anime',
-  'Architecture',
-  'Character',
-  'Fashion',
-  'Food',
-  'Graphics',
-  'Illustration',
-  'Photography',
-  'Product',
-  'Sci-Fi',
-  'Adobe Firefly',
-  'ChatGPT',
-  'ChatGPT / OpenAI',
-  'Claude / Anthropic',
-  'DALL-E (OpenAI)',
-  'Digen Ai',
-  'FreePik',
-  'Gemini / Google AI',
-  'Grok / xAI',
-  'HeyGen',
-  'Leonardo Ai',
-  'Llama / Meta AI',
-  'Luma AI',
-  'Midjourney',
-  'Mistral AI',
-  'Pika Labs',
-  'Playground AI',
-  'Prompt Builder',
-  'Runway',
-  'Sora (OpenAI)',
-  'Stable Diffusion',
-  'Synthesia'  
-];
-
-// Master IMG Cheat Codes organized by category
-const IMG_CHEAT_CODES = {
-  'Product Photography': [
-    "professional product photography, studio lighting setup with key and fill lights, clean white background",
-    "commercial product shot, 85mm lens, f/8 aperture, perfect focus, minimal shadows, high-end catalog style",
-    "product showcase, softbox lighting, natural reflections, sharp details, professional color accuracy",
-    "macro product detail, 100mm macro lens, extreme sharpness, texture emphasis, controlled lighting",
-    "hero product image, cinematic quality, studio environment, professional grade photography"
-  ],
-  'Portrait Photography': [
-    "professional portrait, Canon EOS R5, 85mm f/1.4 lens, natural skin texture, authentic lighting",
-    "environmental portrait, golden hour lighting, shallow depth of field, natural expression, real skin detail",
-    "studio portrait, controlled lighting setup, soft shadows, natural skin tones, professional quality",
-    "candid portrait style, natural makeup, authentic expression, visible skin texture, warm lighting",
-    "headshot photography, 85mm lens, f/2.8 aperture, professional lighting, natural skin rendering"
-  ],
-  'Fashion Editorial': [
-    "high fashion editorial, professional studio lighting, designer clothing focus, editorial composition",
-    "fashion photography, 85mm lens, dramatic lighting, fabric texture detail, professional styling",
-    "editorial fashion shoot, controlled environment, luxury brand aesthetic, professional model pose",
-    "fashion catalog photography, clean lighting, color accuracy, fabric detail, commercial quality",
-    "designer fashion showcase, studio setup, professional lighting, high-end fashion photography"
-  ],
-  'Cinematic Style': [
-    "cinematic photography, dramatic lighting, film-like quality, professional color grading",
-    "movie-style portrait, cinematic composition, dramatic shadows, professional film aesthetic",
-    "cinematic lighting setup, dramatic mood, film photography style, professional cinematography",
-    "film-inspired photography, cinematic color palette, dramatic lighting, movie-quality image",
-    "professional cinematic style, dramatic composition, film-like lighting, cinema photography"
-  ],
-  'Camera & Lighting': [
-    "professional camera setup, Canon EOS R5, 85mm f/1.4 lens, optimal settings, sharp focus",
-    "Sony A7R IV, professional lens, perfect exposure, natural lighting, high image quality",
-    "studio lighting setup, key light and fill light, professional photography equipment",
-    "natural lighting, golden hour, soft shadows, professional camera settings, optimal exposure",
-    "professional photography setup, controlled lighting, high-end camera equipment, perfect focus"
-  ],
-  'Natural Realism': [
-    "natural photography, authentic skin texture, real lighting conditions, unprocessed natural look",
-    "photographic realism, natural skin detail, authentic lighting, real camera characteristics",
-    "natural portrait photography, authentic human features, real skin texture, natural lighting",
-    "realistic photography, natural materials, authentic shadows, real-world lighting physics",
-    "natural photographic style, authentic skin tones, real lighting interaction, genuine photography"
-  ]
-};
 
 const PromptBuilder: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
-  const [isGeneratingMetadata, setIsGeneratingMetadata] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<PromptTag[]>([]);
-  const [showImageViewer, setShowImageViewer] = useState(false);
-  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
-  const [sectionStates, setSectionStates] = useState<boolean[]>([true, false, false]); // First section open, others collapsed
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any>(null);
   
-  // Metadata fields
-  const [promptTitle, setPromptTitle] = useState('');
-  const [promptNotes, setPromptNotes] = useState('');
-  const [promptSref, setPromptSref] = useState('');
+  // Form state
+  const [promptData, setPromptData] = useState<PromptData>({
+    subject: '',
+    setting: '',
+    lighting: '',
+    style: '',
+    mood: '',
+    'post-processing': '',
+    enhancement: ''
+  });
 
-  const [sections, setSections] = useState<PromptSection[]>([
-    {
-      title: 'Subject & Composition',
-      icon: <Wand2 className="w-5 h-5" />,
-      description: 'Define your main subject and how it should be framed',
-      fields: [
-        { label: 'Main Subject', value: '', placeholder: 'e.g., a confident woman with flowing red hair, a majestic mountain landscape, a vintage sports car', required: true },
-        { label: 'Setting', value: '', placeholder: 'e.g., cozy studio apartment, misty forest clearing, urban rooftop at sunset', required: true },
-        { label: 'Pose & Expression', value: '', placeholder: 'e.g., looking directly at camera with a gentle smile, dramatic side profile, action pose mid-jump' },
-        { label: 'Composition Style', value: '', placeholder: 'e.g., close-up portrait, full body shot, rule of thirds, symmetrical composition' }
-      ]
-    },
-    {
-      title: 'Visual Style & Mood',
-      icon: <Palette className="w-5 h-5" />,
-      description: 'Set the artistic direction and emotional tone',
-      fields: [
-        { label: 'Art Style', value: '', placeholder: 'e.g., photorealistic, oil painting, digital art, watercolor, anime style, vintage film photography', required: true },
-        { label: 'Color Palette', value: '', placeholder: 'e.g., warm golden tones, vibrant neon colors, muted pastels, monochromatic blue scheme' },
-        { label: 'Mood & Atmosphere', value: '', placeholder: 'e.g., serene and peaceful, dramatic and intense, playful and energetic, mysterious and moody', required: true }
-      ]
-    },
-    {
-      title: 'Technical Excellence',
-      icon: <Camera className="w-5 h-5" />,
-      description: 'Professional camera settings and quality specifications',
-      fields: [
-        { label: 'Camera & Lens', value: '', placeholder: 'e.g., Canon EOS R5 with 85mm f/1.4 lens, Sony A7R IV with 24-70mm, macro photography setup' },
-        { label: 'Lighting Setup', value: '', placeholder: 'e.g., golden hour natural light, studio lighting with softbox, dramatic side lighting, rim lighting', required: true },
-        { label: 'Quality & Details', value: '', placeholder: 'e.g., 8K ultra-detailed, sharp focus, professional color grading, high dynamic range' }
-      ]
-    }
-  ]);
+  // Generation state
+  const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [enhancedPrompt, setEnhancedPrompt] = useState('');
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
+  const [promptEnhancementEnabled, setPromptEnhancementEnabled] = useState(false);
+  
+  // Image generation state
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState('1:1');
+  const [numberOfImages, setNumberOfImages] = useState(1);
+  
+  // UI state
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
-  // Effect to handle extracted prompt data from location state
+  // Check authentication
   useEffect(() => {
-    const extractedData = location.state?.extractedPromptData as ExtractedPrompt;
-    
-    if (extractedData) {
-      // Map extracted data to form fields
-      setSections(prevSections => prevSections.map(section => {
-        if (section.title === 'Subject & Composition') {
-          return {
-            ...section,
-            fields: section.fields.map(field => {
-              if (field.label === 'Main Subject') {
-                return { ...field, value: extractedData.mainPrompt || '' };
-              } else if (field.label === 'Setting') {
-                return { ...field, value: extractedData.composition || '' };
-              } else if (field.label === 'Composition Style') {
-                return { ...field, value: extractedData.composition || '' };
-              }
-              return field;
-            })
-          };
-        } else if (section.title === 'Visual Style & Mood') {
-          return {
-            ...section,
-            fields: section.fields.map(field => {
-              if (field.label === 'Art Style') {
-                return { ...field, value: extractedData.styleElements?.join(', ') || '' };
-              } else if (field.label === 'Color Palette') {
-                return { ...field, value: extractedData.colorPalette?.join(', ') || '' };
-              } else if (field.label === 'Mood & Atmosphere') {
-                return { ...field, value: extractedData.mood || '' };
-              }
-              return field;
-            })
-          };
-        } else if (section.title === 'Technical Excellence') {
-          return {
-            ...section,
-            fields: section.fields.map(field => {
-              if (field.label === 'Camera & Lens') {
-                const cameraLens = [extractedData.camera, extractedData.lens].filter(Boolean).join(', ');
-                return { ...field, value: cameraLens };
-              } else if (field.label === 'Lighting Setup') {
-                return { ...field, value: extractedData.lighting || '' };
-              } else if (field.label === 'Quality & Details') {
-                return { ...field, value: extractedData.technicalDetails?.join(', ') || '' };
-              }
-              return field;
-            })
-          };
-        }
-        return section;
-      }));
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setIsAuthenticated(true);
+        setUser(user);
+      } else {
+        navigate('/auth');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
-      // Clear the location state to prevent re-population on refresh
-      window.history.replaceState({}, document.title);
+  // Handle extracted prompt data from Prompt Extractor
+  useEffect(() => {
+    if (location.state?.extractedPromptData) {
+      const extractedData: ExtractedPrompt = location.state.extractedPromptData;
+      
+      // Map extracted data to form fields
+      setPromptData({
+        subject: extractedData.mainPrompt.split('.')[0] || '',
+        setting: extractedData.composition || '',
+        lighting: extractedData.lighting || '',
+        style: extractedData.styleElements.join(', ') || '',
+        mood: extractedData.mood || '',
+        'post-processing': extractedData.technicalDetails.join(', ') || '',
+        enhancement: ''
+      });
+
+      // Set the full extracted prompt as generated prompt
+      const fullPrompt = `${extractedData.mainPrompt}
+
+Camera: ${extractedData.camera}
+Lens: ${extractedData.lens}
+Lighting: ${extractedData.lighting}
+Color Palette: ${extractedData.colorPalette.join(', ')}
+Audio Vibe: ${extractedData.audioVibe}
+
+Style Elements: ${extractedData.styleElements.join(', ')}
+Technical Details: ${extractedData.technicalDetails.join(', ')}
+Composition: ${extractedData.composition}
+Mood: ${extractedData.mood}`;
+
+      setGeneratedPrompt(fullPrompt);
     }
   }, [location.state]);
 
-  const updateField = (sectionIndex: number, fieldIndex: number, value: string) => {
-    setSections(prev => prev.map((section, sIdx) => 
-      sIdx === sectionIndex 
-        ? {
-            ...section,
-            fields: section.fields.map((field, fIdx) => 
-              fIdx === fieldIndex ? { ...field, value } : field
-            )
-          }
-        : section
-    ));
+  const handleInputChange = (field: keyof PromptData, value: string) => {
+    setPromptData(prev => ({ ...prev, [field]: value }));
+    setError(null);
   };
 
-  const getGeneratedPromptText = () => {
-    const allFields = sections.flatMap(section => section.fields);
-    const filledFields = allFields.filter(field => field.value.trim());
-    
-    if (filledFields.length === 0) {
-      return '';
-    }
-
-    const promptParts = filledFields.map(field => field.value.trim());
-    return promptParts.join(', ');
-  };
-
-  const handleTagToggle = (tag: PromptTag) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
-  };
-
-  const toggleSection = (sectionIndex: number) => {
-    setSectionStates(prev => prev.map((state, index) => 
-      index === sectionIndex ? !state : state
-    ));
-  };
-
-  const copyToClipboard = async (text: string) => {
+  const handleGeneratePrompt = async () => {
     try {
-      await navigator.clipboard.writeText(text);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
+      setIsGeneratingPrompt(true);
+      setError(null);
 
-  const generateMetadata = async (prompt: string, promptData: any) => {
-    try {
-      setIsGeneratingMetadata(true);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please sign in to generate metadata');
+      // Validate required fields
+      const requiredFields = ['subject', 'setting', 'lighting', 'style', 'mood'];
+      const missingFields = requiredFields.filter(field => !promptData[field].trim());
+
+      if (missingFields.length > 0) {
+        throw new Error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       }
-      
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-metadata`, {
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ prompt, promptData }),
+        body: JSON.stringify(promptData),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate metadata');
+        throw new Error(data.error || 'Failed to generate prompt');
       }
 
-      // Auto-fill the form fields
-      setPromptTitle(data.title);
-      setPromptNotes(data.notes);
-      setPromptSref(data.sref);
+      setGeneratedPrompt(data.prompt);
+      
+      // If enhancement is enabled, automatically enhance the prompt
+      if (promptEnhancementEnabled) {
+        await enhancePrompt(data.prompt);
+      }
 
     } catch (error) {
-      console.error('Error generating metadata:', error);
-      // Don't throw error here, just log it - metadata generation is optional
+      console.error('Error generating prompt:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate prompt');
     } finally {
-      setIsGeneratingMetadata(false);
+      setIsGeneratingPrompt(false);
     }
   };
 
-  const handleRegenerateMetadata = async () => {
-    if (generatedPrompt) {
-      const promptData = buildPromptData();
-      await generateMetadata(generatedPrompt, promptData);
-    }
-  };
+  const enhancePrompt = async (basePrompt?: string) => {
+    try {
+      setIsEnhancingPrompt(true);
+      setError(null);
 
-  const buildPromptData = () => {
-    const data: Record<string, string | number> = {};
-    sections.forEach(section => {
-      section.fields.forEach(field => {
-        data[field.label.toLowerCase().replace(/\s+/g, '_')] = field.value.trim();
+      const promptToEnhance = basePrompt || generatedPrompt;
+      if (!promptToEnhance) {
+        throw new Error('No prompt to enhance. Please generate a prompt first.');
+      }
+
+      const enhancementPrompt = `Enhance this AI image generation prompt to produce more realistic, detailed, and visually stunning results. Focus on:
+
+1. Adding specific technical photography details (camera settings, lens specifications)
+2. Enhancing lighting descriptions with professional terminology
+3. Including realistic texture and material details
+4. Adding atmospheric and environmental elements
+5. Improving composition and framing descriptions
+6. Ensuring photorealistic quality keywords are included
+
+Original prompt: ${promptToEnhance}
+
+Return an enhanced version that will generate higher quality, more realistic images.`;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: enhancementPrompt,
+          setting: 'Professional photography studio',
+          lighting: 'Professional lighting setup',
+          style: 'Photorealistic enhancement',
+          mood: 'High-quality professional result',
+          'post-processing': 'Professional color grading'
+        }),
       });
-    });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to enhance prompt');
+      }
+
+      setEnhancedPrompt(data.prompt);
+
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+      setError(error instanceof Error ? error.message : 'Failed to enhance prompt');
+    } finally {
+      setIsEnhancingPrompt(false);
+    }
+  };
+
+  const handleGenerateImages = async () => {
+    try {
+      setIsGeneratingImages(true);
+      setError(null);
+      setGeneratedImages([]);
+
+      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+      
+      if (!promptToUse) {
+        throw new Error('Please generate a prompt first');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          prompt: promptToUse,
+          imageDimensions,
+          numberOfImages
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate images');
+      }
+
+      // Handle both single image and multiple images response
+      if (data.imageUrls && Array.isArray(data.imageUrls)) {
+        setGeneratedImages(data.imageUrls);
+      } else if (data.imageUrl) {
+        setGeneratedImages([data.imageUrl]);
+      } else {
+        throw new Error('No images were generated');
+      }
+
+    } catch (error) {
+      console.error('Error generating images:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate images');
+    } finally {
+      setIsGeneratingImages(false);
+    }
+  };
+
+  const handleCopyPrompt = async () => {
+    const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
     
-    return data;
+    if (!promptToUse) return;
+
+    try {
+      await navigator.clipboard.writeText(promptToUse);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  };
+
+  const handleDownloadPrompt = () => {
+    const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+    
+    if (!promptToUse) return;
+
+    const blob = new Blob([promptToUse], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'generated-prompt.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleSavePrompt = async () => {
-    const prompt = generatedPrompt || getGeneratedPromptText();
-    if (!prompt) {
-      setError('Please generate a prompt first.');
+    const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+    
+    if (!promptToUse) {
+      setError('No prompt to save');
       return;
     }
 
-    if (!promptTitle.trim()) {
-      setError('Please enter a title for the prompt.');
-      return;
-    }
-
-    if (selectedImageIndex === null && generatedImages.length > 0) {
-      setError('Please select an image to save with the prompt.');
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
+    // Navigate to create prompt page with the generated prompt
+    navigate('/create-prompt', {
+      state: {
+        generatedPrompt: promptToUse,
+        promptData: promptData
       }
-
-      const selectedImageUrl = selectedImageIndex !== null ? generatedImages[selectedImageIndex] : null;
-
-      const { error: saveError } = await supabase
-        .from('prompts')
-        .insert({
-          title: promptTitle,
-          prompt: prompt,
-          notes: promptNotes,
-          sref: promptSref,
-          media_url: selectedImageUrl,
-          tags: selectedTags,
-          user_id: user.id,
-          is_private: false
-        });
-
-      if (saveError) throw saveError;
-
-      // Clear form after successful save
-      setPromptTitle('');
-      setPromptNotes('');
-      setPromptSref('');
-      setSelectedTags([]);
-      setGeneratedImages([]);
-      setSelectedImageIndex(null);
-      setGeneratedPrompt('');
-      
-      // Reset sections
-      setSections(prevSections => prevSections.map(section => ({
-        ...section,
-        fields: section.fields.map(field => ({ ...field, value: '' }))
-      })));
-
-      navigate('/library/my');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save prompt');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleGenerate4Images = async () => {
-    const prompt = getGeneratedPromptText();
-    if (!prompt) {
-      setError('Please fill in at least one field to generate images.');
-      return;
-    }
-
-    setIsGeneratingImages(true);
-    setError(null);
-    setGeneratedImages([]);
-    setSelectedImageIndex(null);
-    setGenerationProgress(0);
-    setGeneratedPrompt(prompt);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please sign in to generate images');
-      }
-
-      const imageUrls: string[] = [];
-
-      // Generate 4 images sequentially
-      for (let i = 0; i < 4; i++) {
-        try {
-          setGenerationProgress(((i) / 4) * 100);
-          
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ 
-              prompt: prompt,
-              imageDimensions: '1:1',
-              numberOfImages: 1
-            }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || `Failed to generate image ${i + 1}`);
-          }
-
-          if (data.imageUrl) {
-            imageUrls.push(data.imageUrl);
-            setGeneratedImages([...imageUrls]); // Update state with current images
-          }
-        } catch (imageError) {
-          console.error(`Error generating image ${i + 1}:`, imageError);
-          // Continue with other images if one fails
-        }
-      }
-
-      setGenerationProgress(100);
-
-      if (imageUrls.length === 0) {
-        throw new Error('Failed to generate any images');
-      }
-
-      setGeneratedImages(imageUrls);
-      // Auto-select the first image
-      setSelectedImageIndex(0);
-
-      // Auto-generate metadata after successful image generation
-      const promptData = buildPromptData();
-      await generateMetadata(prompt, promptData);
-
-    } catch (error) {
-      console.error('Error:', error);
-      
-      let errorMessage = 'An unexpected error occurred';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('API key')) {
-          errorMessage = 'Invalid or missing OpenAI API key. Please check your API configuration.';
-        } else if (error.message.includes('quota')) {
-          errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing.';
-        } else if (error.message.includes('authentication')) {
-          errorMessage = 'Authentication failed. Please sign in again.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setIsGeneratingImages(false);
-      setGenerationProgress(0);
-    }
+    });
   };
 
   const openImageViewer = (index: number) => {
     setCurrentImageIndex(index);
-    setShowImageViewer(true);
+    setImageViewerOpen(true);
   };
 
-  const handlePreviousImage = () => {
-    setCurrentImageIndex(prev => Math.max(0, prev - 1));
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % generatedImages.length);
   };
 
-  const handleNextImage = () => {
-    setCurrentImageIndex(prev => Math.min(generatedImages.length - 1, prev + 1));
+  const previousImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + generatedImages.length) % generatedImages.length);
   };
 
-  const handleImageSelect = (index: number) => {
-    setSelectedImageIndex(index);
-    // Auto-fill the title with the current H1 title when an image is selected
-    const currentTitle = getDynamicTitle();
-    setPromptTitle(currentTitle);
-  };
-
-  const getDynamicTitle = () => {
-    // Get the combined prompt text from all fields
-    const promptText = getGeneratedPromptText();
-    return generatePromptTitle(promptText);
-  };
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-deep-bg pt-24 pb-12">
@@ -569,522 +347,436 @@ const PromptBuilder: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-soft-lavender mb-6">
-            <span className="text-electric-cyan">{getDynamicTitle()}</span>
+            <span className="text-electric-cyan">Prompt</span> Builder
           </h1>
-          <p className="text-soft-lavender/70 text-lg max-w-3xl mx-auto">
-            Generate studio-quality prompts for Midjourney, DALL-E, Leonardo AI & Stable Diffusion with professional photography techniques and artistic enhancement codes
+          <p className="text-soft-lavender/70 text-lg md:text-xl max-w-3xl mx-auto">
+            Create detailed prompts for AI image generation with professional photography techniques
           </p>
         </div>
 
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left Column - Prompt Sections */}
-            <div className="lg:col-span-2 space-y-6">
-              {sections.map((section, sectionIndex) => (
-                <div key={section.title} className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
-                  <div 
-                    className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
-                    onClick={() => toggleSection(sectionIndex)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="text-electric-cyan">
-                        {section.icon}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-soft-lavender">{section.title}</h3>
-                        <p className="text-sm text-soft-lavender/70">{section.description}</p>
-                      </div>
-                      <div className="text-soft-lavender/70">
-                        {sectionStates[sectionIndex] ? (
-                          <ChevronUp className="w-5 h-5" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {sectionStates[sectionIndex] && (
-                    <div className="p-6 space-y-4">
-                      {section.fields.map((field, fieldIndex) => (
-                        <div key={field.label}>
-                          <label className="block text-sm font-medium text-soft-lavender mb-2">
-                            {field.label}
-                            {field.required && <span className="text-cosmic-purple ml-1">*</span>}
-                          </label>
-                          <textarea
-                            value={field.value}
-                            onChange={(e) => updateField(sectionIndex, fieldIndex, e.target.value)}
-                            placeholder={field.placeholder}
-                            className="w-full px-4 py-3 bg-deep-bg border border-border-color rounded-lg text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none transition-all duration-200"
-                            rows={3}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+          {/* Left Column - Form */}
+          <div className="space-y-6">
+            {/* Basic Settings */}
+            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+              <h2 className="text-xl font-bold text-soft-lavender mb-4 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-electric-cyan" />
+                Basic Settings
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-soft-lavender mb-2">Subject *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., A young woman with curly hair"
+                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                    value={promptData.subject}
+                    onChange={(e) => handleInputChange('subject', e.target.value)}
+                  />
                 </div>
-              ))}
 
-              {/* Enhancement Section */}
-              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
-                <div 
-                  className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
-                  onClick={() => {
-                    // Add enhancement section to sectionStates if not already there
-                    if (sectionStates.length === 3) {
-                      setSectionStates(prev => [...prev, false]);
-                    } else {
-                      setSectionStates(prev => prev.map((state, index) => 
-                        index === 3 ? !state : state
-                      ));
-                    }
-                  }}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="text-electric-cyan">
-                      <Sliders className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-soft-lavender">Professional Enhancement Codes</h3>
-                      <p className="text-sm text-soft-lavender/70">Click any enhancement code to add professional photography techniques</p>
-                    </div>
-                    <div className="text-soft-lavender/70">
-                      {(sectionStates[3] !== undefined ? sectionStates[3] : false) ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </div>
+                <div>
+                  <label className="block text-soft-lavender mb-2">Setting *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Standing in a sunlit garden"
+                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                    value={promptData.setting}
+                    onChange={(e) => handleInputChange('setting', e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-soft-lavender mb-2">Lighting *</label>
+                    <select
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
+                      value={promptData.lighting}
+                      onChange={(e) => handleInputChange('lighting', e.target.value)}
+                    >
+                      <option value="">Select lighting</option>
+                      <option value="Golden hour">Golden hour</option>
+                      <option value="Soft natural light">Soft natural light</option>
+                      <option value="Studio lighting">Studio lighting</option>
+                      <option value="Dramatic lighting">Dramatic lighting</option>
+                      <option value="Backlit">Backlit</option>
+                      <option value="Overcast">Overcast</option>
+                      <option value="Neon lighting">Neon lighting</option>
+                      <option value="Candlelight">Candlelight</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-soft-lavender mb-2">Style *</label>
+                    <select
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
+                      value={promptData.style}
+                      onChange={(e) => handleInputChange('style', e.target.value)}
+                    >
+                      <option value="">Select style</option>
+                      <option value="Photorealistic">Photorealistic</option>
+                      <option value="Portrait photography">Portrait photography</option>
+                      <option value="Fashion photography">Fashion photography</option>
+                      <option value="Street photography">Street photography</option>
+                      <option value="Fine art">Fine art</option>
+                      <option value="Cinematic">Cinematic</option>
+                      <option value="Documentary">Documentary</option>
+                      <option value="Editorial">Editorial</option>
+                    </select>
                   </div>
                 </div>
-                
-                {(sectionStates[3] !== undefined ? sectionStates[3] : false) && (
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      {Object.entries(IMG_CHEAT_CODES).map(([category, codes]) => (
-                        <div key={category}>
-                          <h4 className="text-sm font-medium text-soft-lavender mb-2">{category}</h4>
-                          <div className="grid gap-2">
-                            {codes.map((code, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => {
-                                  // Add to the first available field or create a new technical field
-                                  const firstEmptyField = sections.findIndex(section => 
-                                    section.fields.some(field => !field.value.trim())
-                                  );
-                                  if (firstEmptyField !== -1) {
-                                    const fieldIndex = sections[firstEmptyField].fields.findIndex(field => !field.value.trim());
-                                    updateField(firstEmptyField, fieldIndex, code);
-                                  }
-                                }}
-                                className="w-full text-left text-xs p-3 text-soft-lavender/80 hover:bg-cosmic-purple/10 rounded-lg border border-border-color transition-colors hover:border-cosmic-purple/40"
-                              >
-                                {code}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
+                <div>
+                  <label className="block text-soft-lavender mb-2">Mood *</label>
+                  <select
+                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
+                    value={promptData.mood}
+                    onChange={(e) => handleInputChange('mood', e.target.value)}
+                  >
+                    <option value="">Select mood</option>
+                    <option value="Serene and peaceful">Serene and peaceful</option>
+                    <option value="Dramatic and intense">Dramatic and intense</option>
+                    <option value="Warm and inviting">Warm and inviting</option>
+                    <option value="Cool and mysterious">Cool and mysterious</option>
+                    <option value="Energetic and vibrant">Energetic and vibrant</option>
+                    <option value="Melancholic">Melancholic</option>
+                    <option value="Joyful and bright">Joyful and bright</option>
+                    <option value="Professional">Professional</option>
+                  </select>
+                </div>
               </div>
+            </div>
 
-              {/* Tags Section */}
-              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
-                <div 
-                  className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
-                  onClick={() => {
-                    // Add tags section to sectionStates if not already there
-                    if (sectionStates.length === 4) {
-                      setSectionStates(prev => [...prev, false]);
-                    } else {
-                      setSectionStates(prev => prev.map((state, index) => 
-                        index === 4 ? !state : state
-                      ));
-                    }
-                  }}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="text-electric-cyan">
-                      <Palette className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-soft-lavender">Tags & Categories</h3>
-                      <p className="text-sm text-soft-lavender/70">Select relevant tags for better organization</p>
-                    </div>
-                    <div className="text-soft-lavender/70">
-                      {(sectionStates[4] !== undefined ? sectionStates[4] : false) ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {(sectionStates[4] !== undefined ? sectionStates[4] : false) && (
-                  <div className="p-6">
-                    <div className="flex flex-wrap gap-2">
-                      {AVAILABLE_TAGS.map(tag => (
-                        <button
-                          key={tag}
-                          onClick={() => handleTagToggle(tag)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
-                            selectedTags.includes(tag)
-                              ? 'bg-electric-cyan text-deep-bg shadow-md font-semibold'
-                              : 'bg-card-bg border border-border-color text-soft-lavender hover:bg-electric-cyan/10 hover:border-electric-cyan/40'
-                          }`}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {/* Advanced Settings */}
+            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <h2 className="text-xl font-bold text-soft-lavender flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-electric-cyan" />
+                  Advanced Settings
+                </h2>
+                {showAdvanced ? (
+                  <ChevronUp className="w-5 h-5 text-soft-lavender/70" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-soft-lavender/70" />
                 )}
-              </div>
+              </button>
 
-              {/* Generated Images Gallery */}
-              {generatedImages.length > 0 && (
-                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
-                  <div 
-                    className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
-                    onClick={() => {
-                      // Add images section to sectionStates if not already there
-                      if (sectionStates.length === 5) {
-                        setSectionStates(prev => [...prev, true]); // Default open for images
-                      } else {
-                        setSectionStates(prev => prev.map((state, index) => 
-                          index === 5 ? !state : state
-                        ));
-                      }
-                    }}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="text-electric-cyan">
-                        <Grid3X3 className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-soft-lavender">Generated Images</h3>
-                        <p className="text-sm text-soft-lavender/70">({generatedImages.length}/4) Click on an image to select it</p>
-                      </div>
-                      <div className="text-soft-lavender/70">
-                        {(sectionStates[5] !== undefined ? sectionStates[5] : true) ? (
-                          <ChevronUp className="w-5 h-5" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5" />
-                        )}
-                      </div>
-                    </div>
+              {showAdvanced && (
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="block text-soft-lavender mb-2">Post-Processing</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Film grain, color grading, vintage filter"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                      value={promptData['post-processing']}
+                      onChange={(e) => handleInputChange('post-processing', e.target.value)}
+                    />
                   </div>
-                  
-                  {(sectionStates[5] !== undefined ? sectionStates[5] : true) && (
-                    <div className="p-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        {generatedImages.map((imageUrl, index) => (
-                          <div key={index} className="relative group">
-                            <div 
-                              className={`relative cursor-pointer transition-all duration-200 rounded-lg overflow-hidden ${
-                                selectedImageIndex === index 
-                                  ? 'ring-4 ring-electric-cyan shadow-lg shadow-electric-cyan/30' 
-                                  : 'hover:ring-2 hover:ring-cosmic-purple/50'
-                              }`}
-                              onClick={() => handleImageSelect(index)}
-                            >
-                              <img
-                                src={imageUrl}
-                                alt={`Generated image ${index + 1}`}
-                                className="w-full aspect-square object-cover"
-                              />
-                              {selectedImageIndex === index && (
-                                <div className="absolute top-2 right-2 bg-electric-cyan text-deep-bg rounded-full p-1">
-                                  <Check className="w-4 h-4" />
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openImageViewer(index);
-                                  }}
-                                  className="bg-black/50 border-white/20 text-white hover:bg-white/10"
-                                >
-                                  View Full Size
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        {/* Placeholder slots for remaining images */}
-                        {Array.from({ length: 4 - generatedImages.length }).map((_, index) => (
-                          <div
-                            key={`placeholder-${index}`}
-                            className="aspect-square bg-deep-bg border-2 border-dashed border-border-color rounded-lg flex items-center justify-center"
-                          >
-                            <div className="text-center text-soft-lavender/50">
-                              <ImageIcon className="w-8 h-8 mx-auto mb-2" />
-                              <p className="text-sm">Image {generatedImages.length + index + 1}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
-              {/* Save to Library Section */}
-              {(generatedPrompt || generatedImages.length > 0) && (
-                <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color overflow-hidden">
-                  <div 
-                    className="bg-deep-bg px-6 py-4 border-b border-border-color cursor-pointer hover:bg-deep-bg/80 transition-colors"
-                    onClick={() => {
-                      // Add save section to sectionStates if not already there
-                      if (sectionStates.length === 6) {
-                        setSectionStates(prev => [...prev, true]); // Default open for save section
-                      } else {
-                        setSectionStates(prev => prev.map((state, index) => 
-                          index === 6 ? !state : state
-                        ));
-                      }
-                    }}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="text-electric-cyan">
-                        <Plus className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-soft-lavender">Save to Library</h3>
-                        <p className="text-sm text-soft-lavender/70">Save your prompt and selected image to your library</p>
-                      </div>
-                      <div className="text-soft-lavender/70">
-                        {(sectionStates[6] !== undefined ? sectionStates[6] : true) ? (
-                          <ChevronUp className="w-5 h-5" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5" />
-                        )}
-                      </div>
-                    </div>
+                  <div>
+                    <label className="block text-soft-lavender mb-2">Enhancement Codes</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., HDR, 8K, ultra-detailed"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                      value={promptData.enhancement}
+                      onChange={(e) => handleInputChange('enhancement', e.target.value)}
+                    />
                   </div>
-                  
-                  {(sectionStates[6] !== undefined ? sectionStates[6] : true) && (
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        {isGeneratingMetadata && (
-                          <div className="flex items-center text-electric-cyan text-sm">
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Generating metadata...
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Pro Tip */}
-                      <div className="bg-gradient-to-br from-cosmic-purple/10 to-electric-cyan/10 rounded-lg p-4 mb-6 border border-cosmic-purple/20">
-                        <h4 className="font-semibold text-soft-lavender mb-2 flex items-center">
-                          <Sparkles className="w-4 h-4 text-electric-cyan mr-2" />
-                          Pro Tip
-                        </h4>
-                        <p className="text-sm text-soft-lavender/70">
-                          {generatedImages.length > 0 && selectedImageIndex === null 
-                            ? 'Select an image above to save with your prompt. The selected image will be highlighted with a blue border.'
-                            : 'Fill in the title and notes below for better organization in your library. These help you and others understand the prompt\'s purpose and technique.'
-                          }
-                        </p>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <label className="block text-soft-lavender">
-                              Title <span className="text-cosmic-purple">*</span>
-                            </label>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleRegenerateMetadata}
-                              disabled={isGeneratingMetadata || !generatedPrompt}
-                              className="text-xs"
-                            >
-                              <RefreshCw className="w-3 h-3 mr-1" />
-                              Regenerate
-                            </Button>
-                          </div>
-                          <input
-                            type="text"
-                            value={promptTitle}
-                            onChange={(e) => setPromptTitle(e.target.value)}
-                            className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                            placeholder="Enter a title for your prompt"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-soft-lavender mb-2">Notes</label>
-                          <textarea
-                            value={promptNotes}
-                            onChange={(e) => setPromptNotes(e.target.value)}
-                            className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
-                            rows={3}
-                            placeholder="Add any notes about the prompt (optional)"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-soft-lavender mb-2">SREF Number</label>
-                          <input
-                            type="text"
-                            value={promptSref}
-                            onChange={(e) => setPromptSref(e.target.value)}
-                            className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                            placeholder="Enter SREF number (optional)"
-                          />
-                        </div>
-
-                        <Button
-                          variant="primary"
-                          size="lg"
-                          className="w-full"
-                          onClick={handleSavePrompt}
-                          disabled={isSaving || !promptTitle.trim() || (generatedImages.length > 0 && selectedImageIndex === null)}
-                        >
-                          <Plus className="w-5 h-5 mr-2" />
-                          {isSaving ? 'Saving...' : 'Save to Library'}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
-            {/* Right Column - Preview & Actions */}
-            <div className="space-y-6">
-              {/* Generated Prompt Preview */}
-              <div className="bg-card-bg rounded-2xl shadow-lg border border-border-color p-6 sticky top-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-soft-lavender">Generated Prompt</h3>
-                  <Sparkles className="w-5 h-5 text-electric-cyan" />
-                </div>
-                
-                <div className="bg-deep-bg rounded-lg p-4 mb-4 min-h-[120px]">
-                  <p className="text-soft-lavender/80 text-sm leading-relaxed">
-                    {getGeneratedPromptText() || 'Start filling in the fields to see your prompt preview...'}
-                  </p>
-                </div>
+            {/* Generate Prompt Button */}
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={handleGeneratePrompt}
+              disabled={isGeneratingPrompt}
+            >
+              {isGeneratingPrompt ? (
+                <>
+                  <Sparkles className="w-5 h-5 mr-2 animate-spin" />
+                  Generating Prompt...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-5 h-5 mr-2" />
+                  Generate Prompt
+                </>
+              )}
+            </Button>
+          </div>
 
-                {selectedTags.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-soft-lavender mb-2">Selected Tags:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedTags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-electric-cyan/20 text-electric-cyan rounded text-xs font-medium">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  {/* Generate 4 Images Button */}
-                  <Button
-                    onClick={handleGenerate4Images}
-                    disabled={!getGeneratedPromptText() || isGeneratingImages}
-                    className="w-full flex items-center justify-center space-x-2"
-                    variant="primary"
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                    <span>
-                      {isGeneratingImages 
-                        ? `Generating... ${Math.round(generationProgress)}%` 
-                        : 'Generate 4 Images'
-                      }
-                    </span>
-                  </Button>
-
-                  {/* Progress Bar */}
-                  {isGeneratingImages && (
-                    <div className="w-full bg-deep-bg rounded-full h-2">
-                      <div 
-                        className="bg-electric-cyan h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${generationProgress}%` }}
+          {/* Right Column - Results */}
+          <div className="space-y-6">
+            {/* Generated Prompt */}
+            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-soft-lavender">Generated Prompt</h2>
+                <div className="flex items-center gap-4">
+                  {/* Prompt Enhancement Toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-soft-lavender/70">Enhancement</span>
+                    <button
+                      onClick={() => setPromptEnhancementEnabled(!promptEnhancementEnabled)}
+                      className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
+                        promptEnhancementEnabled ? 'bg-cosmic-purple' : 'bg-border-color'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${
+                          promptEnhancementEnabled ? 'translate-x-7' : 'translate-x-1'
+                        }`}
                       />
+                    </button>
+                    {promptEnhancementEnabled && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => enhancePrompt()}
+                        disabled={isEnhancingPrompt || !generatedPrompt}
+                      >
+                        {isEnhancingPrompt ? (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                            Enhancing...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Enhance
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {(generatedPrompt || enhancedPrompt) && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyPrompt}
+                        className={`transition-colors duration-300 ${
+                          copySuccess ? 'bg-success-green/20 text-success-green' : ''
+                        }`}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        {copySuccess ? 'Copied!' : 'Copy'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDownloadPrompt}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSavePrompt}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        Save
+                      </Button>
                     </div>
                   )}
-
-                  {/* User Guidance During Generation */}
-                  {isGeneratingImages && (
-                    <div className="bg-electric-cyan/10 border border-electric-cyan/20 rounded-lg p-3">
-                      <p className="text-electric-cyan text-sm text-center">
-                        ⬇️ Scroll down to see your generated images as they appear
-                      </p>
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={() => copyToClipboard(getGeneratedPromptText())}
-                    disabled={!getGeneratedPromptText()}
-                    className="w-full flex items-center justify-center space-x-2"
-                    variant="outline"
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>Copy Prompt</span>
-                  </Button>
                 </div>
+              </div>
 
-                {error && (
-                  <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start space-x-2">
-                    <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm text-red-500">{error}</p>
-                      {error.includes('OpenAI API key') && (
-                        <div className="mt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate('/api-config')}
-                            className="text-red-500 border-red-500/30 hover:bg-red-500/10"
-                          >
-                            Configure API Key
-                          </Button>
-                        </div>
-                      )}
+              <div className="bg-deep-bg border border-border-color rounded-lg p-4 min-h-[200px] max-h-[400px] overflow-y-auto">
+                {promptEnhancementEnabled && enhancedPrompt ? (
+                  <div className="space-y-4">
+                    <div className="bg-cosmic-purple/10 border border-cosmic-purple/20 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-cosmic-purple" />
+                        <span className="text-sm font-medium text-cosmic-purple">Enhanced Prompt</span>
+                      </div>
+                      <p className="text-soft-lavender whitespace-pre-wrap">{enhancedPrompt}</p>
                     </div>
+                    {generatedPrompt && (
+                      <details className="group">
+                        <summary className="cursor-pointer text-soft-lavender/70 text-sm hover:text-soft-lavender">
+                          Show original prompt
+                        </summary>
+                        <div className="mt-2 p-3 bg-deep-bg border border-border-color rounded-lg">
+                          <p className="text-soft-lavender/70 whitespace-pre-wrap">{generatedPrompt}</p>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                ) : generatedPrompt ? (
+                  <p className="text-soft-lavender whitespace-pre-wrap">{generatedPrompt}</p>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-soft-lavender/50">
+                    <Wand2 className="w-8 h-8 mb-4" />
+                    <p>Fill in the form and click "Generate Prompt" to create your detailed prompt</p>
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Quick Tips */}
-              <div className="bg-gradient-to-br from-cosmic-purple/10 to-electric-cyan/10 rounded-2xl p-6 border border-cosmic-purple/20">
-                <h4 className="font-semibold text-soft-lavender mb-3 flex items-center">
-                  <Sparkles className="w-4 h-4 text-electric-cyan mr-2" />
-                  Pro Tips
-                </h4>
-                <ul className="text-sm text-soft-lavender/70 space-y-2">
-                  <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Be specific with your subject description
-                  </li>
-                  <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Use the enhancement codes for professional results
-                  </li>
-                  <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Generate 4 images to compare variations
-                  </li>
-                  <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Select your favorite image before saving
-                  </li>
-                  <li className="flex items-start">
-                    <span className="w-1.5 h-1.5 bg-electric-cyan rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                    Fill in title and notes for better organization
-                  </li>
+            {/* Image Generation Settings */}
+            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+              <h2 className="text-xl font-bold text-soft-lavender mb-4 flex items-center gap-2">
+                <Camera className="w-5 h-5 text-electric-cyan" />
+                Image Generation
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-soft-lavender mb-2">Dimensions</label>
+                    <select
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
+                      value={imageDimensions}
+                      onChange={(e) => setImageDimensions(e.target.value)}
+                    >
+                      <option value="1:1">Square (1:1)</option>
+                      <option value="16:9">Landscape (16:9)</option>
+                      <option value="9:16">Portrait (9:16)</option>
+                      <option value="4:5">Portrait (4:5)</option>
+                      <option value="3:2">Landscape (3:2)</option>
+                      <option value="2:3">Portrait (2:3)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-soft-lavender mb-2">Number of Images</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setNumberOfImages(Math.max(1, numberOfImages - 1))}
+                        className="w-8 h-8 rounded-full bg-deep-bg border border-border-color flex items-center justify-center text-soft-lavender hover:border-cosmic-purple transition-colors"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="flex-1 text-center text-soft-lavender font-medium">{numberOfImages}</span>
+                      <button
+                        onClick={() => setNumberOfImages(Math.min(4, numberOfImages + 1))}
+                        className="w-8 h-8 rounded-full bg-deep-bg border border-border-color flex items-center justify-center text-soft-lavender hover:border-cosmic-purple transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleGenerateImages}
+                  disabled={isGeneratingImages || (!generatedPrompt && !enhancedPrompt)}
+                >
+                  {isGeneratingImages ? (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2 animate-spin" />
+                      Generating Images...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="w-5 h-5 mr-2" />
+                      Generate Images
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Generated Images */}
+            {generatedImages.length > 0 && (
+              <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+                <h2 className="text-xl font-bold text-soft-lavender mb-4">Generated Images</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {generatedImages.map((imageUrl, index) => (
+                    <div
+                      key={index}
+                      className="relative group cursor-pointer rounded-lg overflow-hidden border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
+                      onClick={() => openImageViewer(index)}
+                    >
+                      <img
+                        src={imageUrl}
+                        alt={`Generated artwork ${index + 1}`}
+                        className="w-full aspect-square object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <Eye className="w-8 h-8 text-white" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-red-500 text-sm">{error}</p>
+                    {error.includes('OpenAI API key') && (
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate('/api-config')}
+                          className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                        >
+                          Configure API Key
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-red-500/70 hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tips Section */}
+        <div className="mt-12 max-w-4xl mx-auto">
+          <div className="bg-card-bg rounded-lg p-8 border border-border-color">
+            <h2 className="text-2xl font-bold text-soft-lavender mb-6 text-center">
+              Tips for Better Results
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-soft-lavender flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-electric-cyan" />
+                  Prompt Writing
+                </h3>
+                <ul className="space-y-2 text-soft-lavender/70">
+                  <li>• Be specific about physical details and expressions</li>
+                  <li>• Include environmental context and atmosphere</li>
+                  <li>• Mention specific camera and lighting techniques</li>
+                  <li>• Use descriptive adjectives for mood and style</li>
+                </ul>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-soft-lavender flex items-center gap-2">
+                  <Target className="w-5 h-5 text-electric-cyan" />
+                  Enhancement Tips
+                </h3>
+                <ul className="space-y-2 text-soft-lavender/70">
+                  <li>• Enable prompt enhancement for more detailed results</li>
+                  <li>• Try different lighting and mood combinations</li>
+                  <li>• Experiment with various aspect ratios</li>
+                  <li>• Generate multiple images to compare results</li>
                 </ul>
               </div>
             </div>
@@ -1093,16 +785,14 @@ const PromptBuilder: React.FC = () => {
       </div>
 
       {/* Image Viewer Modal */}
-      {showImageViewer && generatedImages.length > 0 && (
-        <ImageViewerModal
-          images={generatedImages}
-          currentIndex={currentImageIndex}
-          isOpen={showImageViewer}
-          onClose={() => setShowImageViewer(false)}
-          onPrevious={handlePreviousImage}
-          onNext={handleNextImage}
-        />
-      )}
+      <ImageViewerModal
+        images={generatedImages}
+        currentIndex={currentImageIndex}
+        isOpen={imageViewerOpen}
+        onClose={() => setImageViewerOpen(false)}
+        onNext={nextImage}
+        onPrevious={previousImage}
+      />
     </div>
   );
 };

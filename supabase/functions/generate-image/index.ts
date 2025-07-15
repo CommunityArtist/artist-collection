@@ -116,7 +116,12 @@ Deno.serve(async (req) => {
     }
 
     if (imageUrls.length === 0) {
-      throw lastError || new Error('Failed to generate any images');
+      // Provide more specific error information
+      if (lastError) {
+        throw lastError;
+      } else {
+        throw new Error('Failed to generate any images. Please check your OpenAI API key configuration and try again.');
+      }
     }
 
     // Return the first image URL for backward compatibility

@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (fetchError || !apiConfig?.key_value) {
-      throw new Error('OpenAI API key not found. Please configure your API key in the settings.');
+      throw new Error('OpenAI API key not found. Please configure your API key in the API Configuration page. Go to Account > API Config to set up your OpenAI API key.');
     }
 
     const openai = new OpenAI({
