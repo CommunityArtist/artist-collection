@@ -103,7 +103,7 @@ Write your response as one continuous, descriptive paragraph that reads naturall
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.7,
+      temperature: 0.2,
       max_tokens: 600,
     });
 
