@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
           n: 1, // DALL-E 3 only supports n=1
           size: size as "1024x1024" | "1792x1024" | "1024x1792",
           quality: "hd",
-          style: "vivid",
+          style: "natural",
         });
 
         const imageUrl = response.data[0]?.url;
