@@ -73,6 +73,9 @@ Deno.serve(async (req) => {
 CRITICAL OUTPUT FORMAT REQUIREMENT:
 Generate your response as a single, flowing, cohesive paragraph of text. Do NOT use any markdown formatting, bold text, headings, bullet points, numbered lists, asterisks, or any special symbols. Write everything as continuous prose in a natural, descriptive narrative format.
 
+NEGATIVE PROMPT INTEGRATION REQUIREMENT:
+You must naturally integrate negative concepts throughout your prompt to guide the AI away from artificial or stylized results. Seamlessly weave in phrases that instruct the model to avoid: rendered appearance, digital art aesthetics, CGI-like features, smooth or perfect skin, artificial lighting effects, overly stylized features, plastic-like skin texture, airbrushed appearance, synthetic materials, glossy or shiny skin, cartoon-like qualities, illustration style, painting-like effects, fantasy elements, surreal characteristics, overly saturated colors, artificial enhancement, digital manipulation appearance, computer-generated look, and polished or retouched aesthetic. These should be integrated naturally as "avoid" or "not" statements within the flowing description.
+
 REALISM REQUIREMENTS FOR HUMAN SUBJECTS:
 Always emphasize photorealistic and natural human features. Include specific details about natural skin texture with visible pores and subtle imperfections. Mention realistic lighting that shows natural shadows and highlights on skin. Focus on authentic human expressions and natural poses. Include environmental details that enhance realism. Describe natural skin texture, authentic expressions, realistic hair details, natural lighting effects, and environmental realism.
 
@@ -80,6 +83,9 @@ Your prompts should comprehensively include subject description with enhanced re
 
 REALISM KEYWORDS TO NATURALLY INTEGRATE:
 Seamlessly weave these terms throughout your response: photorealistic, natural skin texture, realistic lighting, authentic, genuine, detailed pores, natural imperfections, lifelike, candid, unretouched quality.
+
+RAW PHOTOGRAPHY EMPHASIS:
+Emphasize raw, unprocessed photographic qualities by including terms like: unretouched skin, natural blemishes, realistic skin variations, authentic lighting imperfections, natural shadows and highlights, candid moment capture, documentary-style realism, street photography authenticity, natural environmental lighting, and unposed genuine expressions. Avoid any mention of perfection or idealization.
 
 When enhancement codes are provided, integrate them naturally into the flowing text while maintaining focus on photorealism and natural human features.
 
