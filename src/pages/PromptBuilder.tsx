@@ -136,6 +136,12 @@ Mood: ${extractedData.mood}`;
       setIsGeneratingPrompt(true);
       setError(null);
 
+      // Get authenticated session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please log in to generate prompts');
+      }
+
       // Validate required fields
       const requiredFields = ['subject', 'setting', 'lighting', 'style', 'mood'];
       const missingFields = requiredFields.filter(field => !promptData[field].trim());
@@ -148,7 +154,7 @@ Mood: ${extractedData.mood}`;
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(promptData),
       });
@@ -179,6 +185,12 @@ Mood: ${extractedData.mood}`;
       setIsEnhancingPrompt(true);
       setError(null);
 
+      // Get authenticated session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please log in to enhance prompts');
+      }
+
       const promptToEnhance = basePrompt || generatedPrompt;
       if (!promptToEnhance) {
         throw new Error('No prompt to enhance. Please generate a prompt first.');
@@ -201,7 +213,7 @@ Return an enhanced version that will generate higher quality, more realistic ima
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           subject: enhancementPrompt,
@@ -235,6 +247,12 @@ Return an enhanced version that will generate higher quality, more realistic ima
       setError(null);
       setGeneratedImages([]);
 
+      // Get authenticated session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please log in to generate images');
+      }
+
       const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
       
       if (!promptToUse) {
@@ -245,7 +263,7 @@ Return an enhanced version that will generate higher quality, more realistic ima
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           prompt: promptToUse,
