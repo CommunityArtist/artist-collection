@@ -53,6 +53,7 @@ const CommunityLibrary: React.FC = () => {
   const fetchPrompts = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // First, fetch all public prompts
       const { data: promptsData, error: promptsError } = await supabase
@@ -71,13 +72,23 @@ const CommunityLibrary: React.FC = () => {
       // Get unique user IDs from the prompts
       const userIds = [...new Set(promptsData.map(prompt => prompt.user_id))];
       
+      if (userIds.length === 0) {
+        setPrompts(promptsData);
+        return;
+      }
+      
       // Fetch profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username')
         .in('id', userIds);
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.warn('Failed to fetch user profiles:', profilesError);
+        // Continue without profile data rather than failing completely
+        setPrompts(promptsData.map(prompt => ({ ...prompt, profiles: null })));
+        return;
+      }
 
       // Create a map of user_id to username for quick lookup
       const profilesMap = new Map(
@@ -93,6 +104,7 @@ const CommunityLibrary: React.FC = () => {
       setPrompts(promptsWithProfiles);
     } catch (error) {
       console.error('Error fetching prompts:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load community prompts');
     } finally {
       setLoading(false);
     }

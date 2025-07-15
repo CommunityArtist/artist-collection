@@ -54,6 +54,7 @@ const UserLibrary: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTags, setSelectedTags] = useState<PromptTag[]>([]);
 
+  // Add proper error handling for database operations
   const fetchPrompts = async () => {
     try {
       setLoading(true);
@@ -82,11 +83,18 @@ const UserLibrary: React.FC = () => {
         return;
       }
 
+      // Validate username parameter
+      if (!username || username.trim() === '') {
+        setError('Invalid username provided');
+        setPrompts([]);
+        return;
+      }
+
       // Get user ID by username for other users
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('username', username)
+        .ilike('username', username.trim())
         .single();
 
       if (profileError) {
@@ -96,6 +104,12 @@ const UserLibrary: React.FC = () => {
           return;
         }
         throw profileError;
+      }
+
+      if (!profiles?.id) {
+        setError(`User "${username}" not found`);
+        setPrompts([]);
+        return;
       }
 
       // For other users' libraries, only show public prompts
@@ -110,7 +124,7 @@ const UserLibrary: React.FC = () => {
       setPrompts(userPrompts || []);
     } catch (err) {
       console.error('Error fetching prompts:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred while fetching data');
     } finally {
       setLoading(false);
     }

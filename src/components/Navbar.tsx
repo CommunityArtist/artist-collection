@@ -25,6 +25,7 @@ const Navbar: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   
@@ -55,16 +56,41 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', user.id)
-          .single();
-        setUserProfile(profile);
+      try {
+        setIsLoading(true);
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Auth error:', error);
+          setUser(null);
+          setUserProfile(null);
+          return;
+        }
+        
+        setUser(user);
+        
+        if (user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError) {
+            console.warn('Profile fetch error:', profileError);
+            setUserProfile(null);
+          } else {
+            setUserProfile(profile);
+          }
+        } else {
+          setUserProfile(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+        setUser(null);
+        setUserProfile(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -80,6 +106,10 @@ const Navbar: React.FC = () => {
           .single()
           .then(({ data: profile }) => {
             setUserProfile(profile);
+          })
+          .catch((error) => {
+            console.warn('Profile fetch error on auth change:', error);
+            setUserProfile(null);
           });
       } else {
         setUserProfile(null);

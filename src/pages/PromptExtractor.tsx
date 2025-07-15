@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Wand2, Copy, Download, X, Eye, Sparkles, Zap, Camera, AlertCircle, Music } from 'lucide-react';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
@@ -19,6 +19,8 @@ interface ExtractedPrompt {
 
 const PromptExtractor: React.FC = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -26,6 +28,28 @@ const PromptExtractor: React.FC = () => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+        if (!user) {
+          navigate('/auth');
+          return;
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAuthenticated(false);
+        navigate('/auth');
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

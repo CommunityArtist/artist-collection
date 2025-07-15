@@ -24,6 +24,7 @@ const Account: React.FC = () => {
 
   const getProfile = async () => {
     try {
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
@@ -32,6 +33,10 @@ const Account: React.FC = () => {
           .select('username')
           .eq('id', user.id)
           .single();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
 
         setProfile({
           email: user.email || '',
@@ -45,6 +50,7 @@ const Account: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setProfile(null);
     } finally {
       setLoading(false);
     }

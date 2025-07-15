@@ -60,6 +60,29 @@ const CreatePrompt: React.FC = () => {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+        if (!user) {
+          navigate('/auth');
+          return;
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        navigate('/auth');
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   useEffect(() => {
     const fetchPrompt = async () => {
