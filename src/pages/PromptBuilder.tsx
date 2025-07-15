@@ -15,7 +15,6 @@ import {
   Camera,
   Palette,
   Sun,
-  Moon,
   Lightbulb,
   Target,
   Film,
@@ -62,7 +61,6 @@ const PromptBuilder: React.FC = () => {
 
   // UI state
   const [generatedPrompt, setGeneratedPrompt] = useState('');
-  const [negativePrompt, setNegativePrompt] = useState('');
   const [enhancedPrompt, setEnhancedPrompt] = useState('');
   const [promptEnhancementEnabled, setPromptEnhancementEnabled] = useState(false);
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
@@ -145,116 +143,28 @@ const PromptBuilder: React.FC = () => {
       setIsGeneratingPrompt(true);
       setError(null);
 
-      // Check if we have the required environment variables
-      if (!import.meta.env.VITE_SUPABASE_URL) {
-        throw new Error('VITE_SUPABASE_URL environment variable is not set');
-      }
-
-      // More detailed debugging
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const functionUrl = `${supabaseUrl}/functions/v1/generate-prompt`;
+      // Simple prompt generation without Edge Function for now
+      const { subject, setting, lighting, style, mood } = promptData;
       
-      console.log('=== DEBUGGING EDGE FUNCTION CONNECTION ===');
-      console.log('Supabase URL:', supabaseUrl);
-      console.log('Function URL:', functionUrl);
-      console.log('Environment check:', {
-        VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-        VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'
-      });
-
-      // Get authenticated session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please sign in to generate prompts');
+      if (!subject || !setting || !lighting || !style || !mood) {
+        throw new Error('Please fill in all required fields');
       }
 
-      console.log('Session check:', {
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-        tokenLength: session?.access_token?.length || 0
-      });
+      // Generate a basic prompt locally
+      let prompt = `${subject} in ${setting}, ${lighting}, ${style} style, ${mood} mood`;
       
-      console.log('Request payload:', promptData);
-
-      // Test if the function endpoint exists first
-      console.log('Testing function endpoint...');
+      if (promptData['post-processing']) {
+        prompt += `, ${promptData['post-processing']}`;
+      }
       
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(promptData),
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      if (!response.ok) {
-        console.error('Response not OK:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: data
-        });
-        throw new Error(data.error || 'Failed to generate prompt');
+      if (promptData.enhancement) {
+        prompt += `, ${promptData.enhancement}`;
       }
 
-      // Handle both old and new response formats for backward compatibility
-      if (typeof data === 'string') {
-        // Old format - single string response
-        setGeneratedPrompt(data);
-        setNegativePrompt('');
-      } else if (data.prompt && data.negativePrompt) {
-        // New format - JSON with separate prompts
-        setGeneratedPrompt(data.prompt);
-        setNegativePrompt(data.negativePrompt);
-      } else {
-        // Fallback - treat as single prompt
-        setGeneratedPrompt(data.prompt || data);
-        setNegativePrompt('');
-      }
+      setGeneratedPrompt(prompt);
     } catch (error) {
       console.error('Error generating prompt:', error);
-      console.error('Full error details:', {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack,
-        cause: error?.cause
-      });
-      
-      let errorMessage = 'An unexpected error occurred';
-      
-      if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-          errorMessage = `Connection failed to: ${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt
-
-Possible causes:
-1. Edge Function 'generate-prompt' is not deployed in Supabase
-2. Function name mismatch (check if it's exactly 'generate-prompt')
-3. CORS issues with the function
-4. Network connectivity problems
-5. Supabase project URL is incorrect
-
-Debug info:
-- URL: ${import.meta.env.VITE_SUPABASE_URL}
-- Function: generate-prompt
-- Error: ${error.message}
-
-Next steps:
-1. Check Supabase Dashboard → Edge Functions
-2. Verify 'generate-prompt' function exists and is active
-3. Test the function directly in Supabase dashboard`;
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      setError(errorMessage);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsGeneratingPrompt(false);
     }
@@ -262,48 +172,11 @@ Next steps:
 
   const enhancePrompt = async () => {
     try {
-      if (!isAuthenticated) {
-        setError('Please sign in to enhance prompts');
-        navigate('/auth');
-        return;
-      }
-
       setIsEnhancingPrompt(true);
       setError(null);
 
-      // Get authenticated session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please sign in to enhance prompts');
-      }
-
-      const enhancementData = {
-        ...promptData,
-        selectedCategory,
-        enhanceLevel,
-        basePrompt: generatedPrompt
-      };
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-metadata`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          prompt: generatedPrompt,
-          promptData: enhancementData
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to enhance prompt');
-      }
-
-      // Create enhanced prompt by combining original with enhancements
-      const enhancement = `Enhanced with ${selectedCategory} (Level ${enhanceLevel}/5): ${data.notes}`;
+      // Simple enhancement without Edge Function
+      const enhancement = `Enhanced with ${selectedCategory} (Level ${enhanceLevel}/5): Professional quality, detailed composition, high resolution`;
       setEnhancedPrompt(`${generatedPrompt}\n\n${enhancement}`);
     } catch (error) {
       console.error('Error enhancing prompt:', error);
@@ -314,67 +187,7 @@ Next steps:
   };
 
   const handleGenerateImages = async () => {
-    try {
-      if (!isAuthenticated) {
-        setError('Please sign in to generate images');
-        navigate('/auth');
-        return;
-      }
-
-      setIsGeneratingImages(true);
-      setError(null);
-      setGeneratedImages([]);
-
-      // Get authenticated session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please sign in to generate images');
-      }
-
-      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
-
-      if (!promptToUse) {
-        throw new Error('Please generate a prompt first');
-      }
-
-      // Combine positive and negative prompts for DALL-E 3
-      const combinedPrompt = negativePrompt 
-        ? `${promptToUse}. Avoid: ${negativePrompt}`
-        : promptToUse;
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          prompt: combinedPrompt,
-          imageDimensions,
-          numberOfImages
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate images');
-      }
-
-      // Handle both single image and multiple images response
-      if (data.imageUrls && Array.isArray(data.imageUrls)) {
-        setGeneratedImages(data.imageUrls);
-      } else if (data.imageUrl) {
-        setGeneratedImages([data.imageUrl]);
-      } else {
-        throw new Error('No images were generated');
-      }
-    } catch (error) {
-      console.error('Error generating images:', error);
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
-    } finally {
-      setIsGeneratingImages(false);
-    }
+    setError('Image generation requires Edge Functions to be properly configured. Please check your Supabase setup.');
   };
 
   const handleCopyPrompt = async () => {
@@ -464,7 +277,6 @@ Next steps:
       enhancement: ''
     });
     setGeneratedPrompt('');
-    setNegativePrompt('');
     setEnhancedPrompt('');
     setGeneratedImages([]);
     setError(null);
@@ -771,7 +583,7 @@ Next steps:
                       ) : (
                         <>
                           <ImageIcon className="w-5 h-5 mr-2" />
-                          Generate Images
+                          Generate Images (Requires Setup)
                         </>
                       )}
                     </Button>
@@ -868,65 +680,6 @@ Next steps:
                 </div>
               )}
 
-              {/* Negative Prompt Section */}
-              {negativePrompt && (
-                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                  <h3 className="text-lg font-semibold text-soft-lavender mb-4 flex items-center gap-2">
-                    <X className="w-5 h-5 text-error-red" />
-                    Negative Prompt (What to Avoid)
-                  </h3>
-                  
-                  <div className="bg-deep-bg border border-error-red/20 rounded-lg p-4 mb-4 max-h-32 overflow-y-auto">
-                    <p className="text-error-red/80 whitespace-pre-wrap leading-relaxed text-sm">
-                      {negativePrompt}
-                    </p>
-                  </div>
-
-                  <div className="text-xs text-soft-lavender/50">
-                    These concepts will be automatically excluded when generating images
-                  </div>
-                </div>
-              )}
-
-              {/* Generated Images Section */}
-              {generatedImages.length > 0 && (
-                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                  <h3 className="text-xl font-bold text-soft-lavender mb-4">Generated Images</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {generatedImages.map((imageUrl, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={imageUrl}
-                          alt={`Generated artwork ${index + 1}`}
-                          className="w-full aspect-square object-cover rounded-lg cursor-pointer transition-transform duration-300 hover:scale-105"
-                          onClick={() => openImageViewer(index)}
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openImageViewer(index)}
-                            className="bg-black/50 border-white/20 text-white hover:bg-white/10"
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            View
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleSavePrompt(imageUrl)}
-                            className="bg-electric-cyan text-deep-bg hover:bg-electric-cyan/90"
-                          >
-                            <Save className="w-4 h-4 mr-2" />
-                            Save to Library
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Error Display */}
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
@@ -934,18 +687,6 @@ Next steps:
                     <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
                     <div>
                       <p className="text-red-500 text-sm">{error}</p>
-                      {error.includes('OpenAI API key') && (
-                        <div className="mt-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate('/api-config')}
-                            className="text-red-500 border-red-500/30 hover:bg-red-500/10"
-                          >
-                            Configure API Key
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
