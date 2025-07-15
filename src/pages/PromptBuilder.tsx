@@ -326,6 +326,7 @@ Return an enhanced version that will generate higher quality, more realistic ima
   };
 
   const handleSavePrompt = async () => {
+  const handleSavePrompt = async (selectedImageUrl?: string) => {
     const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
     
     if (!promptToUse) {
@@ -339,7 +340,8 @@ Return an enhanced version that will generate higher quality, more realistic ima
         generatedPrompt: promptToUse,
         promptData: promptData,
         imageDimensions: imageDimensions,
-        numberOfImages: numberOfImages
+        numberOfImages: numberOfImages,
+        mediaUrl: selectedImageUrl
       }
     });
   };
@@ -538,11 +540,43 @@ Return an enhanced version that will generate higher quality, more realistic ima
           <div className="space-y-6">
             {/* Generated Prompt */}
             <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-soft-lavender">Generated Prompt</h2>
+              <h2 className="text-xl font-bold text-soft-lavender mb-4">Generated Prompt</h2>
+              
+              <div className="bg-deep-bg border border-border-color rounded-lg p-4 min-h-[200px] max-h-[400px] overflow-y-auto mb-4">
+                {promptEnhancementEnabled && enhancedPrompt ? (
+                  <div className="space-y-4">
+                    <div className="bg-cosmic-purple/10 border border-cosmic-purple/20 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-cosmic-purple" />
+                        <span className="text-sm font-medium text-cosmic-purple">Enhanced Prompt</span>
+                      </div>
+                      <p className="text-soft-lavender whitespace-pre-wrap">{enhancedPrompt}</p>
+                    </div>
+                    {generatedPrompt && (
+                      <details className="group">
+                        <summary className="cursor-pointer text-soft-lavender/70 text-sm hover:text-soft-lavender">
+                          Show original prompt
+                        </summary>
+                        <div className="mt-2 p-3 bg-deep-bg border border-border-color rounded-lg">
+                          <p className="text-soft-lavender/70 whitespace-pre-wrap">{generatedPrompt}</p>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                ) : generatedPrompt ? (
+                  <p className="text-soft-lavender whitespace-pre-wrap">{generatedPrompt}</p>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-soft-lavender/50">
+                    <Wand2 className="w-8 h-8 mb-4" />
+                    <p>Fill in the form and click "Generate Prompt" to create your detailed prompt</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {/* Prompt Enhancement Toggle */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mr-4">
                     <span className="text-sm text-soft-lavender/70">Enhancement</span>
                     <button
                       onClick={() => setPromptEnhancementEnabled(!promptEnhancementEnabled)}
@@ -577,68 +611,37 @@ Return an enhanced version that will generate higher quality, more realistic ima
                       </Button>
                     )}
                   </div>
-                  
-                  {(generatedPrompt || enhancedPrompt) && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCopyPrompt}
-                        className={`transition-colors duration-300 ${
-                          copySuccess ? 'bg-success-green/20 text-success-green' : ''
-                        }`}
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        {copySuccess ? 'Copied!' : 'Copy'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDownloadPrompt}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleSavePrompt}
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        Save
-                      </Button>
-                    </div>
-                  )}
                 </div>
-              </div>
 
-              <div className="bg-deep-bg border border-border-color rounded-lg p-4 min-h-[200px] max-h-[400px] overflow-y-auto">
-                {promptEnhancementEnabled && enhancedPrompt ? (
-                  <div className="space-y-4">
-                    <div className="bg-cosmic-purple/10 border border-cosmic-purple/20 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Zap className="w-4 h-4 text-cosmic-purple" />
-                        <span className="text-sm font-medium text-cosmic-purple">Enhanced Prompt</span>
-                      </div>
-                      <p className="text-soft-lavender whitespace-pre-wrap">{enhancedPrompt}</p>
-                    </div>
-                    {generatedPrompt && (
-                      <details className="group">
-                        <summary className="cursor-pointer text-soft-lavender/70 text-sm hover:text-soft-lavender">
-                          Show original prompt
-                        </summary>
-                        <div className="mt-2 p-3 bg-deep-bg border border-border-color rounded-lg">
-                          <p className="text-soft-lavender/70 whitespace-pre-wrap">{generatedPrompt}</p>
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                ) : generatedPrompt ? (
-                  <p className="text-soft-lavender whitespace-pre-wrap">{generatedPrompt}</p>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-soft-lavender/50">
-                    <Wand2 className="w-8 h-8 mb-4" />
-                    <p>Fill in the form and click "Generate Prompt" to create your detailed prompt</p>
+                {(generatedPrompt || enhancedPrompt) && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyPrompt}
+                      className={`transition-colors duration-300 ${
+                        copySuccess ? 'bg-success-green/20 text-success-green' : ''
+                      }`}
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      {copySuccess ? 'Copied!' : 'Copy'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadPrompt}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSavePrompt()}
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Save
+                    </Button>
                   </div>
                 )}
               </div>
@@ -719,16 +722,30 @@ Return an enhanced version that will generate higher quality, more realistic ima
                   {generatedImages.map((imageUrl, index) => (
                     <div
                       key={index}
-                      className="relative group cursor-pointer rounded-lg overflow-hidden border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
-                      onClick={() => openImageViewer(index)}
+                      className="relative group rounded-lg overflow-hidden border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
                     >
                       <img
                         src={imageUrl}
                         alt={`Generated artwork ${index + 1}`}
-                        className="w-full aspect-square object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="w-full aspect-square object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
+                        onClick={() => openImageViewer(index)}
                       />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <Eye className="w-8 h-8 text-white" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-4">
+                        <button
+                          onClick={() => openImageViewer(index)}
+                          className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                        >
+                          <Eye className="w-6 h-6 text-white" />
+                        </button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleSavePrompt(imageUrl)}
+                          className="bg-cosmic-purple hover:bg-cosmic-purple/90"
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          Save to Library
+                        </Button>
                       </div>
                     </div>
                   ))}

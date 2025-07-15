@@ -99,7 +99,7 @@ const CreatePrompt: React.FC = () => {
   // Handle data from Prompt Builder
   useEffect(() => {
     if (location.state?.generatedPrompt && location.state?.promptData) {
-      const { generatedPrompt, promptData, imageDimensions, numberOfImages } = location.state;
+      const { generatedPrompt, promptData, imageDimensions, numberOfImages, mediaUrl } = location.state;
       
       // Generate a title based on the subject
       const subjectWords = promptData.subject.split(' ').slice(0, 3).join(' ');
@@ -141,6 +141,12 @@ const CreatePrompt: React.FC = () => {
       autoTags.push('Prompt Builder');
       
       setSelectedTags(autoTags.filter((tag, index, self) => self.indexOf(tag) === index) as PromptTag[]);
+      
+      // Set media URL if provided (from selected image)
+      if (mediaUrl) {
+        setPreviewUrl(mediaUrl);
+        setIsVideo(mediaUrl.match(/\.(mp4|webm|ogg)$/i) ? true : false);
+      }
       
       // Clear the location state to prevent re-population on refresh
       window.history.replaceState({}, document.title);
