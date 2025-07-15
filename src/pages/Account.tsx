@@ -57,6 +57,22 @@ const Account: React.FC = () => {
 
       if (!user) throw new Error('No user found');
 
+      // Check if username already exists (case-insensitive)
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('username', username)
+        .neq('id', user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingUser) {
+        throw new Error('Username already exists (case-insensitive). Please choose a different username.');
+      }
+
       const { error } = await supabase
         .from('profiles')
         .upsert({ 
@@ -71,6 +87,8 @@ const Account: React.FC = () => {
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating username:', error);
+      // Show user-friendly error message
+      alert(error instanceof Error ? error.message : 'Failed to update username');
     } finally {
       setUpdateLoading(false);
     }
