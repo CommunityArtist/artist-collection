@@ -45,6 +45,10 @@ const PromptBuilder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
+  // Check if user is authenticated
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
     subject: '',
@@ -81,6 +85,23 @@ const PromptBuilder: React.FC = () => {
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
   // Handle data from Prompt Extractor
   useEffect(() => {
     if (location.state?.extractedPromptData) {
@@ -115,6 +136,12 @@ const PromptBuilder: React.FC = () => {
 
   const handleGeneratePrompt = async () => {
     try {
+      if (!isAuthenticated) {
+        setError('Please sign in to generate prompts');
+        navigate('/auth');
+        return;
+      }
+
       setIsGeneratingPrompt(true);
       setError(null);
 
@@ -186,6 +213,12 @@ const PromptBuilder: React.FC = () => {
 
   const enhancePrompt = async () => {
     try {
+      if (!isAuthenticated) {
+        setError('Please sign in to enhance prompts');
+        navigate('/auth');
+        return;
+      }
+
       setIsEnhancingPrompt(true);
       setError(null);
 
@@ -233,6 +266,12 @@ const PromptBuilder: React.FC = () => {
 
   const handleGenerateImages = async () => {
     try {
+      if (!isAuthenticated) {
+        setError('Please sign in to generate images');
+        navigate('/auth');
+        return;
+      }
+
       setIsGeneratingImages(true);
       setError(null);
       setGeneratedImages([]);
@@ -338,6 +377,15 @@ const PromptBuilder: React.FC = () => {
       }
     });
   };
+
+  // Show loading while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-deep-bg pt-24 pb-12 flex items-center justify-center">
+        <div className="text-soft-lavender">Loading...</div>
+      </div>
+    );
+  }
 
   const openImageViewer = (index: number) => {
     setCurrentImageIndex(index);
