@@ -6,6 +6,54 @@ import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
 import { PromptTag, ExtractedPrompt } from '../types';
 
+// Title generation functions
+function extractKeywords(text: string) {
+  const matches = text.match(/(fist|graffiti|poster|illustration|street art|cyberpunk|comic|neon|motivational|defiance|urban|portrait|landscape|character|fashion|architecture|product|photography|digital art|oil painting|watercolor|anime|realistic|abstract|vintage|modern|dramatic|cinematic|studio|natural|professional)/gi) || [];
+  return { main: [...new Set(matches)].join(' ') || 'AI Artwork' };
+}
+
+function detectThemes(text: string) {
+  if (/fist|defiance|rebel|resistance|power|strength/i.test(text)) return { main: "Urban Resistance" };
+  if (/motivational|poster|power|inspiration/i.test(text)) return { main: '"NEVER GIVE UP"' };
+  if (/comic|superhero|graphic novel/i.test(text)) return { main: "Comic-Style Art" };
+  if (/portrait|headshot|face|person|model/i.test(text)) return { main: "Portrait Study" };
+  if (/landscape|nature|mountain|forest|ocean|sky/i.test(text)) return { main: "Landscape Art" };
+  if (/fashion|clothing|style|runway|editorial/i.test(text)) return { main: "Fashion Photography" };
+  if (/architecture|building|structure|interior|exterior/i.test(text)) return { main: "Architectural Design" };
+  if (/product|commercial|studio|catalog/i.test(text)) return { main: "Product Photography" };
+  if (/character|fantasy|creature|concept art/i.test(text)) return { main: "Character Design" };
+  if (/abstract|geometric|pattern|texture/i.test(text)) return { main: "Abstract Art" };
+  return { main: "AI Art Creation" };
+}
+
+function detectMood(text: string) {
+  if (/cyberpunk|neon|futuristic|sci-fi/i.test(text)) return "Cyberpunk";
+  if (/gritty|urban|street|raw|edgy/i.test(text)) return "Gritty";
+  if (/dramatic|intense|powerful|bold/i.test(text)) return "Dramatic";
+  if (/cinematic|movie|film|epic/i.test(text)) return "Cinematic";
+  if (/peaceful|serene|calm|gentle|soft/i.test(text)) return "Serene";
+  if (/vintage|retro|classic|nostalgic/i.test(text)) return "Vintage";
+  if (/professional|studio|commercial|clean/i.test(text)) return "Professional";
+  if (/natural|organic|authentic|realistic/i.test(text)) return "Natural";
+  if (/fantasy|magical|mystical|ethereal/i.test(text)) return "Fantasy";
+  if (/minimalist|simple|clean|modern/i.test(text)) return "Minimalist";
+  return "Creative";
+}
+
+function generatePromptTitle(promptText: string) {
+  if (!promptText.trim()) {
+    return 'Professional AI Prompt Builder';
+  }
+  
+  // Extract key elements
+  const keywords = extractKeywords(promptText);
+  const themes = detectThemes(promptText);
+  const mood = detectMood(promptText);
+  
+  // Format title with theme and mood
+  return `${themes.main} – ${mood} Style`;
+}
+
 interface PromptSection {
   title: string;
   fields: PromptField[];
@@ -500,23 +548,9 @@ const PromptBuilder: React.FC = () => {
   };
 
   const getDynamicTitle = () => {
-    // Find the values of the key fields
-    const mainSubject = sections[0]?.fields.find(field => field.label === 'Main Subject')?.value?.trim() || '';
-    const artStyle = sections[1]?.fields.find(field => field.label === 'Art Style')?.value?.trim() || '';
-    const mood = sections[1]?.fields.find(field => field.label === 'Mood & Atmosphere')?.value?.trim() || '';
-
-    // If all three fields have values, combine them
-    if (mainSubject && artStyle && mood) {
-      return `${mainSubject} in ${artStyle} style with ${mood} mood`;
-    }
-    
-    // If only Main Subject has a value, use it directly
-    if (mainSubject) {
-      return mainSubject;
-    }
-    
-    // Default title for all other cases
-    return 'Professional AI Prompt Builder';
+    // Get the combined prompt text from all fields
+    const promptText = getGeneratedPromptText();
+    return generatePromptTitle(promptText);
   };
 
   return (
