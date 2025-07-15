@@ -16,6 +16,7 @@ const Account: React.FC = () => {
   const [username, setUsername] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     getProfile();
@@ -38,6 +39,7 @@ const Account: React.FC = () => {
           avatar_url: user.user_metadata.avatar_url,
         });
         setUsername(profile?.username || '');
+        setIsAdmin(profile?.username === 'ADMIN');
       } else {
         navigate('/auth');
       }
@@ -178,6 +180,15 @@ const Account: React.FC = () => {
                   <h3 className="text-electric-cyan font-semibold mb-2">Prompt Extractor</h3>
                   <p className="text-soft-lavender/70 text-sm">Extract prompts from images</p>
                 </a>
+                {isAdmin && (
+                  <a
+                    href="/api-config"
+                    className="block p-4 bg-deep-bg rounded-lg border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
+                  >
+                    <h3 className="text-electric-cyan font-semibold mb-2">API Configuration</h3>
+                    <p className="text-soft-lavender/70 text-sm">Manage OpenAI API settings</p>
+                  </a>
+                )}
               </div>
             </div>
 

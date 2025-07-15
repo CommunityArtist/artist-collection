@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 
 const ApiConfig: React.FC = () => {
   const navigate = useNavigate();
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -26,6 +27,22 @@ const ApiConfig: React.FC = () => {
       navigate('/auth');
       return;
     }
+    
+    // Fetch user profile to check if admin
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+    
+    setUserProfile(profile);
+    
+    // Redirect non-admin users
+    if (profile?.username !== 'ADMIN') {
+      navigate('/');
+      return;
+    }
+    
     setIsAuthenticated(true);
   };
 

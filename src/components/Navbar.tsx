@@ -9,7 +9,6 @@ const navItems: NavItem[] = [
   { label: 'Home', href: '/' },
   { label: 'Library', href: '/library' },
   { label: 'Prompt Builder', href: '/prompt-builder' },
-  { label: 'API Config', href: '/api-config' },
   { label: 'Premium Plans', href: '/premium-plans' },
   { label: 'AI Tools', href: '#' },
   { label: 'Help', href: 'https://eeelffno.genspark.space/' }
@@ -24,6 +23,7 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -54,12 +54,36 @@ const Navbar: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const fetchUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-    });
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
+          .single();
+        setUserProfile(profile);
+      }
+    };
+
+    fetchUserData();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            setUserProfile(profile);
+          });
+      } else {
+        setUserProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -68,6 +92,8 @@ const Navbar: React.FC = () => {
   const handleExternalLink = (href: string) => {
     window.open(href, '_blank', 'noopener,noreferrer');
   };
+
+  const isAdmin = userProfile?.username === 'ADMIN';
   
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${
@@ -147,6 +173,17 @@ const Navbar: React.FC = () => {
                   )}
                 </li>
               ))}
+              {/* Admin-only API Config link */}
+              {isAdmin && (
+                <li>
+                  <Link 
+                    to="/api-config"
+                    className="text-soft-lavender hover:text-electric-cyan transition-colors duration-200"
+                  >
+                    API Config
+                  </Link>
+                </li>
+              )}
             </ul>
             
             <div className="flex items-center gap-4">
@@ -237,6 +274,18 @@ const Navbar: React.FC = () => {
                   )}
                 </li>
               ))}
+              {/* Admin-only API Config link for mobile */}
+              {isAdmin && (
+                <li>
+                  <Link 
+                    to="/api-config"
+                    className="block text-soft-lavender hover:text-electric-cyan transition-colors duration-200 py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    API Config
+                  </Link>
+                </li>
+              )}
             </ul>
             
             <div className="flex flex-col gap-3 mt-4">
