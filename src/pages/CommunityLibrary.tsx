@@ -46,6 +46,7 @@ const CommunityLibrary: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTags, setSelectedTags] = useState<PromptTag[]>([]);
