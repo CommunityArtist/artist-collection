@@ -20,7 +20,7 @@ serve(async (req) => {
   try {
     console.log('Extract-prompt function called');
     
-    // Check user authentication and API access
+    // Check user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Authentication required. Please sign in to use this feature.');
@@ -47,8 +47,11 @@ serve(async (req) => {
     // Use shared OpenAI API key from environment variables
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured. Please contact support.');
+      console.error('OpenAI API key not found in environment variables');
+      throw new Error('OpenAI API key not configured in system. Please contact support.');
     }
+
+    console.log('OpenAI API key found, initializing OpenAI client');
     
     const openai = new OpenAI({
       apiKey: openaiApiKey,
@@ -204,7 +207,7 @@ The goal is to create a prompt that would generate a very similar-looking image 
       }
     }
 
-    console.log('Returning extracted data:', extractedData);
+    console.log('Successfully extracted prompt data');
     return new Response(
       JSON.stringify(extractedData),
       {
@@ -213,21 +216,21 @@ The goal is to create a prompt that would generate a very similar-looking image 
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in extract-prompt function:', error);
     
     let errorMessage = 'An unexpected error occurred';
     
     if (error instanceof Error) {
       if (error.message.includes('Incorrect API key')) {
-        errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
+        errorMessage = 'Invalid OpenAI API key. Please contact support.';
       } else if (error.message.includes('You exceeded your current quota')) {
-        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
+        errorMessage = 'OpenAI API quota exceeded. Please contact support.';
       } else if (error.message.includes('API key not found')) {
-        errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
+        errorMessage = 'OpenAI API key not configured in system. Please contact support.';
       } else if (error.message.includes('insufficient_quota')) {
-        errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
+        errorMessage = 'Insufficient OpenAI credits. Please contact support.';
       } else if (error.message.includes('invalid_api_key')) {
-        errorMessage = 'Invalid OpenAI API key format. Please check your API key in settings.';
+        errorMessage = 'Invalid OpenAI API key. Please contact support.';
       } else if (error.message.includes('network')) {
         errorMessage = 'Network error occurred while connecting to OpenAI';
       } else if (error.message.includes('image')) {

@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Check user authentication and API access
+    // Check user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Authentication required. Please sign in to use this feature.');
@@ -44,8 +44,11 @@ Deno.serve(async (req) => {
     // Use shared OpenAI API key from environment variables
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured. Please contact support.');
+      console.error('OpenAI API key not found in environment variables');
+      throw new Error('OpenAI API key not configured in system. Please contact support.');
     }
+
+    console.log('OpenAI API key found, initializing OpenAI client');
 
     const openai = new OpenAI({
       apiKey: openaiApiKey,
@@ -107,6 +110,8 @@ Write your response as one continuous, descriptive paragraph that reads naturall
 
     userPrompt += `. Create a cohesive, detailed prompt that produces photorealistic, human-like images with natural skin texture with visible pores and subtle imperfections, realistic lighting that shows natural shadows and highlights, authentic human expressions and genuine emotions, natural hair texture and individual strand details, realistic fabric textures and natural clothing drape, and candid, unposed feeling with authentic atmosphere. Include specific camera and lens recommendations optimized for natural human photography. Focus on creating vivid, lifelike imagery while maintaining photographic authenticity and professional quality. Avoid artificial or overly perfect descriptions and emphasize natural, realistic human features. Write everything as one continuous paragraph without any formatting symbols, headings, or bullet points.`;
 
+    console.log('Calling OpenAI API to generate prompt');
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -123,17 +128,17 @@ Write your response as one continuous, descriptive paragraph that reads naturall
       throw new Error('OpenAI API returned an empty response');
     }
 
-    let promptData;
+    let promptResponse;
     try {
       // Parse the JSON response
-      promptData = JSON.parse(response);
+      promptResponse = JSON.parse(response);
       
       // Validate the response structure
-      if (!promptData.prompt || !promptData.negativePrompt) {
+      if (!promptResponse.prompt || !promptResponse.negativePrompt) {
         throw new Error('Invalid response structure: missing prompt or negativePrompt');
       }
       
-      if (typeof promptData.prompt !== 'string' || typeof promptData.negativePrompt !== 'string') {
+      if (typeof promptResponse.prompt !== 'string' || typeof promptResponse.negativePrompt !== 'string') {
         throw new Error('Invalid response structure: prompt and negativePrompt must be strings');
       }
     } catch (parseError) {
@@ -142,29 +147,31 @@ Write your response as one continuous, descriptive paragraph that reads naturall
       throw new Error('Failed to parse AI response. Please try again.');
     }
 
+    console.log('Successfully generated prompt');
+
     return new Response(
-      JSON.stringify(promptData),
+      JSON.stringify(promptResponse),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in generate-prompt function:', error);
     
     let errorMessage = 'An unexpected error occurred';
     
     if (error instanceof Error) {
       if (error.message.includes('Incorrect API key')) {
-        errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
+        errorMessage = 'Invalid OpenAI API key. Please contact support.';
       } else if (error.message.includes('You exceeded your current quota')) {
-        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
+        errorMessage = 'OpenAI API quota exceeded. Please contact support.';
       } else if (error.message.includes('API key not found')) {
-        errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
+        errorMessage = 'OpenAI API key not configured in system. Please contact support.';
       } else if (error.message.includes('insufficient_quota')) {
-        errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
+        errorMessage = 'Insufficient OpenAI credits. Please contact support.';
       } else if (error.message.includes('invalid_api_key')) {
-        errorMessage = 'Invalid OpenAI API key format. Please check your API key in settings.';
+        errorMessage = 'Invalid OpenAI API key. Please contact support.';
       } else if (error.message.includes('network')) {
         errorMessage = 'Network error occurred while connecting to OpenAI';
       } else {

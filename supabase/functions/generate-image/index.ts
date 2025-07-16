@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Check user authentication and API access
+    // Check user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Authentication required. Please sign in to use this feature.');
@@ -62,9 +62,12 @@ Deno.serve(async (req) => {
     // Use shared OpenAI API key from environment variables
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured. Please contact support.');
+      console.error('OpenAI API key not found in environment variables');
+      throw new Error('OpenAI API key not configured in system. Please contact support.');
     }
 
+    console.log('OpenAI API key found, initializing OpenAI client');
+    
     const openai = new OpenAI({
       apiKey: openaiApiKey,
     });
@@ -90,8 +93,12 @@ Deno.serve(async (req) => {
     const imageUrls: string[] = [];
     let lastError: Error | null = null;
 
+    console.log(`Generating ${imagesToGenerate} images with DALL-E 3`);
+
     for (let i = 0; i < imagesToGenerate; i++) {
       try {
+        console.log(`Generating image ${i + 1}/${imagesToGenerate}`);
+        
         const response = await openai.images.generate({
           model: "dall-e-3",
           prompt: prompt,
@@ -104,6 +111,7 @@ Deno.serve(async (req) => {
         const imageUrl = response.data[0]?.url;
         if (imageUrl) {
           imageUrls.push(imageUrl);
+          console.log(`Successfully generated image ${i + 1}`);
         }
       } catch (imageError) {
         console.error(`Error generating image ${i + 1}:`, imageError);
@@ -122,9 +130,11 @@ Deno.serve(async (req) => {
       if (lastError) {
         throw lastError;
       } else {
-        throw new Error('Failed to generate any images. Please check your OpenAI API key configuration and try again.');
+        throw new Error('Failed to generate any images. Please try again.');
       }
     }
+
+    console.log(`Successfully generated ${imageUrls.length} images`);
 
     // Return the first image URL for backward compatibility
     // and include all URLs in the response
@@ -143,25 +153,25 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in generate-image function:', error);
     
     let errorMessage = 'An unexpected error occurred';
     
     if (error instanceof Error) {
       if (error.message.includes('Incorrect API key')) {
-        errorMessage = 'Invalid OpenAI API key. Please check your API key in settings.';
+        errorMessage = 'Invalid OpenAI API key. Please contact support.';
       } else if (error.message.includes('content filters')) {
         errorMessage = 'Your prompt was blocked by OpenAI\'s content filters. Please modify your prompt to comply with OpenAI\'s usage policies and avoid content that may be considered inappropriate, violent, sexual, or hateful.';
       } else if (error.message.includes('You exceeded your current quota')) {
-        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
+        errorMessage = 'OpenAI API quota exceeded. Please contact support.';
       } else if (error.message.includes('API key not found')) {
-        errorMessage = 'OpenAI API key not found. Please configure your API key in the settings.';
+        errorMessage = 'OpenAI API key not configured in system. Please contact support.';
       } else if (error.message.includes('insufficient_quota')) {
-        errorMessage = 'Insufficient OpenAI credits. Please add credits to your OpenAI account.';
+        errorMessage = 'Insufficient OpenAI credits. Please contact support.';
       } else if (error.message.includes('invalid_api_key')) {
-        errorMessage = 'Invalid OpenAI API key format. Please check your API key in settings.';
+        errorMessage = 'Invalid OpenAI API key. Please contact support.';
       } else if (error.message.includes('quota')) {
-        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing.';
+        errorMessage = 'OpenAI API quota exceeded. Please contact support.';
       } else if (error.message.includes('network')) {
         errorMessage = 'Network error occurred while connecting to OpenAI';
       } else if (error.message.includes('authentication')) {
