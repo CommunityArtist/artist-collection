@@ -20,6 +20,42 @@ serve(async (req) => {
   try {
     console.log('Extract-prompt function called');
     
+    // Check user authentication and API access
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Authentication required. Please sign in to use this feature.');
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get user from auth token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      throw new Error('Invalid authentication. Please sign in again.');
+    }
+
+    // Check if user has API access
+    const { data: accessData, error: accessError } = await supabase
+      .from('api_access')
+      .select('has_access')
+      .eq('user_email', user.email)
+      .eq('has_access', true)
+      .single();
+
+    if (accessError || !accessData) {
+      throw new Error('You do not have access to AI features. Please contact support for access.');
+    }
+
     // Use shared OpenAI API key from environment variables
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
