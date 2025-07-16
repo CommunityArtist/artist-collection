@@ -203,17 +203,6 @@ const Navbar: React.FC = () => {
                   )}
                 </li>
               ))}
-              {/* Admin-only API Config link */}
-              {isAdmin && (
-                <li>
-                  <Link 
-                    to="/api-config"
-                    className="text-soft-lavender hover:text-electric-cyan transition-colors duration-200"
-                  >
-                    API Config
-                  </Link>
-                </li>
-              )}
             </ul>
             
             <div className="flex items-center gap-4">
@@ -304,18 +293,6 @@ const Navbar: React.FC = () => {
                   )}
                 </li>
               ))}
-              {/* Admin-only API Config link for mobile */}
-              {isAdmin && (
-                <li>
-                  <Link 
-                    to="/api-config"
-                    className="block text-soft-lavender hover:text-electric-cyan transition-colors duration-200 py-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    API Config
-                  </Link>
-                </li>
-              )}
             </ul>
             
             <div className="flex flex-col gap-3 mt-4">

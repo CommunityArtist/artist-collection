@@ -13,40 +13,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Get the authorization header to identify the user
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      throw new Error('Authorization header is required');
-    }
-
-    // Extract the JWT token
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Get user from the token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !user) {
-      throw new Error('Invalid authentication token');
-    }
-
-    // Fetch user-specific API key
-    const { data: apiConfig, error: fetchError } = await supabaseClient
-      .from('api_config')
-      .select('key_value')
-      .eq('key_name', 'openai_api_key')
-      .eq('user_id', user.id)
-      .single();
-
-    if (fetchError || !apiConfig?.key_value) {
-      throw new Error('OpenAI API key not found. Please configure your API key in the API Configuration page. Go to Account > API Config to set up your OpenAI API key.');
+    // Use shared OpenAI API key from environment variables
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API key not configured. Please contact support.');
     }
 
     const openai = new OpenAI({
-      apiKey: apiConfig.key_value,
+      apiKey: openaiApiKey,
     });
 
     const { prompt, promptData } = await req.json();

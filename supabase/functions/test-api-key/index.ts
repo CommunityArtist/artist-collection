@@ -16,47 +16,14 @@ serve(async (req) => {
   try {
     console.log('Testing API key...');
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Get the authorization header to identify the user
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      throw new Error('Authorization header is required');
+    // Use shared OpenAI API key from environment variables
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API key not configured. Please contact support.');
     }
-
-    // Extract the JWT token
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Get user from the token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !user) {
-      throw new Error('Invalid authentication token');
-    }
-
-    console.log('Fetching user-specific API key from database...');
-    const { data: apiConfig, error: fetchError } = await supabaseClient
-      .from('api_config')
-      .select('key_value')
-      .eq('key_name', 'openai_api_key')
-      .eq('user_id', user.id)
-      .single();
-
-    if (fetchError) {
-      console.error('Database fetch error:', fetchError);
-      throw new Error(`Database error: ${fetchError.message}`);
-    }
-
-    if (!apiConfig?.key_value) {
-      throw new Error('No OpenAI API key found. Please configure your API key in the API Configuration page. Go to Account > API Config to set up your OpenAI API key.');
-    }
-
-    console.log('API key found, testing with OpenAI...');
     
     const openai = new OpenAI({
-      apiKey: apiConfig.key_value,
+      apiKey: openaiApiKey,
     });
 
     // Test with a simple completion

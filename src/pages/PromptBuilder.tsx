@@ -143,14 +143,41 @@ const PromptBuilder: React.FC = () => {
       setIsGeneratingPrompt(true);
       setError(null);
 
-      // Simple prompt generation without Edge Function for now
+      // Get auth session for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please sign in to generate prompts');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(promptData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate prompt');
+      }
+
+      setGeneratedPrompt(data.prompt);
+      
+    } catch (error) {
+      console.error('Error generating prompt:', error);
+      
+      // Fallback to local generation if API fails
       const { subject, setting, lighting, style, mood } = promptData;
       
       if (!subject || !setting || !lighting || !style || !mood) {
-        throw new Error('Please fill in all required fields');
+        setError('Please fill in all required fields');
+        return;
       }
 
-      // Generate a basic prompt locally
+      // Generate a basic prompt locally as fallback
       let prompt = `${subject} in ${setting}, ${lighting}, ${style} style, ${mood} mood`;
       
       if (promptData['post-processing']) {
@@ -162,9 +189,6 @@ const PromptBuilder: React.FC = () => {
       }
 
       setGeneratedPrompt(prompt);
-    } catch (error) {
-      console.error('Error generating prompt:', error);
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsGeneratingPrompt(false);
     }

@@ -204,15 +204,13 @@ const Account: React.FC = () => {
                   <h3 className="text-electric-cyan font-semibold mb-2">Prompt Extractor</h3>
                   <p className="text-soft-lavender/70 text-sm">Extract prompts from images</p>
                 </a>
-                {isAdmin && (
-                  <a
-                    href="/api-config"
-                    className="block p-4 bg-deep-bg rounded-lg border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
-                  >
-                    <h3 className="text-electric-cyan font-semibold mb-2">API Configuration</h3>
-                    <p className="text-soft-lavender/70 text-sm">Manage OpenAI API settings</p>
-                  </a>
-                )}
+                <a
+                  href="/prompt-builder"
+                  className="block p-4 bg-deep-bg rounded-lg border border-border-color hover:border-cosmic-purple/40 transition-all duration-300"
+                >
+                  <h3 className="text-electric-cyan font-semibold mb-2">Prompt Builder</h3>
+                  <p className="text-soft-lavender/70 text-sm">Build and generate AI prompts</p>
+                </a>
               </div>
             </div>
 
