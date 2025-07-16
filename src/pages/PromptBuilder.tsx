@@ -209,19 +209,12 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Please sign in to generate images');
       }
 
-      console.log('=== DEBUGGING IMAGE GENERATION ===');
-      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-      console.log('Function URL:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`);
-      console.log('Session check:', { hasSession: !!session, hasAccessToken: !!session.access_token });
-      
       const requestPayload = {
         prompt: promptToUse,
         imageDimensions: imageDimensions,
         numberOfImages: numberOfImages
       };
       
-      console.log('Request payload:', requestPayload);
-      console.log('Testing image generation endpoint...');
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
         method: 'POST',
@@ -232,11 +225,7 @@ const PromptBuilder: React.FC = () => {
         body: JSON.stringify(requestPayload),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
       const data = await response.json();
-      console.log('Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
