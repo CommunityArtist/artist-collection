@@ -26,7 +26,6 @@ const Navbar: React.FC = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   
@@ -83,10 +82,8 @@ const Navbar: React.FC = () => {
           } else {
             setUserProfile(profile);
           }
-          setIsAdmin(profile?.username === 'ADMIN');
         } else {
           setUserProfile(null);
-          setIsAdmin(false);
         }
       } catch (error) {
         console.error('Failed to fetch user data:', error);
@@ -114,10 +111,8 @@ const Navbar: React.FC = () => {
             console.warn('Profile fetch error on auth change:', error);
             setUserProfile(null);
           });
-        setIsAdmin(profile?.username === 'ADMIN');
       } else {
         setUserProfile(null);
-        setIsAdmin(false);
       }
     });
 
