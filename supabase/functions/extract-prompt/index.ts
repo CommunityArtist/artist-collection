@@ -44,20 +44,8 @@ serve(async (req) => {
       throw new Error('Invalid authentication. Please sign in again.');
     }
 
-    // Check if user has API access
-    const { data: accessData, error: accessError } = await supabase
-      .from('api_access')
-      .select('has_access')
-      .eq('user_email', user.email)
-      .eq('has_access', true)
-      .single();
-
-    if (accessError || !accessData) {
-      throw new Error('You do not have access to AI features. Please contact support for access.');
-    }
-
     // Use shared OpenAI API key from environment variables
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
       throw new Error('OpenAI API key not configured. Please contact support.');
     }
