@@ -187,7 +187,93 @@ const PromptBuilder: React.FC = () => {
   };
 
   const handleGenerateImages = async () => {
-    setError('Image generation requires Edge Functions to be properly configured. Please check your Supabase setup.');
+    try {
+      if (!isAuthenticated) {
+        setError('Please sign in to generate images');
+        navigate('/auth');
+        return;
+      }
+
+      setIsGeneratingImages(true);
+      setError(null);
+
+      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+      
+      if (!promptToUse) {
+        throw new Error('Please generate a prompt first');
+      }
+
+      // Get auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please sign in to generate images');
+      }
+
+      console.log('=== DEBUGGING IMAGE GENERATION ===');
+      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      console.log('Function URL:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`);
+      console.log('Session check:', { hasSession: !!session, hasAccessToken: !!session.access_token });
+      
+      const requestPayload = {
+        prompt: promptToUse,
+        imageDimensions: imageDimensions,
+        numberOfImages: numberOfImages
+      };
+      
+      console.log('Request payload:', requestPayload);
+      console.log('Testing image generation endpoint...');
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Handle both single image and multiple images response
+      if (data.imageUrls && Array.isArray(data.imageUrls)) {
+        setGeneratedImages(data.imageUrls);
+      } else if (data.imageUrl) {
+        setGeneratedImages([data.imageUrl]);
+      } else {
+        throw new Error('No images returned from the API');
+      }
+
+    } catch (error) {
+      console.error('Error generating images:', error);
+      
+      let errorMessage = 'Failed to generate images';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to connect to the image generation service. This could be because:\n\n1. The Supabase Edge Function "generate-image" is not deployed\n2. Your internet connection is unstable\n3. The service is temporarily unavailable\n\nPlease try again in a moment or contact support if the issue persists.';
+        } else if (error.message.includes('OpenAI API key')) {
+          errorMessage = 'OpenAI API key not configured. Please go to Account → API Config to set up your OpenAI API key.';
+        } else if (error.message.includes('quota')) {
+          errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing.';
+        } else if (error.message.includes('content filters')) {
+          errorMessage = 'Your prompt was blocked by OpenAI\'s content filters. Please modify your prompt to comply with OpenAI\'s usage policies.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsGeneratingImages(false);
+    }
   };
 
   const handleCopyPrompt = async () => {
@@ -583,7 +669,7 @@ const PromptBuilder: React.FC = () => {
                       ) : (
                         <>
                           <ImageIcon className="w-5 h-5 mr-2" />
-                          Generate Images (Requires Setup)
+                          Generate Images
                         </>
                       )}
                     </Button>
@@ -675,6 +761,48 @@ const PromptBuilder: React.FC = () => {
                     >
                       <Save className="w-4 h-4 mr-2" />
                       Save
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {generatedImages.length > 0 && (
+                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+                  <h2 className="text-xl font-bold text-soft-lavender mb-4">Generated Images</h2>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {generatedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative group cursor-pointer">
+                        <img
+                          src={imageUrl}
+                          alt={`Generated artwork ${index + 1}`}
+                          className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105"
+                          onClick={() => openImageViewer(index)}
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                          <Eye className="w-8 h-8 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openImageViewer(0)}
+                      className="flex-1"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Gallery
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSavePrompt(generatedImages[0])}
+                      className="flex-1"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Save with Image
                     </Button>
                   </div>
                 </div>
