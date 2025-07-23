@@ -76,33 +76,40 @@ serve(async (req) => {
       try {
         console.log(`Generating image ${i + 1}/${imagesToGenerate}`);
         
-        const affogatoResponse = await fetch('https://api.affogato.ai/v1/generations', {
+        const affogatoResponse = await fetch('https://api.rendernet.ai/pub/v1/generations', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${affogatoApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            prompt: prompt,
-            model: model,
+            text: prompt,
+            model_id: "REALISTIC_VISION_V6",
             width: width,
             height: height,
+            guidance_scale: 7.5,
+            num_inference_steps: 20,
+            scheduler: "DPM++ 2M Karras"
           }),
         });
 
         if (!affogatoResponse.ok) {
           const errorData = await affogatoResponse.text();
-          console.error('Affogato AI API error:', errorData);
-          throw new Error(`Affogato AI API error: ${affogatoResponse.status} ${affogatoResponse.statusText}`);
+          console.error('RenderNet AI API error:', errorData);
+          throw new Error(`RenderNet AI API error: ${affogatoResponse.status} ${affogatoResponse.statusText}`);
         }
 
         const affogatoData = await affogatoResponse.json();
         
-        if (affogatoData.output_url) {
+        if (affogatoData.image_url) {
+          imageUrls.push(affogatoData.image_url);
+          console.log(`Successfully generated image ${i + 1}`);
+        } else if (affogatoData.output_url) {
           imageUrls.push(affogatoData.output_url);
           console.log(`Successfully generated image ${i + 1}`);
         } else {
-          throw new Error('Affogato AI did not return an image URL.');
+          console.error('API Response:', affogatoData);
+          throw new Error('RenderNet AI did not return an image URL.');
         }
 
       } catch (imageError) {
@@ -116,11 +123,11 @@ serve(async (req) => {
       if (lastError) {
         throw lastError;
       } else {
-        throw new Error('Failed to generate any images from Affogato AI. Please try again.');
+        throw new Error('Failed to generate any images from RenderNet AI. Please try again.');
       }
     }
 
-    console.log(`Successfully generated ${imageUrls.length} images from Affogato AI`);
+    console.log(`Successfully generated ${imageUrls.length} images from RenderNet AI`);
 
     return new Response(
       JSON.stringify({
@@ -141,14 +148,14 @@ serve(async (req) => {
     let errorMessage = 'An unexpected error occurred';
     
     if (error instanceof Error) {
-      if (error.message.includes('Invalid API key')) {
-        errorMessage = 'Invalid Affogato API key. Please contact support.';
+      if (error.message.includes('Invalid API key') || error.message.includes('401')) {
+        errorMessage = 'Invalid RenderNet API key. Please contact support.';
       } else if (error.message.includes('quota')) {
-        errorMessage = 'Affogato API quota exceeded. Please contact support.';
+        errorMessage = 'RenderNet API quota exceeded. Please contact support.';
       } else if (error.message.includes('API key not found')) {
-        errorMessage = 'Affogato API key not configured in system. Please contact support.';
+        errorMessage = 'RenderNet API key not configured in system. Please contact support.';
       } else if (error.message.includes('network')) {
-        errorMessage = 'Network error occurred while connecting to Affogato AI';
+        errorMessage = 'Network error occurred while connecting to RenderNet AI';
       } else if (error.message.includes('authentication')) {
         errorMessage = 'Authentication failed. Please sign in again.';
       } else {

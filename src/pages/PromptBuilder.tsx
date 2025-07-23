@@ -727,7 +727,7 @@ const PromptBuilder: React.FC = () => {
                             checked={imageProvider === 'affogato'}
                             onChange={() => setImageProvider('affogato')}
                           />
-                          <span className="ml-2 text-soft-lavender">Affogato AI</span>
+                          <span className="ml-2 text-soft-lavender">RenderNet AI</span>
                         </label>
                       </div>
                     </div>
