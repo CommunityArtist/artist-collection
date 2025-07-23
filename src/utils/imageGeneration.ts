@@ -65,13 +65,56 @@ function getDimensionsFromRatio(ratio: string): [number, number] {
 }
 
 // Function to test if Edge Functions are available
-export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string): Promise<boolean> {
+export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 5000): Promise<boolean> {
   try {
+    // Use AbortController to timeout the request quickly
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
     const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
       method: 'OPTIONS',
+      signal: controller.signal,
+      // Add headers to avoid preflight issues
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
     });
-    return response.ok;
-  } catch {
+    
+    clearTimeout(timeoutId);
+    
+    // Even a 404 or 405 means the function endpoint exists
+    return response.status !== 0 && response.status < 500;
+  } catch (error) {
+    // Don't log expected errors for unavailable functions
+    return false;
+  }
+}
+
+// Cached result to avoid repeated checks
+let edgeFunctionCache: { [key: string]: { available: boolean; timestamp: number } } = {};
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, functionName: string): Promise<boolean> {
+  const cacheKey = `${supabaseUrl}/${functionName}`;
+  const now = Date.now();
+  
+  // Check cache first
+  if (edgeFunctionCache[cacheKey] && (now - edgeFunctionCache[cacheKey].timestamp < CACHE_DURATION)) {
+    return edgeFunctionCache[cacheKey].available;
+  }
+  
+  // Test availability
+  const available = await testEdgeFunctionAvailability(supabaseUrl, functionName, 3000);
+  
+  // Cache result
+  edgeFunctionCache[cacheKey] = {
+    available,
+    timestamp: now
+  };
+  
+  return available;
+}</parameter>
     return false;
   }
 }
