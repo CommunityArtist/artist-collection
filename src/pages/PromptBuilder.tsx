@@ -86,7 +86,6 @@ const PromptBuilder: React.FC = () => {
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isCheckingFunctions, setIsCheckingFunctions] = useState(false);
-  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -558,18 +557,20 @@ const PromptBuilder: React.FC = () => {
                     <Settings className="w-5 h-5 text-electric-cyan" />
                     Prompt Configuration
                   </h2>
-                  <div className="flex items-center gap-3">
-                    {/* Mode Toggle */}
-                    <button
-                      onClick={() => setUseFallbackMode(!useFallbackMode)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        useFallbackMode
-                          ? 'bg-cosmic-purple/20 text-cosmic-purple'
-                          : 'bg-electric-cyan/20 text-electric-cyan'
-                      }`}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={forceRefreshEdgeFunctions}
+                      disabled={isCheckingFunctions}
+                      className="text-xs px-2 py-1"
                     >
-                      {useFallbackMode ? 'Local Mode' : 'AI Mode'}
-                    </button>
+                      {isCheckingFunctions ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -583,33 +584,17 @@ const PromptBuilder: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Subject */}
+                  {/* Subject & Setting */}
                   <div>
                     <label className="block text-soft-lavender mb-2 font-medium">
                       <Target className="w-4 h-4 inline mr-2" />
-                      Subject
+                      Subject & Setting
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., A young woman with curly hair"
-                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                      value={promptData.subject}
-                      onChange={(e) => handleInputChange('subject', e.target.value)}
-                    />
-                  </div>
-
-                  {/* Setting */}
-                  <div>
-                    <label className="block text-soft-lavender mb-2 font-medium">
-                      <Camera className="w-4 h-4 inline mr-2" />
-                      Setting
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Modern coffee shop with large windows"
-                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                      value={promptData.setting}
-                      onChange={(e) => handleInputChange('setting', e.target.value)}
+                    <textarea
+                      placeholder="e.g., A young woman with curly hair in a modern coffee shop with large windows"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none h-24"
+                      value={promptData.subjectAndSetting}
+                      onChange={(e) => handleInputChange('subjectAndSetting', e.target.value)}
                     />
                   </div>
 
@@ -768,23 +753,8 @@ const PromptBuilder: React.FC = () => {
                 <div className="mt-4 p-3 bg-deep-bg rounded-lg flex items-center justify-between">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    Mode: {useFallbackMode ? '🔧 Local template generation' : '🤖 AI-powered prompt generation'}
+                    Mode: {edgeFunctionsAvailable ? '🤖 AI-powered prompt generation' : '🔧 Local template generation'}
                   </p>
-                  {edgeFunctionsAvailable && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={forceRefreshEdgeFunctions}
-                      disabled={isCheckingFunctions}
-                      className="text-xs px-2 py-1"
-                    >
-                      {isCheckingFunctions ? (
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3 h-3" />
-                      )}
-                    </Button>
-                  )}
                 </div>
 
                 {/* Generate Prompt Button */}
@@ -794,7 +764,7 @@ const PromptBuilder: React.FC = () => {
                     size="lg"
                     className="w-full"
                     onClick={handleGeneratePrompt}
-                    disabled={isGeneratingPrompt || !promptData.subject || !promptData.setting || !promptData.lighting || !promptData.style || !promptData.mood}
+                    disabled={isGeneratingPrompt || !promptData.subjectAndSetting || !promptData.lighting || !promptData.style || !promptData.mood}
                   >
                     {isGeneratingPrompt ? (
                       <>
