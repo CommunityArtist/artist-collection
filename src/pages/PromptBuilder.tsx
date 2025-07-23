@@ -115,10 +115,20 @@ const PromptBuilder: React.FC = () => {
       setEdgeFunctionsAvailable(available);
       if (!available) {
         setUseFallbackMode(true);
+      } else {
+        // If Edge Functions are available and user was previously in fallback mode,
+        // automatically switch to AI mode for better experience
+        if (useFallbackMode) {
+          setUseFallbackMode(false);
+        }
       }
     };
     checkEdgeFunctions();
-  }, []);
+    
+    // Also check every 30 seconds for newly deployed functions
+    const interval = setInterval(checkEdgeFunctions, 30000);
+    return () => clearInterval(interval);
+  }, [useFallbackMode]);
 
   // Handle data from Prompt Extractor
   useEffect(() => {
@@ -551,9 +561,9 @@ const PromptBuilder: React.FC = () => {
             {/* Left Column - Form */}
             <div className="space-y-6">
               {/* Edge Functions Status */}
-              <div className={`rounded-lg p-4 border ${
+              <div className={`rounded-lg p-4 border transition-all duration-300 ${
                 edgeFunctionsAvailable 
-                  ? 'bg-success-green/10 border-success-green/20' 
+                  ? 'bg-success-green/10 border-success-green/20 animate-pulse' 
                   : 'bg-alert-orange/10 border-alert-orange/20'
               }`}>
                 <div className="flex items-start gap-3">
@@ -568,11 +578,24 @@ const PromptBuilder: React.FC = () => {
                     <p className={`text-sm font-medium ${
                       edgeFunctionsAvailable ? 'text-success-green' : 'text-alert-orange'
                     }`}>
-                      {edgeFunctionsAvailable ? 'Edge Functions Available' : 'Edge Functions Not Deployed'}
+                      {edgeFunctionsAvailable ? '🚀 Edge Functions Active - Full AI Features Enabled!' : 'Edge Functions Not Deployed'}
                     </p>
                     <p className="text-xs text-soft-lavender/70 mt-1">
-                      {edgeFunctionsAvailable ? 'Full AI functionality enabled' : 'Using local fallback generation. Deploy Edge Functions for full AI features.'}
+                      {edgeFunctionsAvailable ? 'OpenAI DALL-E 3, RenderNet AI, and advanced prompt generation are now available' : 'Using local fallback generation. Deploy Edge Functions for full AI features.'}
                     </p>
+                    {edgeFunctionsAvailable && (
+                      <div className="mt-2 flex gap-2">
+                        <span className="text-xs bg-success-green/20 text-success-green px-2 py-1 rounded-full">
+                          ✓ Prompt Generation
+                        </span>
+                        <span className="text-xs bg-success-green/20 text-success-green px-2 py-1 rounded-full">
+                          ✓ Image Generation
+                        </span>
+                        <span className="text-xs bg-success-green/20 text-success-green px-2 py-1 rounded-full">
+                          ✓ Prompt Extraction
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -587,10 +610,11 @@ const PromptBuilder: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => setUseFallbackMode(!useFallbackMode)}
-                    className={`mr-3 ${useFallbackMode ? 'bg-cosmic-purple/20' : ''}`}
+                    className={`mr-3 ${useFallbackMode ? 'bg-cosmic-purple/20' : ''} ${!edgeFunctionsAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!edgeFunctionsAvailable}
                   >
                     <Info className="w-4 h-4 mr-2" />
-                    {useFallbackMode ? 'Local Mode' : 'AI Mode'}
+                    {useFallbackMode ? 'Local Mode' : 'AI Mode'} {edgeFunctionsAvailable && '🤖'}
                   </Button>
                   <Button
                     variant="outline"
@@ -789,7 +813,10 @@ const PromptBuilder: React.FC = () => {
                 <div className="mt-4 p-3 bg-deep-bg rounded-lg">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    {useFallbackMode ? 'Using local prompt generation' : 'Using AI-powered prompt generation'}
+                    {edgeFunctionsAvailable 
+                      ? (useFallbackMode ? 'Using local prompt generation (AI available)' : '🤖 Using AI-powered prompt generation') 
+                      : 'Using local prompt generation (AI unavailable)'
+                    }
                   </p>
                 </div>
 

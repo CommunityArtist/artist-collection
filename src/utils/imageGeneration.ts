@@ -93,7 +93,7 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
 
 // Cached result to avoid repeated checks
 let edgeFunctionCache: { [key: string]: { available: boolean; timestamp: number } } = {};
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 30 * 1000; // 30 seconds (shorter for better detection of newly deployed functions)
 
 export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, functionName: string): Promise<boolean> {
   const cacheKey = `${supabaseUrl}/${functionName}`;
@@ -105,13 +105,18 @@ export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, fu
   }
   
   // Test availability
-  const available = await testEdgeFunctionAvailability(supabaseUrl, functionName, 3000);
+  const available = await testEdgeFunctionAvailability(supabaseUrl, functionName, 5000);
   
   // Cache result
   edgeFunctionCache[cacheKey] = {
     available,
     timestamp: now
   };
+  
+  // Log successful detection (but not failures to avoid spam)
+  if (available) {
+    console.log(`✅ Edge Functions detected and available: ${functionName}`);
+  }
   
   return available;
 }
