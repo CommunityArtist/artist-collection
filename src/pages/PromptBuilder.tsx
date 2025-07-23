@@ -33,7 +33,15 @@ import { supabase } from '../lib/supabase';
 import { generatePromptLocally, enhancePromptWithCategory, type PromptData as LocalPromptData } from '../utils/promptGeneration';
 import { generateImagesWithFallback, testEdgeFunctionAvailability, getImageGenerationErrorMessage, clearEdgeFunctionCache } from '../utils/imageGeneration';
 import { ExtractedPrompt } from '../types';
-import { PromptData } from '../utils/promptGeneration';</action>
+
+interface PromptData {
+  subjectAndSetting: string;
+  lighting: string;
+  style: string;
+  mood: string;
+  'post-processing': string;
+  enhancement: string;
+}
 
 const PromptBuilder: React.FC = () => {
   const location = useLocation();
@@ -43,7 +51,6 @@ const PromptBuilder: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState(false);
-  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
@@ -142,7 +149,7 @@ const PromptBuilder: React.FC = () => {
       
       // Map extracted data to form fields
       setPromptData({
-        subjectAndSetting: `${extractedData.mainPrompt.split('.')[0] || ''}, ${extractedData.composition || ''}`,
+        subjectAndSetting: `${extractedData.mainPrompt.split('.')[0] || ''} in ${extractedData.composition || ''}`,
         lighting: extractedData.lighting || '',
         style: extractedData.styleElements.join(', ') || '',
         mood: extractedData.mood || '',
@@ -177,13 +184,12 @@ const PromptBuilder: React.FC = () => {
       setIsGeneratingPrompt(true);
       setError(null);
 
-      // Use local generation if Edge Functions are not available or user prefers fallback
-      if (useFallbackMode || !edgeFunctionsAvailable) {
+      // Try AI generation first, fall back to local if it fails
+      if (!edgeFunctionsAvailable) {
         try {
           console.log('🔧 Using local prompt generation');
           const localPromptData: LocalPromptData = {
-            subject: promptData.subject,
-            setting: promptData.setting,
+            subjectAndSetting: promptData.subjectAndSetting,
             lighting: promptData.lighting,
             style: promptData.style,
             mood: promptData.mood,
@@ -201,11 +207,7 @@ const PromptBuilder: React.FC = () => {
           setGeneratedPrompt(finalPrompt);
           
           // Show success message for local generation
-          if (useFallbackMode && edgeFunctionsAvailable) {
-            setError('✅ Generated using local templates (AI mode available but local mode selected)');
-          } else if (!edgeFunctionsAvailable) {
-            setError('✅ Generated using advanced local templates - Click Refresh to detect deployed functions');
-          }
+          setError('✅ Generated using advanced local templates - Click Refresh to detect deployed functions');
           
           return;
         } catch (localError) {
@@ -264,10 +266,10 @@ const PromptBuilder: React.FC = () => {
       
       // Try fallback local generation if API completely fails
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        const { subject, setting, lighting, style, mood } = promptData;
+        const { subjectAndSetting, lighting, style, mood } = promptData;
         
-        if (subject && setting && lighting && style && mood) {
-          let prompt = `${subject} in ${setting}, ${lighting}, ${style} style, ${mood} mood`;
+        if (subjectAndSetting && lighting && style && mood) {
+          let prompt = `${subjectAndSetting}, ${lighting}, ${style} style, ${mood} mood`;
           
           if (promptData['post-processing']) {
             prompt += `, ${promptData['post-processing']}`;
@@ -555,18 +557,20 @@ const PromptBuilder: React.FC = () => {
                     <Settings className="w-5 h-5 text-electric-cyan" />
                     Prompt Configuration
                   </h2>
-                  <div className="flex items-center gap-3">
-                    {/* Mode Toggle */}
-                    <button
-                      onClick={() => setUseFallbackMode(!useFallbackMode)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        useFallbackMode
-                          ? 'bg-cosmic-purple/20 text-cosmic-purple'
-                          : 'bg-electric-cyan/20 text-electric-cyan'
-                      }`}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={forceRefreshEdgeFunctions}
+                      disabled={isCheckingFunctions}
+                      className="text-xs px-2 py-1"
                     >
-                      {useFallbackMode ? 'Local Mode' : 'AI Mode'}
-                    </button>
+                      {isCheckingFunctions ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -587,9 +591,8 @@ const PromptBuilder: React.FC = () => {
                       Subject & Setting
                     </label>
                     <textarea
-                      rows={4}
-                      placeholder="e.g., A young woman with curly hair sitting in a modern coffee shop with large windows and warm lighting"
-                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none"
+                      placeholder="e.g., A young woman with curly hair in a modern coffee shop with large windows"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none h-24"
                       value={promptData.subjectAndSetting}
                       onChange={(e) => handleInputChange('subjectAndSetting', e.target.value)}
                     />
@@ -750,23 +753,8 @@ const PromptBuilder: React.FC = () => {
                 <div className="mt-4 p-3 bg-deep-bg rounded-lg flex items-center justify-between">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    Mode: {useFallbackMode ? '🔧 Local template generation' : '🤖 AI-powered prompt generation'}
+                    Mode: {edgeFunctionsAvailable ? '🤖 AI-powered prompt generation' : '🔧 Local template generation'}
                   </p>
-                  {edgeFunctionsAvailable && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={forceRefreshEdgeFunctions}
-                      disabled={isCheckingFunctions}
-                      className="text-xs px-2 py-1"
-                    >
-                      {isCheckingFunctions ? (
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3 h-3" />
-                      )}
-                    </Button>
-                  )}
                 </div>
 
                 {/* Generate Prompt Button */}
