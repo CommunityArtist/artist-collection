@@ -80,7 +80,7 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
       },
       body: JSON.stringify({
         test: true // Simple test payload
-      }
+      })
     });
     
     clearTimeout(timeoutId);
