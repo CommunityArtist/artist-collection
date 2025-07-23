@@ -116,8 +116,9 @@ const PromptBuilder: React.FC = () => {
         const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         
         console.log('🔧 Environment check:', { 
-          supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
-          hasAnonKey: !!supabaseAnonKey
+          supabaseUrl: supabaseUrl || 'MISSING',
+          hasAnonKey: !!supabaseAnonKey,
+          expectedUrl: 'https://trpznltoengquizgfelv.supabase.co'
         });
         
         if (!supabaseUrl || !supabaseAnonKey) {
@@ -125,6 +126,14 @@ const PromptBuilder: React.FC = () => {
             url: !!supabaseUrl, 
             key: !!supabaseAnonKey 
           });
+          setEdgeFunctionsAvailable(false);
+          setIsCheckingFunctions(false);
+          return;
+        }
+        
+        // Ensure we're using the correct Supabase URL format
+        if (!supabaseUrl.includes('supabase.co')) {
+          console.error('❌ Invalid Supabase URL format:', supabaseUrl);
           setEdgeFunctionsAvailable(false);
           setIsCheckingFunctions(false);
           return;
@@ -247,7 +256,12 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Please sign in to generate prompts');
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl || !supabaseUrl.includes('supabase.co')) {
+        throw new Error('Invalid Supabase URL configuration');
+      }
+      
+      const apiUrl = `${supabaseUrl}/functions/v1/generate-prompt`;
       console.log('📡 Calling AI prompt generation:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -356,7 +370,12 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Please sign in to generate images');
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl || !supabaseUrl.includes('supabase.co')) {
+        throw new Error('Invalid Supabase URL configuration');
+      }
+      
+      const apiUrl = `${supabaseUrl}/functions/v1/generate-image`;
       const requestPayload = {
         prompt: promptToUse,
         imageDimensions: imageDimensions,
@@ -491,8 +510,9 @@ const PromptBuilder: React.FC = () => {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       console.log('🔧 Force refresh environment check:', { 
-        supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
-        hasAnonKey: !!supabaseAnonKey
+        supabaseUrl: supabaseUrl || 'MISSING',
+        hasAnonKey: !!supabaseAnonKey,
+        expectedUrl: 'https://trpznltoengquizgfelv.supabase.co'
       });
       
       if (!supabaseUrl || !supabaseAnonKey) {
@@ -500,6 +520,14 @@ const PromptBuilder: React.FC = () => {
           url: !!supabaseUrl, 
           key: !!supabaseAnonKey 
         });
+        setEdgeFunctionsAvailable(false);
+        setIsCheckingFunctions(false);
+        return;
+      }
+      
+      // Validate Supabase URL format
+      if (!supabaseUrl.includes('supabase.co')) {
+        console.error('❌ Invalid Supabase URL format for refresh:', supabaseUrl);
         setEdgeFunctionsAvailable(false);
         setIsCheckingFunctions(false);
         return;

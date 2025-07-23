@@ -78,9 +78,19 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
       return false;
     }
     
+    // Ensure it's a proper Supabase URL
+    if (!supabaseUrl.includes('supabase.co')) {
+      console.warn(`❌ URL does not appear to be a Supabase URL for ${functionName}:`, supabaseUrl);
+      return false;
+    }
+    
     // Ensure we're using the correct Supabase Edge Function URL format
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
-    console.log(`🔍 Testing Edge Function at: ${edgeFunctionUrl}`);
+    console.log(`🔍 Testing Edge Function at:`, {
+      functionName,
+      url: edgeFunctionUrl,
+      baseUrl: supabaseUrl
+    });
     
     // Additional safety check for network connectivity
     if (typeof window !== 'undefined' && !navigator.onLine) {
