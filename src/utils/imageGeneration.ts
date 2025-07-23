@@ -4,7 +4,6 @@ export interface ImageGenerationParams {
   prompt: string;
   dimensions: string;
   numberOfImages: number;
-  provider: 'openai' | 'affogato';
 }
 
 export interface ImageGenerationResult {
@@ -16,7 +15,7 @@ export interface ImageGenerationResult {
 
 // Fallback image generation using a mock service or placeholder
 export async function generateImagesWithFallback(params: ImageGenerationParams): Promise<ImageGenerationResult> {
-  const { prompt, dimensions, numberOfImages, provider } = params;
+  const { prompt, dimensions, numberOfImages } = params;
   
   // For demonstration purposes, create placeholder images with different colors
   const placeholderImages = generatePlaceholderImages(numberOfImages, dimensions, prompt);
@@ -24,7 +23,7 @@ export async function generateImagesWithFallback(params: ImageGenerationParams):
   return {
     success: true,
     imageUrls: placeholderImages,
-    provider: `${provider} (fallback mode)`,
+    provider: 'openai (fallback mode)',
   };
 }
 
@@ -143,16 +142,16 @@ export function clearEdgeFunctionCache() {
 export function getImageGenerationErrorMessage(error: unknown, provider: string): string {
   if (error instanceof Error) {
     if (error.message.includes('Failed to fetch')) {
-      return `Unable to connect to ${provider}. Using fallback image generation. Please deploy Edge Functions for full functionality.`;
+      return 'Unable to connect to OpenAI. Using fallback image generation. Please deploy Edge Functions for full functionality.';
     } else if (error.message.includes('CORS')) {
-      return `CORS error with ${provider}. Edge Functions may not be properly deployed.`;
+      return 'CORS error with OpenAI. Edge Functions may not be properly deployed.';
     } else if (error.message.includes('quota')) {
-      return `${provider} API quota exceeded. Please check your account billing.`;
+      return 'OpenAI API quota exceeded. Please check your account billing.';
     } else if (error.message.includes('content filters')) {
       return 'Prompt was blocked by content filters. Please modify your prompt to comply with usage policies.';
     } else {
       return error.message;
     }
   }
-  return `Unknown error occurred with ${provider}`;
+  return 'Unknown error occurred with OpenAI';
 }

@@ -78,7 +78,6 @@ const PromptBuilder: React.FC = () => {
   // Image generation settings
   const [imageDimensions, setImageDimensions] = useState('1:1');
   const [numberOfImages, setNumberOfImages] = useState(1);
-  const [imageProvider, setImageProvider] = useState<'openai' | 'affogato'>('openai'); // New state for image provider
   
   // Image viewer state
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -315,8 +314,7 @@ const PromptBuilder: React.FC = () => {
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
             dimensions: imageDimensions,
-            numberOfImages: numberOfImages,
-            provider: imageProvider
+            numberOfImages: numberOfImages
           });
           
           if (result.success && result.imageUrls) {
@@ -344,63 +342,12 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Please sign in to generate images');
       }
 
-      let imageUrls: string[] = [];
-      let apiUrl: string;
-      let requestPayload: any;
-
-      if (imageProvider === 'openai') {
-        apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`;
-        requestPayload = {
-          prompt: promptToUse,
-          imageDimensions: imageDimensions,
-          numberOfImages: numberOfImages
-        };
-      } else if (imageProvider === 'affogato') {
-        apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/affogato-integration`;
-        
-        let width = 1024;
-        let height = 1024;
-        switch (imageDimensions) {
-            case '1:1':
-                width = 1024;
-                height = 1024;
-                break;
-            case '16:9':
-                width = 1792;
-                height = 1024;
-                break;
-            case '9:16':
-                width = 1024;
-                height = 1792;
-                break;
-            case '2:3':
-                width = 1024;
-                height = 1536;
-                break;
-            case '3:2':
-                width = 1536;
-                height = 1024;
-                break;
-            case '4:5':
-                width = 1024;
-                height = 1280;
-                break;
-            default:
-                width = 1024;
-                height = 1024;
-                break;
-        }
-
-        requestPayload = {
-          prompt: promptToUse,
-          width: width,
-          height: height,
-          numberOfImages: numberOfImages,
-          model: 'realistic'
-        };
-      } else {
-        throw new Error('Invalid image provider selected');
-      }
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`;
+      const requestPayload = {
+        prompt: promptToUse,
+        imageDimensions: imageDimensions,
+        numberOfImages: numberOfImages
+      };
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -417,12 +364,13 @@ const PromptBuilder: React.FC = () => {
         throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
+      let imageUrls: string[] = [];
       if (data.imageUrls && Array.isArray(data.imageUrls)) {
         imageUrls = data.imageUrls;
       } else if (data.imageUrl) {
         imageUrls = Array.isArray(data.imageUrl) ? data.imageUrl : [data.imageUrl];
       } else {
-        throw new Error(`No images returned from the ${imageProvider === 'openai' ? 'OpenAI' : 'RenderNet AI'} API`);
+        throw new Error('No images returned from the OpenAI API');
       }
 
       setGeneratedImages(imageUrls);
@@ -434,11 +382,9 @@ const PromptBuilder: React.FC = () => {
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          errorMessage = `Unable to connect to the ${imageProvider === 'openai' ? 'OpenAI' : 'RenderNet AI'} image generation service. Please check that the Supabase Edge Functions are deployed and try again.`;
+          errorMessage = 'Unable to connect to the OpenAI image generation service. Please check that the Supabase Edge Functions are deployed and try again.';
         } else if (error.message.includes('OpenAI API key')) {
           errorMessage = 'OpenAI API key not configured. Please go to Account → API Config to set up your OpenAI API key.';
-        } else if (error.message.includes('RenderNet API key') || error.message.includes('AFFOGATO_API_KEY')) {
-          errorMessage = 'RenderNet AI API key not configured. Please ensure the AFFOGATO_API_KEY environment variable is set in your Supabase project.';
         } else if (error.message.includes('quota')) {
           errorMessage = 'API quota exceeded. Please check your account billing or contact support.';
         } else if (error.message.includes('content filters')) {
@@ -591,7 +537,6 @@ const PromptBuilder: React.FC = () => {
     setError(null);
     setSelectedCategory('Natural Photography');
     setEnhanceLevel(0);
-    setImageProvider('openai'); // Reset image provider
   };
 
   return (
@@ -634,13 +579,13 @@ const PromptBuilder: React.FC = () => {
                     </p>
                     <p className="text-xs text-soft-lavender/70 mt-1">
                       {edgeFunctionsAvailable 
-                        ? 'OpenAI DALL-E 3, RenderNet AI, and advanced prompt generation are now available' 
+                        ? 'OpenAI DALL-E 3 and advanced prompt generation are now available' 
                         : 'Using local fallback generation. Click Refresh to check for deployed functions.'
                       }
                     </p>
                     {!edgeFunctionsAvailable && (
                       <p className="text-xs text-alert-orange/80 mt-1">
-                        If you deployed functions, check environment variables: OPENAI_API_KEY, AFFOGATO_API_KEY
+                        If you deployed functions, check environment variable: OPENAI_API_KEY
                       </p>
                     )}
                     {edgeFunctionsAvailable && (
@@ -649,7 +594,7 @@ const PromptBuilder: React.FC = () => {
                           ✓ Prompt Generation
                         </span>
                         <span className="text-xs bg-success-green/20 text-success-green px-2 py-1 rounded-full">
-                          ✓ Image Generation
+                          ✓ OpenAI DALL-E 3
                         </span>
                         <span className="text-xs bg-success-green/20 text-success-green px-2 py-1 rounded-full">
                           ✓ Prompt Extraction
@@ -935,35 +880,6 @@ const PromptBuilder: React.FC = () => {
                   </h3>
                   
                   <div className="space-y-4">
-                    {/* Image Provider Selection */}
-                    <div>
-                      <label className="block text-soft-lavender mb-2 font-medium">Image Provider</label>
-                      <div className="flex gap-4">
-                        <label className="inline-flex items-center">
-                          <input
-                            type="radio"
-                            className="form-radio text-cosmic-purple"
-                            name="imageProvider"
-                            value="openai"
-                            checked={imageProvider === 'openai'}
-                            onChange={() => setImageProvider('openai')}
-                          />
-                          <span className="ml-2 text-soft-lavender">OpenAI DALL-E 3</span>
-                        </label>
-                        <label className="inline-flex items-center">
-                          <input
-                            type="radio"
-                            className="form-radio text-cosmic-purple"
-                            name="imageProvider"
-                            value="affogato"
-                            checked={imageProvider === 'affogato'}
-                            onChange={() => setImageProvider('affogato')}
-                          />
-                          <span className="ml-2 text-soft-lavender">RenderNet AI</span>
-                        </label>
-                      </div>
-                    </div>
-
                     {/* Image Dimensions */}
                     <div>
                       <label className="block text-soft-lavender mb-2 font-medium">Dimensions</label>
@@ -1014,7 +930,7 @@ const PromptBuilder: React.FC = () => {
                       ) : (
                         <>
                           <ImageIcon className="w-5 h-5 mr-2" />
-                          Generate Images
+                          Generate Images with DALL-E 3
                         </>
                       )}
                     </Button>
