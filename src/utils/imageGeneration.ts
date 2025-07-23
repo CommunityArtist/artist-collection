@@ -65,6 +65,12 @@ function getDimensionsFromRatio(ratio: string): [number, number] {
 
 // Function to test if Edge Functions are available
 export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 3000): Promise<boolean> {
+  // Check if Edge Functions testing is disabled via environment variable
+  if (import.meta.env.VITE_DISABLE_EDGE_FUNCTIONS_CHECK === 'true') {
+    console.log(`🚫 Edge Functions check disabled for ${functionName}`);
+    return false;
+  }
+
   try {
     // Validate supabaseUrl before making the request
     if (!supabaseUrl || typeof supabaseUrl !== 'string' || !supabaseUrl.startsWith('http')) {
