@@ -114,6 +114,13 @@ const PromptBuilder: React.FC = () => {
       setIsCheckingFunctions(true);
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
+      if (!supabaseUrl) {
+        console.warn('❌ VITE_SUPABASE_URL not found');
+        setEdgeFunctionsAvailable(false);
+        setIsCheckingFunctions(false);
+        return;
+      }
+      
       // Test multiple functions to be sure
       const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
       const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
@@ -155,7 +162,7 @@ const PromptBuilder: React.FC = () => {
       
       // Map extracted data to form fields
       setPromptData({
-        subject: extractedData.mainPrompt.split('.') || '', // First sentence as subject
+        subject: extractedData.mainPrompt.split('.')[0] || '', // First sentence as subject
         setting: extractedData.composition || '',
         lighting: extractedData.lighting || '',
         style: extractedData.styleElements.join(', ') || '',
@@ -308,6 +315,8 @@ const PromptBuilder: React.FC = () => {
         return;
       }
 
+      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+
       // Use fallback image generation if Edge Functions are not available
       if (!edgeFunctionsAvailable) {
         try {
@@ -329,8 +338,6 @@ const PromptBuilder: React.FC = () => {
 
       setIsGeneratingImages(true);
       setError(null);
-
-      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
       
       if (!promptToUse) {
         throw new Error('Please generate a prompt first');
@@ -443,6 +450,7 @@ const PromptBuilder: React.FC = () => {
     link.href = url;
     link.download = 'generated-prompt.txt';
     document.body.appendChild(link);
+    link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
@@ -472,6 +480,13 @@ const PromptBuilder: React.FC = () => {
     setIsCheckingFunctions(true);
     clearEdgeFunctionCache();
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    
+    if (!supabaseUrl) {
+      console.warn('❌ VITE_SUPABASE_URL not found');
+      setEdgeFunctionsAvailable(false);
+      setIsCheckingFunctions(false);
+      return;
+    }
     
     // Test all critical functions
     const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
@@ -562,30 +577,58 @@ const PromptBuilder: React.FC = () => {
                     <Settings className="w-5 h-5 text-electric-cyan" />
                     Prompt Configuration
                   </h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={resetForm}
-                    className="text-soft-lavender/70 hover:text-soft-lavender"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Reset
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    {/* Mode Toggle */}
+                    <button
+                      onClick={() => setUseFallbackMode(!useFallbackMode)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        useFallbackMode
+                          ? 'bg-cosmic-purple/20 text-cosmic-purple'
+                          : 'bg-electric-cyan/20 text-electric-cyan'
+                      }`}
+                    >
+                      {useFallbackMode ? 'Local Mode' : 'AI Mode'}
+                    </button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetForm}
+                      className="text-soft-lavender/70 hover:text-soft-lavender"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Reset
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
-                  {/* Subject & Setting */}
+                  {/* Subject */}
                   <div>
                     <label className="block text-soft-lavender mb-2 font-medium">
                       <Target className="w-4 h-4 inline mr-2" />
-                      Subject & Setting
+                      Subject
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g., A young woman with curly hair in a modern coffee shop with large windows"
+                      placeholder="e.g., A young woman with curly hair"
                       className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
                       value={promptData.subject}
                       onChange={(e) => handleInputChange('subject', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Setting */}
+                  <div>
+                    <label className="block text-soft-lavender mb-2 font-medium">
+                      <Camera className="w-4 h-4 inline mr-2" />
+                      Setting
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Modern coffee shop with large windows"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                      value={promptData.setting}
+                      onChange={(e) => handleInputChange('setting', e.target.value)}
                     />
                   </div>
 
@@ -741,11 +784,26 @@ const PromptBuilder: React.FC = () => {
                 </div>
                 
                 {/* Mode Information */}
-                <div className="mt-4 p-3 bg-deep-bg rounded-lg">
+                <div className="mt-4 p-3 bg-deep-bg rounded-lg flex items-center justify-between">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    🤖 AI-powered prompt generation
+                    Mode: {useFallbackMode ? '🔧 Local template generation' : '🤖 AI-powered prompt generation'}
                   </p>
+                  {edgeFunctionsAvailable && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={forceRefreshEdgeFunctions}
+                      disabled={isCheckingFunctions}
+                      className="text-xs px-2 py-1"
+                    >
+                      {isCheckingFunctions ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Generate Prompt Button */}
@@ -756,7 +814,6 @@ const PromptBuilder: React.FC = () => {
                     className="w-full"
                     onClick={handleGeneratePrompt}
                     disabled={isGeneratingPrompt || !promptData.subject || !promptData.setting || !promptData.lighting || !promptData.style || !promptData.mood}
-                    disabled={isGeneratingPrompt || !promptData.subject || !promptData.lighting || !promptData.style || !promptData.mood}
                   >
                     {isGeneratingPrompt ? (
                       <>
@@ -928,6 +985,8 @@ const PromptBuilder: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Generated Images Section */}
               {generatedImages.length > 0 && (
                 <div className="bg-card-bg rounded-lg p-6 border border-border-color">
                   <h2 className="text-xl font-bold text-soft-lavender mb-4">Generated Images</h2>
@@ -961,7 +1020,7 @@ const PromptBuilder: React.FC = () => {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => handleSavePrompt(generatedImages)}
+                      onClick={() => handleSavePrompt(generatedImages[0])}
                       className="flex-1"
                     >
                       <Save className="w-4 h-4 mr-2" />
@@ -973,11 +1032,23 @@ const PromptBuilder: React.FC = () => {
 
               {/* Error Display */}
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <div className={`border rounded-lg p-4 ${
+                  error.startsWith('✅') 
+                    ? 'bg-success-green/10 border-success-green/20' 
+                    : 'bg-red-500/10 border-red-500/20'
+                }`}>
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                    {error.startsWith('✅') ? (
+                      <Info className="w-5 h-5 text-success-green mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                    )}
                     <div>
-                      <p className="text-red-500 text-sm">{error}</p>
+                      <p className={`text-sm ${
+                        error.startsWith('✅') ? 'text-success-green' : 'text-red-500'
+                      }`}>
+                        {error}
+                      </p>
                     </div>
                   </div>
                 </div>
