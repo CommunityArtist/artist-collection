@@ -565,16 +565,6 @@ const PromptBuilder: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setUseFallbackMode(!useFallbackMode)}
-                    className={`mr-3 ${useFallbackMode ? 'bg-cosmic-purple/20' : ''} ${!edgeFunctionsAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={!edgeFunctionsAvailable}
-                  >
-                    <Info className="w-4 h-4 mr-2" />
-                    {useFallbackMode ? 'Local Mode' : 'AI Mode'} {edgeFunctionsAvailable && '🤖'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
                     onClick={resetForm}
                     className="text-soft-lavender/70 hover:text-soft-lavender"
                   >
@@ -584,33 +574,18 @@ const PromptBuilder: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Subject */}
+                  {/* Subject & Setting */}
                   <div>
                     <label className="block text-soft-lavender mb-2 font-medium">
                       <Target className="w-4 h-4 inline mr-2" />
-                      Subject
+                      Subject & Setting
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g., A young woman with curly hair"
+                      placeholder="e.g., A young woman with curly hair in a modern coffee shop with large windows"
                       className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
                       value={promptData.subject}
                       onChange={(e) => handleInputChange('subject', e.target.value)}
-                    />
-                  </div>
-
-                  {/* Setting */}
-                  <div>
-                    <label className="block text-soft-lavender mb-2 font-medium">
-                      <ImageIcon className="w-4 h-4 inline mr-2" />
-                      Setting
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Modern coffee shop with large windows"
-                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                      value={promptData.setting}
-                      onChange={(e) => handleInputChange('setting', e.target.value)}
                     />
                   </div>
 
@@ -769,10 +744,7 @@ const PromptBuilder: React.FC = () => {
                 <div className="mt-4 p-3 bg-deep-bg rounded-lg">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    {edgeFunctionsAvailable 
-                      ? (useFallbackMode ? 'Using local prompt generation (AI available)' : '🤖 Using AI-powered prompt generation') 
-                      : 'Using local prompt generation (AI unavailable)'
-                    }
+                    🤖 AI-powered prompt generation
                   </p>
                 </div>
 
@@ -784,6 +756,7 @@ const PromptBuilder: React.FC = () => {
                     className="w-full"
                     onClick={handleGeneratePrompt}
                     disabled={isGeneratingPrompt || !promptData.subject || !promptData.setting || !promptData.lighting || !promptData.style || !promptData.mood}
+                    disabled={isGeneratingPrompt || !promptData.subject || !promptData.lighting || !promptData.style || !promptData.mood}
                   >
                     {isGeneratingPrompt ? (
                       <>
