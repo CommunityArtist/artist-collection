@@ -5,12 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, accept',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '3600',
+  'Access-Control-Max-Age': '3600'
 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { 
+    return new Response(null, { 
       status: 200,
       headers: corsHeaders 
     });
@@ -84,12 +84,12 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             text: prompt,
-            model_id: "REALISTIC_VISION_V6",
+            model_id: "realistic_vision_v6_0",
             width: width,
             height: height,
             guidance_scale: 7.5,
-            num_inference_steps: 20,
-            scheduler: "DPM++ 2M Karras"
+            num_inference_steps: 28,
+            scheduler: "DPMSolverMultistep"
           }),
         });
 
@@ -104,12 +104,12 @@ serve(async (req) => {
         if (affogatoData.image_url) {
           imageUrls.push(affogatoData.image_url);
           console.log(`Successfully generated image ${i + 1}`);
-        } else if (affogatoData.output_url) {
-          imageUrls.push(affogatoData.output_url);
+        } else if (affogatoData.images && affogatoData.images.length > 0) {
+          imageUrls.push(affogatoData.images[0]);
           console.log(`Successfully generated image ${i + 1}`);
         } else {
           console.error('API Response:', affogatoData);
-          throw new Error('RenderNet AI did not return an image URL.');
+          throw new Error('RenderNet AI API did not return an image URL.');
         }
 
       } catch (imageError) {
