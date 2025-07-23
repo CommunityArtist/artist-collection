@@ -54,7 +54,7 @@ serve(async (req) => {
 
     // Parse request body
     const requestData = await req.json();
-    const { prompt, model = 'default', width = 1024, height = 1024 } = requestData;
+    const { prompt, model = 'default', width = 1024, height = 1024, numberOfImages = 1 } = requestData;
 
     if (!prompt) {
       return new Response(
@@ -66,35 +66,70 @@ serve(async (req) => {
       );
     }
 
-    // Make request to Affogato AI API
-    console.log('Making request to Affogato AI API');
-    
-    const affogatoResponse = await fetch('https://api.affogato.ai/v1/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${affogatoApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: prompt,
-        model: model,
-        width: width,
-        height: height,
-        // Add other Affogato AI specific parameters here
-      }),
-    });
+    const imagesToGenerate = Math.min(numberOfImages, 4); // Limit to 4 for performance
+    const imageUrls: string[] = [];
+    let lastError: Error | null = null;
 
-    if (!affogatoResponse.ok) {
-      const errorData = await affogatoResponse.text();
-      console.error('Affogato AI API error:', errorData);
-      throw new Error(`Affogato AI API error: ${affogatoResponse.status} ${affogatoResponse.statusText}`);
+    console.log(`Generating ${imagesToGenerate} images with Affogato AI`);
+
+    for (let i = 0; i < imagesToGenerate; i++) {
+      try {
+        console.log(`Generating image ${i + 1}/${imagesToGenerate}`);
+        
+        const affogatoResponse = await fetch('https://api.affogato.ai/v1/generations', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${affogatoApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            model: model,
+            width: width,
+            height: height,
+          }),
+        });
+
+        if (!affogatoResponse.ok) {
+          const errorData = await affogatoResponse.text();
+          console.error('Affogato AI API error:', errorData);
+          throw new Error(`Affogato AI API error: ${affogatoResponse.status} ${affogatoResponse.statusText}`);
+        }
+
+        const affogatoData = await affogatoResponse.json();
+        
+        if (affogatoData.output_url) {
+          imageUrls.push(affogatoData.output_url);
+          console.log(`Successfully generated image ${i + 1}`);
+        } else {
+          throw new Error('Affogato AI did not return an image URL.');
+        }
+
+      } catch (imageError) {
+        console.error(`Error generating image ${i + 1}:`, imageError);
+        lastError = imageError instanceof Error ? imageError : new Error(String(imageError));
+        // Continue with other images if one fails
+      }
     }
 
-    const affogatoData = await affogatoResponse.json();
-    console.log('Successfully received response from Affogato AI');
+    if (imageUrls.length === 0) {
+      if (lastError) {
+        throw lastError;
+      } else {
+        throw new Error('Failed to generate any images from Affogato AI. Please try again.');
+      }
+    }
+
+    console.log(`Successfully generated ${imageUrls.length} images from Affogato AI`);
 
     return new Response(
-      JSON.stringify(affogatoData),
+      JSON.stringify({
+        imageUrl: imageUrls, // For backward compatibility
+        imageUrls: imageUrls,
+        generatedCount: imageUrls.length,
+        requestedCount: numberOfImages,
+        dimensions: `${width}x${height}`, // Return actual dimensions used
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }

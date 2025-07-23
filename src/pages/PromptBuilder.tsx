@@ -73,6 +73,7 @@ const PromptBuilder: React.FC = () => {
   // Image generation settings
   const [imageDimensions, setImageDimensions] = useState('1:1');
   const [numberOfImages, setNumberOfImages] = useState(1);
+  const [imageProvider, setImageProvider] = useState<'openai' | 'affogato'>('openai'); // New state for image provider
   
   // Image viewer state
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -107,7 +108,7 @@ const PromptBuilder: React.FC = () => {
       
       // Map extracted data to form fields
       setPromptData({
-        subject: extractedData.mainPrompt.split('.')[0] || '', // First sentence as subject
+        subject: extractedData.mainPrompt.split('.') || '', // First sentence as subject
         setting: extractedData.composition || '',
         lighting: extractedData.lighting || '',
         style: extractedData.styleElements.join(', ') || '',
@@ -233,36 +234,104 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Please sign in to generate images');
       }
 
-      const requestPayload = {
-        prompt: promptToUse,
-        imageDimensions: imageDimensions,
-        numberOfImages: numberOfImages
-      };
-      
+      let imageUrls: string[] = [];
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(requestPayload),
-      });
+      if (imageProvider === 'openai') {
+        const requestPayload = {
+          prompt: promptToUse,
+          imageDimensions: imageDimensions,
+          numberOfImages: numberOfImages
+        };
+        
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestPayload),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        if (data.imageUrls && Array.isArray(data.imageUrls)) {
+          imageUrls = data.imageUrls;
+        } else if (data.imageUrl) {
+          imageUrls = [data.imageUrl];
+        } else {
+          throw new Error('No images returned from the OpenAI API');
+        }
+      } else if (imageProvider === 'affogato') {
+        let width = 1024;
+        let height = 1024;
+        switch (imageDimensions) {
+            case '1:1':
+                width = 1024;
+                height = 1024;
+                break;
+            case '16:9':
+                width = 1792;
+                height = 1024;
+                break;
+            case '9:16':
+                width = 1024;
+                height = 1792;
+                break;
+            case '2:3':
+                width = 1024;
+                height = 1536; // Common 2:3 ratio
+                break;
+            case '3:2':
+                width = 1536;
+                height = 1024; // Common 3:2 ratio
+                break;
+            case '4:5':
+                width = 1024;
+                height = 1280; // Common 4:5 ratio
+                break;
+            default:
+                width = 1024;
+                height = 1024;
+                break;
+        }
+
+        const requestPayload = {
+          prompt: promptToUse,
+          width: width,
+          height: height,
+          numberOfImages: numberOfImages,
+          model: 'realistic' // Assuming 'realistic' model for Affogato AI
+        };
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/affogato-integration`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestPayload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        if (data.imageUrls && Array.isArray(data.imageUrls)) {
+          imageUrls = data.imageUrls;
+        } else if (data.imageUrl) {
+          imageUrls = [data.imageUrl];
+        } else {
+          throw new Error('No images returned from the Affogato AI API');
+        }
       }
 
-      // Handle both single image and multiple images response
-      if (data.imageUrls && Array.isArray(data.imageUrls)) {
-        setGeneratedImages(data.imageUrls);
-      } else if (data.imageUrl) {
-        setGeneratedImages([data.imageUrl]);
-      } else {
-        throw new Error('No images returned from the API');
-      }
+      setGeneratedImages(imageUrls);
 
     } catch (error) {
       console.error('Error generating images:', error);
@@ -271,13 +340,15 @@ const PromptBuilder: React.FC = () => {
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          errorMessage = 'Unable to connect to the image generation service. This could be because:\n\n1. The Supabase Edge Function "generate-image" is not deployed\n2. Your internet connection is unstable\n3. The service is temporarily unavailable\n\nPlease try again in a moment or contact support if the issue persists.';
+          errorMessage = 'Unable to connect to the image generation service. This could be because:\n\n1. The Supabase Edge Function "generate-image" or "affogato-integration" is not deployed\n2. Your internet connection is unstable\n3. The service is temporarily unavailable\n\nPlease try again in a moment or contact support if the issue persists.';
         } else if (error.message.includes('OpenAI API key')) {
           errorMessage = 'OpenAI API key not configured. Please go to Account → API Config to set up your OpenAI API key.';
+        } else if (error.message.includes('Affogato API key')) {
+          errorMessage = 'Affogato API key not configured. Please ensure the AFFOGATO_API_KEY environment variable is set in your Supabase project.';
         } else if (error.message.includes('quota')) {
-          errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing.';
+          errorMessage = 'API quota exceeded. Please check your account billing or contact support.';
         } else if (error.message.includes('content filters')) {
-          errorMessage = 'Your prompt was blocked by OpenAI\'s content filters. Please modify your prompt to comply with OpenAI\'s usage policies.';
+          errorMessage = 'Your prompt was blocked by content filters. Please modify your prompt to comply with usage policies.';
         } else {
           errorMessage = error.message;
         }
@@ -314,7 +385,6 @@ const PromptBuilder: React.FC = () => {
     link.href = url;
     link.download = 'generated-prompt.txt';
     document.body.appendChild(link);
-    link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
@@ -381,6 +451,7 @@ const PromptBuilder: React.FC = () => {
     setError(null);
     setSelectedCategory('Natural Photography');
     setEnhanceLevel(0);
+    setImageProvider('openai'); // Reset image provider
   };
 
   return (
@@ -632,6 +703,35 @@ const PromptBuilder: React.FC = () => {
                   </h3>
                   
                   <div className="space-y-4">
+                    {/* Image Provider Selection */}
+                    <div>
+                      <label className="block text-soft-lavender mb-2 font-medium">Image Provider</label>
+                      <div className="flex gap-4">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="radio"
+                            className="form-radio text-cosmic-purple"
+                            name="imageProvider"
+                            value="openai"
+                            checked={imageProvider === 'openai'}
+                            onChange={() => setImageProvider('openai')}
+                          />
+                          <span className="ml-2 text-soft-lavender">OpenAI DALL-E 3</span>
+                        </label>
+                        <label className="inline-flex items-center">
+                          <input
+                            type="radio"
+                            className="form-radio text-cosmic-purple"
+                            name="imageProvider"
+                            value="affogato"
+                            checked={imageProvider === 'affogato'}
+                            onChange={() => setImageProvider('affogato')}
+                          />
+                          <span className="ml-2 text-soft-lavender">Affogato AI</span>
+                        </label>
+                      </div>
+                    </div>
+
                     {/* Image Dimensions */}
                     <div>
                       <label className="block text-soft-lavender mb-2 font-medium">Dimensions</label>
@@ -811,7 +911,7 @@ const PromptBuilder: React.FC = () => {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => handleSavePrompt(generatedImages[0])}
+                      onClick={() => handleSavePrompt(generatedImages)}
                       className="flex-1"
                     >
                       <Save className="w-4 h-4 mr-2" />
