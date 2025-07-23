@@ -184,9 +184,19 @@ const PromptBuilder: React.FC = () => {
           }
           
           setGeneratedPrompt(finalPrompt);
+          
+          // Show success message for local generation
+          if (useFallbackMode && edgeFunctionsAvailable) {
+            setError('Generated using local templates (AI mode available but local mode selected)');
+          } else if (!edgeFunctionsAvailable) {
+            setError('Generated using advanced local templates - Deploy Edge Functions for AI generation');
+          }
+          
           return;
         } catch (localError) {
           console.error('Local prompt generation failed:', localError);
+          setError('Local prompt generation failed. Please check your inputs and try again.');
+          return;
         }
       }
 
