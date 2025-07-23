@@ -309,7 +309,7 @@ const PromptBuilder: React.FC = () => {
       }
 
       // Use fallback image generation if Edge Functions are not available
-      if (useFallbackMode || !edgeFunctionsAvailable) {
+      if (!edgeFunctionsAvailable) {
         try {
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
