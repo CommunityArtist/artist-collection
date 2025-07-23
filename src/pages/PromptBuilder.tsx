@@ -51,7 +51,6 @@ const PromptBuilder: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState(false);
-  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
@@ -87,6 +86,7 @@ const PromptBuilder: React.FC = () => {
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isCheckingFunctions, setIsCheckingFunctions] = useState(false);
+  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -558,20 +558,18 @@ const PromptBuilder: React.FC = () => {
                     <Settings className="w-5 h-5 text-electric-cyan" />
                     Prompt Configuration
                   </h2>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={forceRefreshEdgeFunctions}
-                      disabled={isCheckingFunctions}
-                      className="text-xs px-2 py-1"
+                  <div className="flex items-center gap-3">
+                    {/* Mode Toggle */}
+                    <button
+                      onClick={() => setUseFallbackMode(!useFallbackMode)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        useFallbackMode
+                          ? 'bg-cosmic-purple/20 text-cosmic-purple'
+                          : 'bg-electric-cyan/20 text-electric-cyan'
+                      }`}
                     >
-                      {isCheckingFunctions ? (
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3 h-3" />
-                      )}
-                    </Button>
+                      {useFallbackMode ? 'Local Mode' : 'AI Mode'}
+                    </button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -585,15 +583,16 @@ const PromptBuilder: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Subject & Setting */}
+                  {/* Subject */}
                   <div>
                     <label className="block text-soft-lavender mb-2 font-medium">
                       <Target className="w-4 h-4 inline mr-2" />
                       Subject & Setting
                     </label>
-                    <textarea
-                      placeholder="e.g., A young woman with curly hair in a modern coffee shop with large windows"
-                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none h-24"
+                    <input
+                      type="text"
+                      placeholder="e.g., A young woman with curly hair in a modern coffee shop"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
                       value={promptData.subjectAndSetting}
                       onChange={(e) => handleInputChange('subjectAndSetting', e.target.value)}
                     />
