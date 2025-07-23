@@ -162,6 +162,8 @@ Deno.serve(async (req) => {
         errorMessage = 'Invalid OpenAI API key. Please contact support.';
       } else if (error.message.includes('content filters')) {
         errorMessage = 'Your prompt was blocked by OpenAI\'s content filters. Please modify your prompt to comply with OpenAI\'s usage policies and avoid content that may be considered inappropriate, violent, sexual, or hateful.';
+      } else if (error.message.includes('safety system')) {
+        errorMessage = 'Your prompt was blocked by OpenAI\'s safety system. Please modify your prompt to comply with OpenAI\'s usage policies and avoid content that may be considered inappropriate, violent, sexual, or hateful.';
       } else if (error.message.includes('You exceeded your current quota')) {
         errorMessage = 'OpenAI API quota exceeded. Please contact support.';
       } else if (error.message.includes('API key not found')) {
