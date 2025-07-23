@@ -10,6 +10,8 @@ import {
   Save,
   Eye,
   EyeOff,
+  AlertTriangle,
+  Info,
   AlertCircle,
   Zap,
   Camera,
@@ -28,6 +30,8 @@ import {
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
+import { generatePromptLocally, enhancePromptWithCategory, type PromptData as LocalPromptData } from '../utils/promptGeneration';
+import { generateImagesWithFallback, testEdgeFunctionAvailability, getImageGenerationErrorMessage } from '../utils/imageGeneration';
 import { ExtractedPrompt } from '../types';
 
 interface PromptData {
@@ -47,6 +51,7 @@ const PromptBuilder: React.FC = () => {
   // Check if user is authenticated
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState(false);
 
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
@@ -83,6 +88,7 @@ const PromptBuilder: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('Natural Photography');
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [useFallbackMode, setUseFallbackMode] = useState(true);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -99,6 +105,19 @@ const PromptBuilder: React.FC = () => {
     };
 
     checkAuth();
+  }, []);
+
+  // Check if Edge Functions are available
+  useEffect(() => {
+    const checkEdgeFunctions = async () => {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const available = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
+      setEdgeFunctionsAvailable(available);
+      if (!available) {
+        setUseFallbackMode(true);
+      }
+    };
+    checkEdgeFunctions();
   }, []);
 
   // Handle data from Prompt Extractor
@@ -143,6 +162,33 @@ const PromptBuilder: React.FC = () => {
 
       setIsGeneratingPrompt(true);
       setError(null);
+
+      // Use local generation if Edge Functions are not available or user prefers fallback
+      if (useFallbackMode || !edgeFunctionsAvailable) {
+        try {
+          const localPromptData: LocalPromptData = {
+            subject: promptData.subject,
+            setting: promptData.setting,
+            lighting: promptData.lighting,
+            style: promptData.style,
+            mood: promptData.mood,
+            'post-processing': promptData['post-processing'],
+            enhancement: promptData.enhancement
+          };
+          
+          const result = generatePromptLocally(localPromptData);
+          let finalPrompt = result.prompt;
+          
+          if (enhanceLevel > 0) {
+            finalPrompt = enhancePromptWithCategory(finalPrompt, selectedCategory, enhanceLevel);
+          }
+          
+          setGeneratedPrompt(finalPrompt);
+          return;
+        } catch (localError) {
+          console.error('Local prompt generation failed:', localError);
+        }
+      }
 
       // Get auth session for API call
       const { data: { session } } = await supabase.auth.getSession();
@@ -204,7 +250,7 @@ const PromptBuilder: React.FC = () => {
           }
 
           setGeneratedPrompt(prompt);
-          setError('Used fallback prompt generation (Edge Function unavailable)');
+          setError('Used basic fallback prompt generation (Edge Functions unavailable)');
         }
       }
     } finally {
@@ -218,6 +264,26 @@ const PromptBuilder: React.FC = () => {
         setError('Please sign in to generate images');
         navigate('/auth');
         return;
+      }
+
+      // Use fallback image generation if Edge Functions are not available
+      if (useFallbackMode || !edgeFunctionsAvailable) {
+        try {
+          const result = await generateImagesWithFallback({
+            prompt: promptToUse,
+            dimensions: imageDimensions,
+            numberOfImages: numberOfImages,
+            provider: imageProvider
+          });
+          
+          if (result.success && result.imageUrls) {
+            setGeneratedImages(result.imageUrls);
+            setError(`Using placeholder images - Deploy Edge Functions for AI generation`);
+            return;
+          }
+        } catch (fallbackError) {
+          console.error('Fallback image generation failed:', fallbackError);
+        }
       }
 
       setIsGeneratingImages(true);
@@ -238,22 +304,6 @@ const PromptBuilder: React.FC = () => {
       let imageUrls: string[] = [];
       let apiUrl: string;
       let requestPayload: any;
-
-  const enhancePrompt = async () => {
-    try {
-      setIsEnhancingPrompt(true);
-      setError(null);
-
-      // Simple enhancement without Edge Function
-      const enhancement = `Enhanced with ${selectedCategory} (Level ${enhanceLevel}/5): Professional quality, detailed composition, high resolution`;
-      setEnhancedPrompt(`${generatedPrompt}\n\n${enhancement}`);
-    } catch (error) {
-      console.error('Error enhancing prompt:', error);
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
-    } finally {
-      setIsEnhancingPrompt(false);
-    }
-  };
 
       if (imageProvider === 'openai') {
         apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`;
@@ -360,6 +410,22 @@ const PromptBuilder: React.FC = () => {
       setError(errorMessage);
     } finally {
       setIsGeneratingImages(false);
+    }
+  };
+
+  const enhancePrompt = async () => {
+    try {
+      setIsEnhancingPrompt(true);
+      setError(null);
+
+      // Enhanced prompt generation using local utilities
+      const enhancedResult = enhancePromptWithCategory(generatedPrompt, selectedCategory, enhanceLevel);
+      setEnhancedPrompt(enhancedResult);
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+    } finally {
+      setIsEnhancingPrompt(false);
     }
   };
 
@@ -474,12 +540,48 @@ const PromptBuilder: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Column - Form */}
             <div className="space-y-6">
+              {/* Edge Functions Status */}
+              <div className={`rounded-lg p-4 border ${
+                edgeFunctionsAvailable 
+                  ? 'bg-success-green/10 border-success-green/20' 
+                  : 'bg-alert-orange/10 border-alert-orange/20'
+              }`}>
+                <div className="flex items-start gap-3">
+                  {edgeFunctionsAvailable ? (
+                    <div className="w-5 h-5 rounded-full bg-success-green flex items-center justify-center mt-0.5">
+                      <div className="w-2 h-2 rounded-full bg-white"></div>
+                    </div>
+                  ) : (
+                    <AlertTriangle className="w-5 h-5 text-alert-orange mt-0.5" />
+                  )}
+                  <div>
+                    <p className={`text-sm font-medium ${
+                      edgeFunctionsAvailable ? 'text-success-green' : 'text-alert-orange'
+                    }`}>
+                      {edgeFunctionsAvailable ? 'Edge Functions Available' : 'Edge Functions Not Deployed'}
+                    </p>
+                    <p className="text-xs text-soft-lavender/70 mt-1">
+                      {edgeFunctionsAvailable ? 'Full AI functionality enabled' : 'Using local fallback generation. Deploy Edge Functions for full AI features.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-card-bg rounded-lg p-6 border border-border-color">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-soft-lavender flex items-center gap-2">
                     <Settings className="w-5 h-5 text-electric-cyan" />
                     Prompt Configuration
                   </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUseFallbackMode(!useFallbackMode)}
+                    className={`mr-3 ${useFallbackMode ? 'bg-cosmic-purple/20' : ''}`}
+                  >
+                    <Info className="w-4 h-4 mr-2" />
+                    {useFallbackMode ? 'Local Mode' : 'AI Mode'}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -671,6 +773,14 @@ const PromptBuilder: React.FC = () => {
                       </div>
                     </div>
                   )}
+                </div>
+                
+                {/* Mode Information */}
+                <div className="mt-4 p-3 bg-deep-bg rounded-lg">
+                  <p className="text-xs text-soft-lavender/60">
+                    <Info className="w-3 h-3 inline mr-1" />
+                    {useFallbackMode ? 'Using local prompt generation' : 'Using AI-powered prompt generation'}
+                  </p>
                 </div>
 
                 {/* Generate Prompt Button */}
