@@ -71,14 +71,20 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
     const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-      method: 'POST', // Change to POST to get a more reliable response
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        test: true // Simple test payload
+    let response;
+    try {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ test: true })
+      });
+    } catch (networkError) {
+      console.warn(`❌ Network error testing ${functionName}:`, networkError);
+      return false;
+    }
       })
     });
     
@@ -97,7 +103,7 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
     console.log(`📊 ${functionName} detection result:`, exists);
     return exists;
   } catch (error) {
-    console.log(`❌ ${functionName} detection failed:`, error);
+    console.warn(`❌ Unexpected error testing ${functionName}:`, error);
     return false;
   }
 }
