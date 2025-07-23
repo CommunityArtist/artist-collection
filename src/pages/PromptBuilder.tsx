@@ -52,7 +52,6 @@ const PromptBuilder: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState(false);
-  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
@@ -194,8 +193,8 @@ const PromptBuilder: React.FC = () => {
       setIsGeneratingPrompt(true);
       setError(null);
 
-      // Use local generation if Edge Functions are not available or user prefers fallback
-      if (useFallbackMode || !edgeFunctionsAvailable) {
+      // Use local generation if Edge Functions are not available
+      if (!edgeFunctionsAvailable) {
         try {
           console.log('🔧 Using local prompt generation');
           const localPromptData: LocalPromptData = {
@@ -318,12 +317,8 @@ const PromptBuilder: React.FC = () => {
         try {
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
-            dimensions: imageDimensions,
-            numberOfImages: numberOfImages
-          });
-          
-          if (result.success && result.imageUrls) {
-            setGeneratedImages(result.imageUrls);
+            // Show success message for local generation  
+            setError('✅ Generated using advanced local templates - Deploy Edge Functions for full functionality');
             setError(`Using placeholder images - Deploy Edge Functions for AI generation`);
             return;
           }
@@ -579,17 +574,6 @@ const PromptBuilder: React.FC = () => {
                     Prompt Configuration
                   </h2>
                   <div className="flex items-center gap-3">
-                    {/* Mode Toggle */}
-                    <button
-                      onClick={() => setUseFallbackMode(!useFallbackMode)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        useFallbackMode
-                          ? 'bg-cosmic-purple/20 text-cosmic-purple'
-                          : 'bg-electric-cyan/20 text-electric-cyan'
-                      }`}
-                    >
-                      {useFallbackMode ? 'Local Mode' : 'AI Mode'}
-                    </button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -788,7 +772,7 @@ const PromptBuilder: React.FC = () => {
                 <div className="mt-4 p-3 bg-deep-bg rounded-lg flex items-center justify-between">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    Mode: {useFallbackMode ? '🔧 Local template generation' : '🤖 AI-powered prompt generation'}
+                    Mode: {edgeFunctionsAvailable ? '🤖 AI-powered prompt generation' : '🔧 Local template generation'}
                   </p>
                   {edgeFunctionsAvailable && (
                     <Button
