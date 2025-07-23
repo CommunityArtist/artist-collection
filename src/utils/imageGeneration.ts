@@ -78,6 +78,10 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
       return false;
     }
     
+    // Ensure we're using the correct Supabase Edge Function URL format
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
+    console.log(`🔍 Testing Edge Function at: ${edgeFunctionUrl}`);
+    
     // Additional safety check for network connectivity
     if (typeof window !== 'undefined' && !navigator.onLine) {
       console.warn(`❌ No network connection available for ${functionName}`);
@@ -88,10 +92,11 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
-    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+    const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
       },
       body: JSON.stringify({ test: true }),
       signal: controller.signal
@@ -100,6 +105,7 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
     clearTimeout(timeoutId);
     
     console.log(`🔍 Testing ${functionName}:`, {
+      url: edgeFunctionUrl,
       status: response.status,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries())
@@ -114,7 +120,7 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
   } catch (error) {
     // Handle specific network errors more gracefully
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      console.log(`🔄 Network unavailable for ${functionName}, falling back to local generation`);
+      console.log(`🔄 Network error for ${functionName}: ${error.message}. URL attempted: ${supabaseUrl}/functions/v1/${functionName}`);
       return false;
     }
     

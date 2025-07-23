@@ -113,9 +113,18 @@ const PromptBuilder: React.FC = () => {
         console.log('🔍 Starting Edge Function availability check...');
         setIsCheckingFunctions(true);
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         
-        if (!supabaseUrl) {
-          console.warn('❌ VITE_SUPABASE_URL not found');
+        console.log('🔧 Environment check:', { 
+          supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
+          hasAnonKey: !!supabaseAnonKey
+        });
+        
+        if (!supabaseUrl || !supabaseAnonKey) {
+          console.warn('❌ Missing Supabase environment variables:', { 
+            url: !!supabaseUrl, 
+            key: !!supabaseAnonKey 
+          });
           setEdgeFunctionsAvailable(false);
           setIsCheckingFunctions(false);
           return;
@@ -479,9 +488,18 @@ const PromptBuilder: React.FC = () => {
       setIsCheckingFunctions(true);
       clearEdgeFunctionCache();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      if (!supabaseUrl) {
-        console.warn('❌ VITE_SUPABASE_URL not found');
+      console.log('🔧 Force refresh environment check:', { 
+        supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
+        hasAnonKey: !!supabaseAnonKey
+      });
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn('❌ Missing Supabase environment variables for refresh:', { 
+          url: !!supabaseUrl, 
+          key: !!supabaseAnonKey 
+        });
         setEdgeFunctionsAvailable(false);
         setIsCheckingFunctions(false);
         return;
@@ -498,7 +516,7 @@ const PromptBuilder: React.FC = () => {
         image: imageAvailable,
         extract: extractAvailable,
         overall: available,
-        supabaseUrl: supabaseUrl
+        supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING'
       });
       
       setEdgeFunctionsAvailable(available);
