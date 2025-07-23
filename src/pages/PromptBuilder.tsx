@@ -88,6 +88,7 @@ const PromptBuilder: React.FC = () => {
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isCheckingFunctions, setIsCheckingFunctions] = useState(false);
+  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -317,11 +318,18 @@ const PromptBuilder: React.FC = () => {
         try {
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
+            imageDimensions: imageDimensions,
+            numberOfImages: numberOfImages
+          });
+          
+          if (result.images) {
+            setGeneratedImages(result.images);
             // Show success message for local generation  
             setError('✅ Generated using advanced local templates - Deploy Edge Functions for full functionality');
+          } else {
             setError(`Using placeholder images - Deploy Edge Functions for AI generation`);
-            return;
           }
+          return;
         } catch (fallbackError) {
           console.error('Fallback image generation failed:', fallbackError);
         }
@@ -772,7 +780,7 @@ const PromptBuilder: React.FC = () => {
                 <div className="mt-4 p-3 bg-deep-bg rounded-lg flex items-center justify-between">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    Mode: {edgeFunctionsAvailable ? '🤖 AI-powered prompt generation' : '🔧 Local template generation'}
+                    Mode: {useFallbackMode ? '🔧 Local template generation' : '🤖 AI-powered prompt generation'}
                   </p>
                   {edgeFunctionsAvailable && (
                     <Button
