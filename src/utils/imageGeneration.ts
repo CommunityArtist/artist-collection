@@ -64,7 +64,7 @@ function getDimensionsFromRatio(ratio: string): [number, number] {
 }
 
 // Function to test if Edge Functions are available
-export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 3000): Promise<boolean> {
+export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 10000): Promise<boolean> {
   try {
     // Validate supabaseUrl before making the request
     if (!supabaseUrl || typeof supabaseUrl !== 'string' || !supabaseUrl.startsWith('http')) {
@@ -119,7 +119,7 @@ export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, fu
   }
   
   // Test availability
-  const available = await testEdgeFunctionAvailability(supabaseUrl, functionName, 5000);
+  const available = await testEdgeFunctionAvailability(supabaseUrl, functionName, 15000);
   
   // Cache result
   edgeFunctionCache[cacheKey] = {
