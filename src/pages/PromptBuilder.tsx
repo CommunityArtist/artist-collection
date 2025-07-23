@@ -31,7 +31,7 @@ import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
 import { generatePromptLocally, enhancePromptWithCategory, type PromptData as LocalPromptData } from '../utils/promptGeneration';
-import { generateImagesWithFallback, testEdgeFunctionAvailability, getImageGenerationErrorMessage } from '../utils/imageGeneration';
+import { generateImagesWithFallback, testEdgeFunctionAvailability, getImageGenerationErrorMessage, clearEdgeFunctionCache } from '../utils/imageGeneration';
 import { ExtractedPrompt } from '../types';
 
 interface PromptData {
@@ -89,6 +89,7 @@ const PromptBuilder: React.FC = () => {
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [useFallbackMode, setUseFallbackMode] = useState(true);
+  const [isCheckingFunctions, setIsCheckingFunctions] = useState(false);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -110,8 +111,10 @@ const PromptBuilder: React.FC = () => {
   // Check if Edge Functions are available
   useEffect(() => {
     const checkEdgeFunctions = async () => {
+      setIsCheckingFunctions(true);
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const available = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
+      console.log('🔍 Edge Function availability check:', available);
       setEdgeFunctionsAvailable(available);
       if (!available) {
         setUseFallbackMode(true);
@@ -122,11 +125,12 @@ const PromptBuilder: React.FC = () => {
           setUseFallbackMode(false);
         }
       }
+      setIsCheckingFunctions(false);
     };
     checkEdgeFunctions();
     
-    // Also check every 30 seconds for newly deployed functions
-    const interval = setInterval(checkEdgeFunctions, 30000);
+    // Check more frequently right after component mounts (for newly deployed functions)
+    const interval = setInterval(checkEdgeFunctions, 15000);
     return () => clearInterval(interval);
   }, [useFallbackMode]);
 
@@ -498,6 +502,19 @@ const PromptBuilder: React.FC = () => {
     });
   };
 
+  const forceRefreshEdgeFunctions = async () => {
+    setIsCheckingFunctions(true);
+    clearEdgeFunctionCache();
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const available = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
+    console.log('🔄 Force refresh result:', available);
+    setEdgeFunctionsAvailable(available);
+    if (available && useFallbackMode) {
+      setUseFallbackMode(false);
+    }
+    setIsCheckingFunctions(false);
+  };
+
   // Show loading while checking authentication
   if (isCheckingAuth) {
     return (
@@ -563,10 +580,11 @@ const PromptBuilder: React.FC = () => {
               {/* Edge Functions Status */}
               <div className={`rounded-lg p-4 border transition-all duration-300 ${
                 edgeFunctionsAvailable 
-                  ? 'bg-success-green/10 border-success-green/20 animate-pulse' 
+                  ? 'bg-success-green/10 border-success-green/20' 
                   : 'bg-alert-orange/10 border-alert-orange/20'
               }`}>
                 <div className="flex items-start gap-3">
+                  <div className="flex-1">
                   {edgeFunctionsAvailable ? (
                     <div className="w-5 h-5 rounded-full bg-success-green flex items-center justify-center mt-0.5">
                       <div className="w-2 h-2 rounded-full bg-white"></div>
@@ -574,7 +592,7 @@ const PromptBuilder: React.FC = () => {
                   ) : (
                     <AlertTriangle className="w-5 h-5 text-alert-orange mt-0.5" />
                   )}
-                  <div>
+                    <div className="ml-3">
                     <p className={`text-sm font-medium ${
                       edgeFunctionsAvailable ? 'text-success-green' : 'text-alert-orange'
                     }`}>
@@ -584,7 +602,7 @@ const PromptBuilder: React.FC = () => {
                       {edgeFunctionsAvailable ? 'OpenAI DALL-E 3, RenderNet AI, and advanced prompt generation are now available' : 'Using local fallback generation. Deploy Edge Functions for full AI features.'}
                     </p>
                     {edgeFunctionsAvailable && (
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 flex flex-wrap gap-2">
                         <span className="text-xs bg-success-green/20 text-success-green px-2 py-1 rounded-full">
                           ✓ Prompt Generation
                         </span>
@@ -596,6 +614,18 @@ const PromptBuilder: React.FC = () => {
                         </span>
                       </div>
                     )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={forceRefreshEdgeFunctions}
+                      disabled={isCheckingFunctions}
+                      className="text-xs px-3 py-1"
+                    >
+                      {isCheckingFunctions ? 'Checking...' : '🔄 Refresh'}
+                    </Button>
                   </div>
                 </div>
               </div>

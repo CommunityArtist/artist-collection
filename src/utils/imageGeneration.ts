@@ -93,7 +93,7 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
 
 // Cached result to avoid repeated checks
 let edgeFunctionCache: { [key: string]: { available: boolean; timestamp: number } } = {};
-const CACHE_DURATION = 30 * 1000; // 30 seconds (shorter for better detection of newly deployed functions)
+const CACHE_DURATION = 30 * 1000; // 30 seconds for faster detection of newly deployed functions
 
 export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, functionName: string): Promise<boolean> {
   const cacheKey = `${supabaseUrl}/${functionName}`;
@@ -119,6 +119,12 @@ export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, fu
   }
   
   return available;
+}
+
+// Force refresh cache (useful after deployment)
+export function clearEdgeFunctionCache() {
+  edgeFunctionCache = {};
+  console.log('🔄 Edge Function detection cache cleared');
 }
 
 // Enhanced error messages for different scenarios
