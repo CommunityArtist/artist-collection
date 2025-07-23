@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     const promptData = await req.json();
 
     // Validate required fields
-    const requiredFields = ['subject', 'setting', 'lighting', 'style', 'mood'];
+    const requiredFields = ['subjectAndSetting', 'lighting', 'style', 'mood'];
     const missingFields = requiredFields.filter(field => !promptData[field]?.trim());
 
     if (missingFields.length > 0) {
@@ -99,6 +99,7 @@ When enhancement codes are provided, integrate them naturally into the flowing t
 Write your response as one continuous, descriptive paragraph that reads naturally while incorporating all technical details, enhancements, and realism requirements without any formatting symbols or structure markers.`;
 
     let userPrompt = `Create a detailed photorealistic photography prompt as a single flowing paragraph with these specifications: Subject is ${promptData.subject}, Lighting is ${promptData.lighting}, Style is ${promptData.style}, Mood is ${promptData.mood}, Setting is ${promptData.setting}`;
+    let userPrompt = `Create a detailed photorealistic photography prompt as a single flowing paragraph with these specifications: Subject and Setting is ${promptData.subjectAndSetting}, Lighting is ${promptData.lighting}, Style is ${promptData.style}, Mood is ${promptData.mood}`;
 
     if (promptData['post-processing']) {
       userPrompt += `, Post-Processing is ${promptData['post-processing']}`;

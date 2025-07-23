@@ -1,8 +1,7 @@
 // Local prompt generation utilities as fallback when Edge Functions are not available
 
 export interface PromptData {
-  subject: string;
-  setting: string;
+  subjectAndSetting: string;
   lighting: string;
   style: string;
   mood: string;
@@ -18,10 +17,10 @@ export interface GeneratedPromptResult {
 // Advanced prompt templates
 const PROMPT_TEMPLATES = {
   photography: {
-    base: "{subject} in {setting}, {lighting}, {style} style, {mood} mood",
-    professional: "Professional {style} of {subject} in {setting}. {lighting} creating {mood} atmosphere. Shot with high-end camera equipment, {post-processing}, detailed composition",
-    cinematic: "Cinematic {style} featuring {subject} in {setting}. {lighting} with {mood} ambiance. Professional color grading, {post-processing}, film-like quality",
-    artistic: "Artistic {style} portrait of {subject} in {setting}. {lighting} with {mood} expression. Creative composition, {post-processing}, fine art photography"
+    base: "{main_description}, {lighting}, {style} style, {mood} mood",
+    professional: "Professional {style} of {main_description}. {lighting} creating {mood} atmosphere. Shot with high-end camera equipment, {post-processing}, detailed composition",
+    cinematic: "Cinematic {style} featuring {main_description}. {lighting} with {mood} ambiance. Professional color grading, {post-processing}, film-like quality",
+    artistic: "Artistic {style} portrait of {main_description}. {lighting} with {mood} expression. Creative composition, {post-processing}, fine art photography"
   },
   enhancement: {
     natural: "natural skin texture, realistic lighting, authentic expression, candid moment, unretouched quality",
@@ -44,7 +43,7 @@ const NEGATIVE_PROMPT_ELEMENTS = [
 ];
 
 export function generatePromptLocally(promptData: PromptData): GeneratedPromptResult {
-  const { subject, setting, lighting, style, mood } = promptData;
+  const { subjectAndSetting, lighting, style, mood } = promptData;
   
   // Choose template based on style
   let template = PROMPT_TEMPLATES.photography.base;
@@ -59,8 +58,7 @@ export function generatePromptLocally(promptData: PromptData): GeneratedPromptRe
   
   // Build the main prompt
   let prompt = template
-    .replace('{subject}', subject)
-    .replace('{setting}', setting)
+    .replace('{main_description}', subjectAndSetting)
     .replace('{lighting}', lighting.toLowerCase())
     .replace('{style}', style.toLowerCase())
     .replace('{mood}', mood.toLowerCase())
@@ -114,8 +112,7 @@ export function generatePromptVariations(promptData: PromptData, count: number =
   for (let i = 0; i < Math.min(count, templates.length); i++) {
     const template = templates[i];
     let prompt = template
-      .replace('{subject}', promptData.subject)
-      .replace('{setting}', promptData.setting)
+      .replace('{main_description}', promptData.subjectAndSetting)
       .replace('{lighting}', promptData.lighting.toLowerCase())
       .replace('{style}', promptData.style.toLowerCase())
       .replace('{mood}', promptData.mood.toLowerCase())
