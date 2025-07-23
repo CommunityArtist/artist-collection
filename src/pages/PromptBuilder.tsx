@@ -587,14 +587,29 @@ const PromptBuilder: React.FC = () => {
                   <div>
                     <label className="block text-soft-lavender mb-2 font-medium">
                       <Target className="w-4 h-4 inline mr-2" />
-                      Subject & Setting
+                      Subject
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g., A young woman with curly hair in a modern coffee shop"
+                      placeholder="e.g., A young woman with curly hair"
                       className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                      value={promptData.subjectAndSetting}
-                      onChange={(e) => handleInputChange('subjectAndSetting', e.target.value)}
+                      value={promptData.subject}
+                      onChange={(e) => handleInputChange('subject', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Setting */}
+                  <div>
+                    <label className="block text-soft-lavender mb-2 font-medium">
+                      <Camera className="w-4 h-4 inline mr-2" />
+                      Setting
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Modern coffee shop with large windows"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                      value={promptData.setting}
+                      onChange={(e) => handleInputChange('setting', e.target.value)}
                     />
                   </div>
 
@@ -779,7 +794,7 @@ const PromptBuilder: React.FC = () => {
                     size="lg"
                     className="w-full"
                     onClick={handleGeneratePrompt}
-                    disabled={isGeneratingPrompt || !promptData.subjectAndSetting || !promptData.lighting || !promptData.style || !promptData.mood}
+                    disabled={isGeneratingPrompt || !promptData.subject || !promptData.setting || !promptData.lighting || !promptData.style || !promptData.mood}
                   >
                     {isGeneratingPrompt ? (
                       <>
