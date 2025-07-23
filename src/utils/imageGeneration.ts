@@ -78,6 +78,12 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
       return false;
     }
     
+    // Additional safety check for network connectivity
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      console.warn(`❌ No network connection available for ${functionName}`);
+      return false;
+    }
+    
     // Use AbortController to timeout the request quickly
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -106,6 +112,18 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
     console.log(`📊 ${functionName} detection result:`, exists);
     return exists;
   } catch (error) {
+    // Handle specific network errors more gracefully
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      console.log(`🔄 Network unavailable for ${functionName}, falling back to local generation`);
+      return false;
+    }
+    
+    // Handle AbortController timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log(`⏱️ Request timeout for ${functionName}, falling back to local generation`);
+      return false;
+    }
+    
     console.warn(`❌ Unexpected error testing ${functionName}:`, error);
     return false;
   }
