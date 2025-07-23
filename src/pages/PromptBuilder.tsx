@@ -51,6 +51,7 @@ const PromptBuilder: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState(false);
+  const [useFallbackMode, setUseFallbackMode] = useState(false);
 
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
@@ -140,6 +141,7 @@ const PromptBuilder: React.FC = () => {
     // Check more frequently for newly deployed functions
     const interval = setInterval(checkEdgeFunctions, 30000);
     return () => clearInterval(interval);
+  }, []);
 
   // Handle data from Prompt Extractor
   useEffect(() => {
@@ -752,8 +754,23 @@ const PromptBuilder: React.FC = () => {
                 <div className="mt-4 p-3 bg-deep-bg rounded-lg flex items-center justify-between">
                   <p className="text-xs text-soft-lavender/60">
                     <Info className="w-3 h-3 inline mr-1" />
-                    Mode: {edgeFunctionsAvailable ? '🤖 AI-powered prompt generation' : '🔧 Local template generation'}
+                    Mode: {useFallbackMode ? '🔧 Local template generation' : '🤖 AI-powered prompt generation'}
                   </p>
+                  {edgeFunctionsAvailable && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={forceRefreshEdgeFunctions}
+                      disabled={isCheckingFunctions}
+                      className="text-xs px-2 py-1"
+                    >
+                      {isCheckingFunctions ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Generate Prompt Button */}
