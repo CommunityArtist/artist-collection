@@ -110,32 +110,38 @@ const PromptBuilder: React.FC = () => {
   // Check if Edge Functions are available
   useEffect(() => {
     const checkEdgeFunctions = async () => {
-      console.log('🔍 Starting Edge Function availability check...');
-      setIsCheckingFunctions(true);
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      if (!supabaseUrl) {
-        console.warn('❌ VITE_SUPABASE_URL not found');
+      try {
+        console.log('🔍 Starting Edge Function availability check...');
+        setIsCheckingFunctions(true);
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        
+        if (!supabaseUrl) {
+          console.warn('❌ VITE_SUPABASE_URL not found');
+          setEdgeFunctionsAvailable(false);
+          setIsCheckingFunctions(false);
+          return;
+        }
+        
+        // Test multiple functions to be sure
+        const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
+        const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
+        const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt');
+        
+        const available = promptAvailable && imageAvailable;
+        console.log('🔍 Edge Function availability results:', {
+          prompt: promptAvailable,
+          image: imageAvailable,
+          extract: extractAvailable,
+          overall: available
+        });
+        
+        setEdgeFunctionsAvailable(available);
+      } catch (error) {
+        console.log('🔄 Edge Function check failed, using local generation:', error);
         setEdgeFunctionsAvailable(false);
+      } finally {
         setIsCheckingFunctions(false);
-        return;
       }
-      
-      // Test multiple functions to be sure
-      const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
-      const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
-      const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt');
-      
-      const available = promptAvailable && imageAvailable;
-      console.log('🔍 Edge Function availability results:', {
-        prompt: promptAvailable,
-        image: imageAvailable,
-        extract: extractAvailable,
-        overall: available
-      });
-      
-      setEdgeFunctionsAvailable(available);
-      setIsCheckingFunctions(false);
     };
     
     checkEdgeFunctions();
@@ -466,38 +472,43 @@ const PromptBuilder: React.FC = () => {
   };
 
   const forceRefreshEdgeFunctions = async () => {
-    console.log('🔄 Forcing Edge Function refresh...');
-    setIsCheckingFunctions(true);
-    clearEdgeFunctionCache();
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    
-    if (!supabaseUrl) {
-      console.warn('❌ VITE_SUPABASE_URL not found');
+    try {
+      console.log('🔄 Forcing Edge Function refresh...');
+      setIsCheckingFunctions(true);
+      clearEdgeFunctionCache();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      if (!supabaseUrl) {
+        console.warn('❌ VITE_SUPABASE_URL not found');
+        setEdgeFunctionsAvailable(false);
+        setIsCheckingFunctions(false);
+        return;
+      }
+      
+      // Test all critical functions
+      const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
+      const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
+      const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt');
+      
+      const available = promptAvailable && imageAvailable;
+      console.log('🔄 Force refresh results:', {
+        prompt: promptAvailable,
+        image: imageAvailable,
+        extract: extractAvailable,
+        overall: available,
+        supabaseUrl: supabaseUrl
+      });
+      
+      setEdgeFunctionsAvailable(available);
+      if (available) {
+        console.log('✅ Force refresh: Edge Functions detected!');
+      }
+    } catch (error) {
+      console.log('🔄 Force refresh failed, using local generation:', error);
       setEdgeFunctionsAvailable(false);
+    } finally {
       setIsCheckingFunctions(false);
-      return;
     }
-    
-    // Test all critical functions
-    const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
-    const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
-    const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt');
-    
-    const available = promptAvailable && imageAvailable;
-    console.log('🔄 Force refresh results:', {
-      prompt: promptAvailable,
-      image: imageAvailable,
-      extract: extractAvailable,
-      overall: available,
-      supabaseUrl: supabaseUrl
-    });
-    
-    setEdgeFunctionsAvailable(available);
-    if (available && useFallbackMode) {
-      console.log('✅ Force refresh: Switching to AI mode!');
-      setUseFallbackMode(false);
-    }
-    setIsCheckingFunctions(false);
   };
 
   // Show loading while checking authentication
