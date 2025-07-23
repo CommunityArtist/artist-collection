@@ -114,9 +114,6 @@ export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, fu
   };
   
   return available;
-}</parameter>
-    return false;
-  }
 }
 
 // Enhanced error messages for different scenarios
