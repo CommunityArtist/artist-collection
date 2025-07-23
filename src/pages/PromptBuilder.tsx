@@ -111,10 +111,23 @@ const PromptBuilder: React.FC = () => {
   // Check if Edge Functions are available
   useEffect(() => {
     const checkEdgeFunctions = async () => {
+      console.log('🔍 Starting Edge Function availability check...');
       setIsCheckingFunctions(true);
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const available = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
-      console.log('🔍 Edge Function availability check:', available);
+      
+      // Test multiple functions to be sure
+      const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
+      const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
+      const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt');
+      
+      const available = promptAvailable && imageAvailable;
+      console.log('🔍 Edge Function availability results:', {
+        prompt: promptAvailable,
+        image: imageAvailable,
+        extract: extractAvailable,
+        overall: available
+      });
+      
       setEdgeFunctionsAvailable(available);
       if (!available) {
         setUseFallbackMode(true);
@@ -122,15 +135,17 @@ const PromptBuilder: React.FC = () => {
         // If Edge Functions are available and user was previously in fallback mode,
         // automatically switch to AI mode for better experience
         if (useFallbackMode) {
+          console.log('✅ Switching to AI mode - Edge Functions detected!');
           setUseFallbackMode(false);
         }
       }
       setIsCheckingFunctions(false);
     };
+    
     checkEdgeFunctions();
     
-    // Check more frequently right after component mounts (for newly deployed functions)
-    const interval = setInterval(checkEdgeFunctions, 15000);
+    // Check more frequently for newly deployed functions
+    const interval = setInterval(checkEdgeFunctions, 30000);
     return () => clearInterval(interval);
   }, [useFallbackMode]);
 
@@ -180,6 +195,7 @@ const PromptBuilder: React.FC = () => {
       // Use local generation if Edge Functions are not available or user prefers fallback
       if (useFallbackMode || !edgeFunctionsAvailable) {
         try {
+          console.log('🔧 Using local prompt generation');
           const localPromptData: LocalPromptData = {
             subject: promptData.subject,
             setting: promptData.setting,
@@ -201,9 +217,9 @@ const PromptBuilder: React.FC = () => {
           
           // Show success message for local generation
           if (useFallbackMode && edgeFunctionsAvailable) {
-            setError('Generated using local templates (AI mode available but local mode selected)');
+            setError('✅ Generated using local templates (AI mode available but local mode selected)');
           } else if (!edgeFunctionsAvailable) {
-            setError('Generated using advanced local templates - Deploy Edge Functions for AI generation');
+            setError('✅ Generated using advanced local templates - Click Refresh to detect deployed functions');
           }
           
           return;
@@ -214,6 +230,7 @@ const PromptBuilder: React.FC = () => {
         }
       }
 
+      console.log('🤖 Using AI prompt generation');
       // Get auth session for API call
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -221,6 +238,7 @@ const PromptBuilder: React.FC = () => {
       }
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`;
+      console.log('📡 Calling AI prompt generation:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -232,6 +250,7 @@ const PromptBuilder: React.FC = () => {
       });
 
       const data = await response.json();
+      console.log('📡 AI prompt response:', { status: response.status, data });
 
       if (!response.ok) {
         throw new Error(data.error || `Failed to generate prompt: ${response.status} ${response.statusText}`);
@@ -503,13 +522,28 @@ const PromptBuilder: React.FC = () => {
   };
 
   const forceRefreshEdgeFunctions = async () => {
+    console.log('🔄 Forcing Edge Function refresh...');
     setIsCheckingFunctions(true);
     clearEdgeFunctionCache();
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const available = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
-    console.log('🔄 Force refresh result:', available);
+    
+    // Test all critical functions
+    const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
+    const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
+    const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt');
+    
+    const available = promptAvailable && imageAvailable;
+    console.log('🔄 Force refresh results:', {
+      prompt: promptAvailable,
+      image: imageAvailable,
+      extract: extractAvailable,
+      overall: available,
+      supabaseUrl: supabaseUrl
+    });
+    
     setEdgeFunctionsAvailable(available);
     if (available && useFallbackMode) {
+      console.log('✅ Force refresh: Switching to AI mode!');
       setUseFallbackMode(false);
     }
     setIsCheckingFunctions(false);
@@ -599,8 +633,16 @@ const PromptBuilder: React.FC = () => {
                       {edgeFunctionsAvailable ? '🚀 Edge Functions Active - Full AI Features Enabled!' : 'Edge Functions Not Deployed'}
                     </p>
                     <p className="text-xs text-soft-lavender/70 mt-1">
-                      {edgeFunctionsAvailable ? 'OpenAI DALL-E 3, RenderNet AI, and advanced prompt generation are now available' : 'Using local fallback generation. Deploy Edge Functions for full AI features.'}
+                      {edgeFunctionsAvailable 
+                        ? 'OpenAI DALL-E 3, RenderNet AI, and advanced prompt generation are now available' 
+                        : 'Using local fallback generation. Click Refresh to check for deployed functions.'
+                      }
                     </p>
+                    {!edgeFunctionsAvailable && (
+                      <p className="text-xs text-alert-orange/80 mt-1">
+                        If you deployed functions, check environment variables: OPENAI_API_KEY, AFFOGATO_API_KEY
+                      </p>
+                    )}
                     {edgeFunctionsAvailable && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         <span className="text-xs bg-success-green/20 text-success-green px-2 py-1 rounded-full">
@@ -626,6 +668,16 @@ const PromptBuilder: React.FC = () => {
                     >
                       {isCheckingFunctions ? 'Checking...' : '🔄 Refresh'}
                     </Button>
+                    {!edgeFunctionsAvailable && (
+                      <a 
+                        href="https://supabase.com/dashboard/project/trpznltoengquizgfelv/functions"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-electric-cyan hover:text-cosmic-purple underline"
+                      >
+                        Open Supabase
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

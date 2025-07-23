@@ -65,28 +65,40 @@ function getDimensionsFromRatio(ratio: string): [number, number] {
 }
 
 // Function to test if Edge Functions are available
-export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 5000): Promise<boolean> {
+export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 3000): Promise<boolean> {
   try {
     // Use AbortController to timeout the request quickly
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
     const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-      method: 'OPTIONS',
+      method: 'POST', // Change to POST to get a more reliable response
       signal: controller.signal,
-      // Add headers to avoid preflight issues
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        test: true // Simple test payload
       }
     });
     
     clearTimeout(timeoutId);
     
-    // Even a 404 or 405 means the function endpoint exists
-    return response.status !== 0 && response.status < 500;
+    console.log(`🔍 Testing ${functionName}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+    
+    // Function exists if we get any response other than network errors
+    // 400-499 errors mean the function exists but request is bad (expected)
+    // 500+ errors might mean deployment issues
+    const exists = response.status >= 400 && response.status < 500;
+    console.log(`📊 ${functionName} detection result:`, exists);
+    return exists;
   } catch (error) {
-    // Don't log expected errors for unavailable functions
+    console.log(`❌ ${functionName} detection failed:`, error);
     return false;
   }
 }
