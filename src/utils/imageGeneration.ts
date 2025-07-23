@@ -66,6 +66,12 @@ function getDimensionsFromRatio(ratio: string): [number, number] {
 // Function to test if Edge Functions are available
 export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 3000): Promise<boolean> {
   try {
+    // Validate supabaseUrl before making the request
+    if (!supabaseUrl || typeof supabaseUrl !== 'string' || !supabaseUrl.startsWith('http')) {
+      console.warn(`❌ Invalid Supabase URL for ${functionName}:`, supabaseUrl);
+      return false;
+    }
+    
     // Use AbortController to timeout the request quickly
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
