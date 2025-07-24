@@ -675,35 +675,6 @@ const PromptBuilder: React.FC = () => {
     return `SREF-${Math.floor(1000 + Math.random() * 8999)}`;
   };
 
-  const handleDownloadImage = (imageUrl: string, index: number) => {
-    const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
-    const sref = generateSREF();
-    
-    if (!promptToUse) {
-      setError('No prompt to save');
-      return;
-    }
-
-    // Generate title from subject
-    const subjectWords = promptData.subjectAndSetting.split(' ').slice(0, 4).join(' ');
-    const generatedTitle = subjectWords || 'Generated Artwork';
-    
-    if (!promptToUse) {
-      setError('No prompt to save');
-      return;
-    }
-
-    // Navigate to create prompt page with the generated prompt and form data
-    navigate('/create-prompt', {
-      state: {
-        title: generatedTitle,
-        generatedPrompt: promptToUse,
-        promptData: promptData,
-        imageDimensions: imageDimensions,
-        numberOfImages: numberOfImages,
-        sref: sref,
-        notes: `Generated using Prompt Builder\nSettings: ${promptData.lighting}, ${promptData.style}, ${promptData.mood}\nDimensions: ${imageDimensions}\nImages: ${numberOfImages}`,
-        mediaUrl: selectedImageUrl,
         tags: ['Prompt Builder'],
         mediaUrl: selectedImageUrl
       }
