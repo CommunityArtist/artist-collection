@@ -25,7 +25,8 @@ import {
   ChevronUp,
   X,
   Plus,
-  Minus
+  Minus,
+  Clock
 } from 'lucide-react';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
@@ -72,6 +73,8 @@ const PromptBuilder: React.FC = () => {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [imageGenProgress, setImageGenProgress] = useState(0);
+  const [imageGenTimer, setImageGenTimer] = useState(0);
   const [copySuccess, setCopySuccess] = useState(false);
   
   // Image generation settings
@@ -88,6 +91,8 @@ const PromptBuilder: React.FC = () => {
   const [enhanceLevel, setEnhanceLevel] = useState(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isCheckingFunctions, setIsCheckingFunctions] = useState(false);
+
+  const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -379,6 +384,30 @@ const PromptBuilder: React.FC = () => {
     }
   };
 
+  // Progress timer effect
+  useEffect(() => {
+    if (isGeneratingImages) {
+      setImageGenProgress(0);
+      setImageGenTimer(0);
+      const interval = setInterval(() => {
+        setImageGenTimer(prev => prev + 1);
+        // Simulate realistic progress for DALL-E 3 (typically 10-30 seconds per image)
+        setImageGenProgress(prev => {
+          const timeElapsed = (Date.now() - Date.now()) / 1000;
+          const estimatedTotal = numberOfImages * 20; // 20 seconds per image estimate
+          const naturalProgress = Math.min((prev + 1) / estimatedTotal * 100, 95);
+          return Math.min(naturalProgress + Math.random() * 2, 95); // Add some natural variance
+        });
+      }, 1000);
+      setProgressInterval(interval);
+    } else {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        setProgressInterval(null);
+      }
+    }
+  }, [isGeneratingImages, numberOfImages]);
+
   const handleGenerateImages = async () => {
     try {
       if (!isAuthenticated) {
@@ -388,6 +417,8 @@ const PromptBuilder: React.FC = () => {
       }
 
       setIsGeneratingImages(true);
+      setImageGenProgress(5); // Start with 5% to show immediate feedback
+      setImageGenTimer(0);
       setError(null);
       
       const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
@@ -407,7 +438,12 @@ const PromptBuilder: React.FC = () => {
         throw new Error('Invalid Supabase URL configuration');
       }
       
-      const apiUrl = `${supabaseUrl}/functions/v1/generate-image`;
+      // Try multiple endpoints to find the working image generation service
+      let apiUrl = `${supabaseUrl}/functions/v1/generate-image`;
+      
+      // If generate-image fails, fallback to affogato-integration
+      const fallbackUrl = `${supabaseUrl}/functions/v1/affogato-integration`;
+      
       const requestPayload = {
         prompt: promptToUse,
         imageDimensions: imageDimensions,
@@ -417,7 +453,129 @@ const PromptBuilder: React.FC = () => {
 
       console.log('🖼️ Attempting AI image generation...', { apiUrl, numberOfImages, dimensions: imageDimensions });
 
-      const response = await fetch(apiUrl, {
+      setImageGenProgress(15); // Show initial progress
+      
+      let response;
+      let usingFallback = false;
+      
+      try {
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestPayload),
+        });
+      } catch (primaryError) {
+        console.log('🔄 Primary endpoint failed, trying fallback...', primaryError);
+        setImageGenProgress(25);
+        usingFallback = true;
+        
+        // Try fallback endpoint
+        response = await fetch(fallbackUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            ...requestPayload,
+            model: 'realistic_vision_v6_0',
+            width: imageDimensions === '1:1' ? 1024 : imageDimensions.includes('16:9') || imageDimensions.includes('3:2') ? 1792 : 1024,
+            height: imageDimensions === '1:1' ? 1024 : imageDimensions.includes('9:16') || imageDimensions.includes('2:3') || imageDimensions.includes('4:5') ? 1792 : 1024
+          }),
+        });
+      }
+
+      setImageGenProgress(60); // Mid-generation progress
+      
+      if (!response) {
+        throw new Error('Failed to connect to image generation service');
+      }
+      
+      const data = await response.json();
+      setImageGenProgress(90); // Near completion
+      
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      let imageUrls: string[] = [];
+      if (data.imageUrls && Array.isArray(data.imageUrls)) {
+        imageUrls = data.imageUrls;
+      } else if (data.imageUrl) {
+        imageUrls = Array.isArray(data.imageUrl) ? data.imageUrl : [data.imageUrl];
+      } else {
+        throw new Error('No images returned from the AI service');
+      }
+
+      setImageGenProgress(100); // Complete
+      setGeneratedImages(imageUrls);
+      
+      // Show success message with provider info
+      if (usingFallback) {
+        console.log('✅ Images generated successfully using RenderNet AI fallback');
+      } else {
+        console.log('✅ Images generated successfully using DALL-E 3');
+      }
+
+    } catch (error) {
+      console.error('AI image generation failed:', error);
+      setImageGenProgress(0); // Reset progress on error
+      
+      // Try fallback generation if AI generation fails
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        console.log('🔄 Trying local fallback image generation...');
+        setImageGenProgress(50);
+        try {
+          const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+          const result = await generateImagesWithFallback({
+            prompt: promptToUse,
+            imageDimensions: imageDimensions,
+            numberOfImages: numberOfImages
+          });
+          
+          if (result.imageUrls) {
+            setImageGenProgress(100);
+            setGeneratedImages(result.imageUrls);
+            setError('⚠️ AI generation unavailable - showing placeholder images. Using local fallback generation.');
+            return;
+          }
+        } catch (fallbackError) {
+          console.error('Fallback generation also failed:', fallbackError);
+          setImageGenProgress(0);
+        }
+      }
+      
+      let errorMessage = 'Failed to generate images';
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Unable to connect to AI image generation service. Please verify Edge Functions are deployed and properly configured.';
+        } else if (error.message.includes('OpenAI API key')) {
+          errorMessage = 'OpenAI API key not configured. Please contact support or check system configuration.';
+        } else if (error.message.includes('quota')) {
+          errorMessage = 'AI service quota exceeded. Please contact support.';
+        } else if (error.message.includes('content filters')) {
+          errorMessage = 'Your prompt was blocked by content filters. Please modify your prompt to comply with usage policies.';
+        } else if (error.message.includes('Authentication')) {
+          errorMessage = 'Authentication failed. Please sign in again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsGeneratingImages(false);
+      setImageGenProgress(0);
+      setImageGenTimer(0);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        setProgressInterval(null);
+      }
+    }
+  };
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
