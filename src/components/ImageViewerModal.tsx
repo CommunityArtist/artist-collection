@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ArrowLeft, Download } from 'lucide-react';
 import Button from './Button';
 
 interface ImageViewerModalProps {
@@ -9,6 +9,7 @@ interface ImageViewerModalProps {
   onClose: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  onDownload?: (imageUrl: string, index: number) => void;
 }
 
 const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
@@ -17,7 +18,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   isOpen,
   onClose,
   onPrevious,
-  onNext
+  onNext,
+  onDownload
 }) => {
   if (!isOpen || images.length === 0) return null;
 
@@ -81,6 +83,17 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
             <ArrowLeft className="w-4 h-4 mr-2" />
             Done
           </Button>
+          {onDownload && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDownload(currentImage, currentIndex)}
+              className="bg-black/50 text-white hover:bg-black/70 border-white/20"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          )}
           <button
             onClick={onClose}
             className="p-2 rounded-full bg-black/50 text-white hover:bg-white/10 transition-colors"

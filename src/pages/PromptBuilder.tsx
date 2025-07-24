@@ -83,6 +83,7 @@ const PromptBuilder: React.FC = () => {
   const [imageDimensions, setImageDimensions] = useState('1:1');
   const [numberOfImages, setNumberOfImages] = useState(1);
   const [imageStyle, setImageStyle] = useState('natural');
+  const [imageMetadata, setImageMetadata] = useState<Array<{url: string, sref: string}>>([]);
   
   // Image viewer state
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -528,6 +529,13 @@ const PromptBuilder: React.FC = () => {
 
       setImageGenProgress(100); // Complete
       setGeneratedImages(imageUrls);
+      
+      // Generate metadata for each image with SREF numbers
+      const metadata = imageUrls.map((url, index) => ({
+        url: url,
+        sref: `SREF-${Math.floor(2000 + Math.random() * 7000)}`
+      }));
+      setImageMetadata(metadata);
       setImageGenStatus('Complete!');
       
       // Show success message with provider info
@@ -640,6 +648,27 @@ const PromptBuilder: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadImage = (imageUrl: string, index: number) => {
+    try {
+      // Create a temporary link element for download
+      const link = document.createElement('a');
+      link.href = imageUrl; // Use the stored Supabase URL, not the original OpenAI URL
+      
+      // Get SREF for filename
+      const sref = imageMetadata[index]?.sref || `SREF-${Math.floor(2000 + Math.random() * 7000)}`;
+      link.download = `${sref}-generated-image.png`;
+      
+      // Add to DOM, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback: open in new tab if download fails
+      window.open(imageUrl, '_blank');
+    }
   };
 
   const generateSREF = () => {
@@ -1241,12 +1270,18 @@ const PromptBuilder: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {generatedImages.map((imageUrl, index) => (
                       <div key={index} className="relative group">
+                        <div className="cursor-pointer" onClick={() => openImageViewer(index)}>
                         {/* Main Image - Clickable */}
                         <img
                           src={imageUrl}
                           alt={`Generated artwork ${index + 1}`}
                           className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
-                          onClick={() => openImageViewer(index)}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const errorDiv = target.nextElementSibling as HTMLElement;
+                            if (errorDiv) errorDiv.style.display = 'flex';
+                          }}
                           onError={(e) => {
                             console.error('Image failed to load:', imageUrl);
                             const target = e.target as HTMLImageElement;
@@ -1264,16 +1299,56 @@ const PromptBuilder: React.FC = () => {
                             }
                           }}
                         />
+                        </div>
+                        
+                        {/* Error state for failed images */}
+                        <div 
+                          className="w-full h-64 bg-card-bg border-2 border-dashed border-border-color rounded-lg items-center justify-center flex-col text-center p-4 hidden"
+                        >
+                          <AlertCircle className="w-8 h-8 text-soft-lavender/50 mb-2" />
+                          <p className="text-soft-lavender/70 text-sm mb-2">Image failed to load</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.location.reload()}
+                          >
+                            Retry
+                          </Button>
+                        </div>
+                        
                         
                         {/* Hover Overlay */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
-                          <Eye className="w-8 h-8 text-white" />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openImageViewer(index)}
+                              className="p-2 bg-black/70 rounded-full hover:bg-black/90 transition-colors"
+                              title="View in gallery"
+                            >
+                              <Eye className="w-5 h-5 text-white" />
+                            </button>
+                            <button
+                              onClick={() => handleDownloadImage(imageUrl, index)}
+                              className="p-2 bg-black/70 rounded-full hover:bg-black/90 transition-colors"
+                              title="Download image"
+                            >
+                              <Download className="w-5 h-5 text-white" />
+                            </button>
+                          </div>
                         </div>
+                        
                         
                         {/* Username overlay on each image */}
                         {currentUserProfile?.username && (
                           <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
                             @{currentUserProfile.username}
+                          </div>
+                        )}
+                        
+                        {/* SREF overlay on each image */}
+                        {imageMetadata[index] && (
+                          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                            {imageMetadata[index].sref}
                           </div>
                         )}
                         
@@ -1310,6 +1385,15 @@ const PromptBuilder: React.FC = () => {
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       View Gallery
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadImage(generatedImages[0], 0)}
+                      className="flex-1"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download First
                     </Button>
                     <Button
                       variant="primary"
@@ -1360,6 +1444,7 @@ const PromptBuilder: React.FC = () => {
         onClose={closeImageViewer}
         onPrevious={goToPreviousImage}
         onNext={goToNextImage}
+        onDownload={handleDownloadImage}
       />
     </div>
   );
