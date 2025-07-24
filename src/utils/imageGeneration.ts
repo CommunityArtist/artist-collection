@@ -65,12 +65,6 @@ function getDimensionsFromRatio(ratio: string): [number, number] {
 
 // Function to test if Edge Functions are available
 export async function testEdgeFunctionAvailability(supabaseUrl: string, functionName: string, timeout: number = 3000): Promise<boolean> {
-  // Check if Edge Functions testing is disabled via environment variable
-  if (import.meta.env.VITE_DISABLE_EDGE_FUNCTIONS_CHECK === 'true') {
-    console.log(`🚫 Edge Functions check disabled for ${functionName}`);
-    return false;
-  }
-
   try {
     // Validate supabaseUrl before making the request
     if (!supabaseUrl || typeof supabaseUrl !== 'string' || !supabaseUrl.startsWith('http')) {
@@ -118,13 +112,12 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
       url: edgeFunctionUrl,
       status: response.status,
       statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
+      ok: response.ok
     });
     
-    // Function exists if we get any response other than network errors
-    // 400-499 errors mean the function exists but request is bad (expected)
-    // 500+ errors might mean deployment issues
-    const exists = response.status >= 400 && response.status < 500;
+    // More permissive detection - function exists if we get any HTTP response
+    // Even 500 errors mean the function exists but may have runtime issues
+    const exists = response.status >= 200;
     console.log(`📊 ${functionName} detection result:`, exists);
     return exists;
   } catch (error) {

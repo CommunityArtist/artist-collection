@@ -108,22 +108,13 @@ const PromptBuilder: React.FC = () => {
   useEffect(() => {
     const checkEdgeFunctions = async () => {
       try {
-        console.log('🔍 Starting Edge Function availability check...');
+        console.log('🔍 Checking Edge Function availability...');
         setIsCheckingFunctions(true);
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         
-        console.log('🔧 Environment check:', { 
-          supabaseUrl: supabaseUrl || 'MISSING',
-          hasAnonKey: !!supabaseAnonKey,
-          expectedUrl: 'https://trpznltoengquizgfelv.supabase.co'
-        });
-        
         if (!supabaseUrl || !supabaseAnonKey) {
-          console.warn('❌ Missing Supabase environment variables:', { 
-            url: !!supabaseUrl, 
-            key: !!supabaseAnonKey 
-          });
+          console.warn('❌ Missing Supabase environment variables');
           setEdgeFunctionsAvailable(false);
           setIsCheckingFunctions(false);
           return;
@@ -131,28 +122,26 @@ const PromptBuilder: React.FC = () => {
         
         // Ensure we're using the correct Supabase URL format
         if (!supabaseUrl.includes('supabase.co')) {
-          console.error('❌ Invalid Supabase URL format:', supabaseUrl);
+          console.error('❌ Invalid Supabase URL format');
           setEdgeFunctionsAvailable(false);
           setIsCheckingFunctions(false);
           return;
         }
         
-        // Test multiple functions to be sure
-        const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt');
-        const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image');
-        const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt');
+        // Test key functions with longer timeout
+        const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt', 5000);
+        const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image', 5000);
         
-        const available = promptAvailable && imageAvailable;
+        const available = promptAvailable || imageAvailable; // At least one should work
         console.log('🔍 Edge Function availability results:', {
           prompt: promptAvailable,
           image: imageAvailable,
-          extract: extractAvailable,
           overall: available
         });
         
         setEdgeFunctionsAvailable(available);
       } catch (error) {
-        console.log('🔄 Edge Function check failed, using local generation:', error);
+        console.log('🔄 Edge Function check failed:', error);
         setEdgeFunctionsAvailable(false);
       } finally {
         setIsCheckingFunctions(false);
@@ -161,8 +150,8 @@ const PromptBuilder: React.FC = () => {
     
     checkEdgeFunctions();
     
-    // Check more frequently for newly deployed functions
-    const interval = setInterval(checkEdgeFunctions, 30000);
+    // Check less frequently to reduce noise
+    const interval = setInterval(checkEdgeFunctions, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -346,32 +335,10 @@ const PromptBuilder: React.FC = () => {
         return;
       }
 
-      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
-
-      // Use fallback image generation if Edge Functions are not available
-      if (!edgeFunctionsAvailable) {
-        try {
-          const result = await generateImagesWithFallback({
-            prompt: promptToUse,
-            imageDimensions: imageDimensions,
-            numberOfImages: numberOfImages
-          });
-          
-          if (result.images) {
-            setGeneratedImages(result.images);
-          }
-          
-          // Show success message for local generation  
-          setError('✅ Generated using advanced local templates - Deploy Edge Functions for full functionality');
-          setError(`Using placeholder images - Deploy Edge Functions for AI generation`);
-          return;
-        } catch (fallbackError) {
-          console.error('Fallback image generation failed:', fallbackError);
-        }
-      }
-
       setIsGeneratingImages(true);
       setError(null);
+      
+      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
       
       if (!promptToUse) {
         throw new Error('Please generate a prompt first');
@@ -394,6 +361,8 @@ const PromptBuilder: React.FC = () => {
         imageDimensions: imageDimensions,
         numberOfImages: numberOfImages
       };
+
+      console.log('🖼️ Attempting AI image generation...', { apiUrl, numberOfImages, dimensions: imageDimensions });
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -422,17 +391,37 @@ const PromptBuilder: React.FC = () => {
       setGeneratedImages(imageUrls);
 
     } catch (error) {
-      console.error('Error generating images:', error);
+      console.error('AI image generation failed:', error);
+      
+      // Try fallback generation if AI generation fails
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        console.log('🔄 Trying fallback image generation...');
+        try {
+          const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+          const result = await generateImagesWithFallback({
+            prompt: promptToUse,
+            imageDimensions: imageDimensions,
+            numberOfImages: numberOfImages
+          });
+          
+          if (result.imageUrls) {
+            setGeneratedImages(result.imageUrls);
+            setError('⚠️ AI generation unavailable - showing placeholder images. Check Edge Function deployment.');
+            return;
+          }
+        } catch (fallbackError) {
+          console.error('Fallback generation also failed:', fallbackError);
+        }
+      }
       
       let errorMessage = 'Failed to generate images';
-      
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          errorMessage = 'Unable to connect to the OpenAI image generation service. Please check that the Supabase Edge Functions are deployed and try again.';
+          errorMessage = 'Unable to connect to AI image generation service. Please verify Edge Functions are deployed and properly configured.';
         } else if (error.message.includes('OpenAI API key')) {
-          errorMessage = 'OpenAI API key not configured. Please go to Account → API Config to set up your OpenAI API key.';
+          errorMessage = 'OpenAI API key not configured. Please contact support or check system configuration.';
         } else if (error.message.includes('quota')) {
-          errorMessage = 'API quota exceeded. Please check your account billing or contact support.';
+          errorMessage = 'OpenAI API quota exceeded. Please contact support.';
         } else if (error.message.includes('content filters')) {
           errorMessage = 'Your prompt was blocked by content filters. Please modify your prompt to comply with usage policies.';
         } else if (error.message.includes('Authentication')) {
