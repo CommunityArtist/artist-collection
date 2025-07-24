@@ -212,6 +212,21 @@ const PromptBuilder: React.FC = () => {
       if (!edgeFunctionsAvailable) {
         try {
           console.log('🔧 Using local prompt generation');
+          
+          // Validate required fields for local generation
+          if (!promptData.subjectAndSetting.trim()) {
+            throw new Error('Subject & Setting is required for prompt generation');
+          }
+          if (!promptData.lighting.trim()) {
+            throw new Error('Lighting selection is required for prompt generation');
+          }
+          if (!promptData.style.trim()) {
+            throw new Error('Style selection is required for prompt generation');
+          }
+          if (!promptData.mood.trim()) {
+            throw new Error('Mood selection is required for prompt generation');
+          }
+          
           const localPromptData: LocalPromptData = {
             subjectAndSetting: promptData.subjectAndSetting,
             lighting: promptData.lighting,
@@ -222,6 +237,10 @@ const PromptBuilder: React.FC = () => {
           };
           
           const result = generatePromptLocally(localPromptData);
+          if (!result || !result.prompt) {
+            throw new Error('Local generation returned empty result');
+          }
+          
           let finalPrompt = result.prompt;
           
           if (enhanceLevel > 0) {
@@ -231,16 +250,14 @@ const PromptBuilder: React.FC = () => {
           setGeneratedPrompt(finalPrompt);
           
           // Show success message for local generation
-          if (useFallbackMode && edgeFunctionsAvailable) {
-            setError('✅ Generated using local templates (AI mode available but local mode selected)');
-          } else if (!edgeFunctionsAvailable) {
+          if (!edgeFunctionsAvailable) {
             setError('✅ Generated using advanced local templates - Click Refresh to detect deployed functions');
           }
           
           return;
         } catch (localError) {
           console.error('Local prompt generation failed:', localError);
-          setError('Failed to generate prompt locally.');
+          setError(localError instanceof Error ? localError.message : 'Failed to generate prompt locally.');
           return;
         }
       }

@@ -43,7 +43,80 @@ const NEGATIVE_PROMPT_ELEMENTS = [
 ];
 
 export function generatePromptLocally(promptData: PromptData): GeneratedPromptResult {
-  const { subjectAndSetting, lighting, style, mood } = promptData;
+  try {
+    // Validate input data
+    if (!promptData) {
+      throw new Error('Prompt data is required');
+    }
+    
+    const { subjectAndSetting, lighting, style, mood } = promptData;
+    
+    // Validate required fields
+    if (!subjectAndSetting?.trim()) {
+      throw new Error('Subject and setting description is required');
+    }
+    if (!lighting?.trim()) {
+      throw new Error('Lighting selection is required');
+    }
+    if (!style?.trim()) {
+      throw new Error('Style selection is required');
+    }
+    if (!mood?.trim()) {
+      throw new Error('Mood selection is required');
+    }
+    
+    // Choose template based on style
+    let template = PROMPT_TEMPLATES.photography.base;
+    
+    if (style.toLowerCase().includes('professional') || style.toLowerCase().includes('headshot')) {
+      template = PROMPT_TEMPLATES.photography.professional;
+    } else if (style.toLowerCase().includes('cinematic') || style.toLowerCase().includes('dramatic')) {
+      template = PROMPT_TEMPLATES.photography.cinematic;
+    } else if (style.toLowerCase().includes('fine art') || style.toLowerCase().includes('portrait')) {
+      template = PROMPT_TEMPLATES.photography.artistic;
+    }
+    
+    // Build the main prompt
+    let prompt = template
+      .replace('{main_description}', subjectAndSetting.trim())
+      .replace('{lighting}', lighting.toLowerCase().trim())
+      .replace('{style}', style.toLowerCase().trim())
+      .replace('{mood}', mood.toLowerCase().trim())
+      .replace('{post-processing}', promptData['post-processing']?.trim() || 'natural color grading');
+    
+    // Add enhancements
+    const enhancementType = determineEnhancementType(style, mood, lighting);
+    const enhancement = PROMPT_TEMPLATES.enhancement[enhancementType];
+    if (enhancement) {
+      prompt += `, ${enhancement}`;
+    }
+    
+    // Add technical details
+    prompt += ", shot on professional camera, 85mm lens, shallow depth of field";
+    
+    // Add enhancement codes if provided
+    if (promptData.enhancement?.trim()) {
+      prompt += `, ${promptData.enhancement.trim()}`;
+    }
+    
+    // Generate negative prompt
+    const negativePrompt = NEGATIVE_PROMPT_ELEMENTS.join(', ');
+    
+    // Validate output
+    if (!prompt.trim()) {
+      throw new Error('Generated prompt is empty');
+    }
+    
+    return {
+      prompt: prompt.trim(),
+      negativePrompt: negativePrompt
+    };
+    
+  } catch (error) {
+    console.error('Error in generatePromptLocally:', error);
+    throw error instanceof Error ? error : new Error('Unknown error in local prompt generation');
+  }
+}
   
   // Choose template based on style
   let template = PROMPT_TEMPLATES.photography.base;
