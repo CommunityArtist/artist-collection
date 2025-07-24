@@ -1,4 +1,5 @@
 // Image generation utilities and fallbacks
+import { supabase } from '../lib/supabase';
 
 export interface ImageGenerationParams {
   prompt: string;
@@ -78,6 +79,13 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
       return false;
     }
     
+    // Get the current user session for authenticated requests
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.log(`⚠️ No user session available for ${functionName}, skipping authentication test`);
+      return false;
+    }
+    
     // Ensure we're using the correct Supabase Edge Function URL format
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     console.log(`🔍 Testing Edge Function at:`, {
@@ -100,7 +108,7 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ test: true }),
       signal: controller.signal
