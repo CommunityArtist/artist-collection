@@ -136,8 +136,8 @@ const PromptBuilder: React.FC = () => {
       
       // Map extracted data to form fields
       const mappedData: PromptData = {
-        subject: extractedData.mainPrompt || '',
-        setting: extractedData.composition || '',
+        subject: `${extractedData.mainPrompt || ''}${extractedData.mainPrompt && extractedData.composition ? ', ' : ''}${extractedData.composition || ''}`,
+        setting: '', // Clear setting since we're combining into subject
         lighting: extractedData.lighting || '',
         style: extractedData.styleElements?.join(', ') || '',
         mood: extractedData.mood || '',
@@ -192,7 +192,7 @@ const PromptBuilder: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    const requiredFields: (keyof PromptData)[] = ['subject', 'setting', 'lighting', 'style', 'mood'];
+    const requiredFields: (keyof PromptData)[] = ['subject', 'lighting', 'style', 'mood'];
     const missingFields = requiredFields.filter(field => !promptData[field]?.trim());
     
     if (missingFields.length > 0) {
@@ -555,27 +555,19 @@ const PromptBuilder: React.FC = () => {
                 <Camera className="w-5 h-5 text-electric-cyan" />
                 Subject & Setting
               </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-soft-lavender mb-2">Subject *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., A young woman with curly hair"
-                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                    value={promptData.subject}
-                    onChange={(e) => handleInputChange('subject', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-soft-lavender mb-2">Setting *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., standing in a sunlit garden"
-                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                    value={promptData.setting}
-                    onChange={(e) => handleInputChange('setting', e.target.value)}
-                  />
-                </div>
+              <div>
+                <label className="block text-soft-lavender mb-2">Subject & Setting *</label>
+                <textarea
+                  placeholder="e.g., A young woman with curly hair, standing in a sunlit garden with blooming flowers"
+                  className="w-full bg-deep-bg border border-border-color rounded-lg p-4 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none h-24"
+                  value={`${promptData.subject}${promptData.subject && promptData.setting ? ', ' : ''}${promptData.setting}`}
+                  onChange={(e) => {
+                    // For simplicity, store the combined text in the subject field
+                    // and clear the setting field to avoid confusion
+                    handleInputChange('subject', e.target.value);
+                    handleInputChange('setting', '');
+                  }}
+                />
               </div>
             </div>
 
