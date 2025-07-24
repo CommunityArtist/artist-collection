@@ -261,7 +261,8 @@ const PromptBuilder: React.FC = () => {
           
         } catch (edgeError) {
           console.warn('Edge Function failed, falling back to local generation:', edgeError);
-          // ✅ Use local generation when Edge Functions not available
+          
+          // ✅ Add this fallback:
           const result = generatePromptLocally({
             subjectAndSetting: promptData.subject, // Combined field now
             lighting: promptData.lighting,
@@ -275,19 +276,18 @@ const PromptBuilder: React.FC = () => {
           setNegativePrompt(result.negativePrompt);
           
           const enhanced = enhancePromptWithCategory(
-            result.prompt, 
-            promptData.selectedCategory, 
+            result.prompt,
+            promptData.selectedCategory,
             promptData.enhanceLevel
           );
           setEnhancedPrompt(enhanced);
-          
           setSuccess(true);
           setTimeout(() => setSuccess(false), 3000);
         }
       } else {
-        // Use local generation
+        // Use local generation when Edge Functions not available
         const result = generatePromptLocally({
-          subjectAndSetting: `${promptData.subject}, ${promptData.setting}`,
+          subjectAndSetting: promptData.subject, // Combined field now
           lighting: promptData.lighting,
           style: promptData.style,
           mood: promptData.mood,
@@ -368,21 +368,22 @@ const PromptBuilder: React.FC = () => {
           
         } catch (edgeError) {
           console.warn('Edge Function failed, using fallback:', edgeError);
-          // Fall back to placeholder generation
+          
+          // ✅ Add this fallback:
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
             dimensions: imageDimensions,
             numberOfImages
           });
           
-          if (result.success && result.imageUrls && result.imageUrls.length > 0) {
+          if (result.success && result.imageUrls?.length > 0) {
             setGeneratedImages(result.imageUrls);
           } else {
-            throw new Error(result.error || 'Failed to generate images');
+            throw new Error(result.error || 'Fallback failed to generate images');
           }
         }
       } else {
-        // Use fallback generation
+        // Use fallback generation when Edge Functions not available
         const result = await generateImagesWithFallback({
           prompt: promptToUse,
           dimensions: imageDimensions,
