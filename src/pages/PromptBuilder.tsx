@@ -576,77 +576,6 @@ const PromptBuilder: React.FC = () => {
       }
     }
   };
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(requestPayload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      let imageUrls: string[] = [];
-      if (data.imageUrls && Array.isArray(data.imageUrls)) {
-        imageUrls = data.imageUrls;
-      } else if (data.imageUrl) {
-        imageUrls = Array.isArray(data.imageUrl) ? data.imageUrl : [data.imageUrl];
-      } else {
-        throw new Error('No images returned from the OpenAI API');
-      }
-
-      setGeneratedImages(imageUrls);
-
-    } catch (error) {
-      console.error('AI image generation failed:', error);
-      
-      // Try fallback generation if AI generation fails
-      if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        console.log('🔄 Trying fallback image generation...');
-        try {
-          const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
-          const result = await generateImagesWithFallback({
-            prompt: promptToUse,
-            imageDimensions: imageDimensions,
-            numberOfImages: numberOfImages
-          });
-          
-          if (result.imageUrls) {
-            setGeneratedImages(result.imageUrls);
-            setError('⚠️ AI generation unavailable - showing placeholder images. Check Edge Function deployment.');
-            return;
-          }
-        } catch (fallbackError) {
-          console.error('Fallback generation also failed:', fallbackError);
-        }
-      }
-      
-      let errorMessage = 'Failed to generate images';
-      if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch')) {
-          errorMessage = 'Unable to connect to AI image generation service. Please verify Edge Functions are deployed and properly configured.';
-        } else if (error.message.includes('OpenAI API key')) {
-          errorMessage = 'OpenAI API key not configured. Please contact support or check system configuration.';
-        } else if (error.message.includes('quota')) {
-          errorMessage = 'OpenAI API quota exceeded. Please contact support.';
-        } else if (error.message.includes('content filters')) {
-          errorMessage = 'Your prompt was blocked by content filters. Please modify your prompt to comply with usage policies.';
-        } else if (error.message.includes('Authentication')) {
-          errorMessage = 'Authentication failed. Please sign in again.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setIsGeneratingImages(false);
-    }
-  };
 
   const enhancePrompt = async () => {
     try {
@@ -1206,6 +1135,63 @@ const PromptBuilder: React.FC = () => {
                     >
                       <Save className="w-4 h-4 mr-2" />
                       Save
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Generated Images Section */}
+              {generatedImages.length > 0 && (
+                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-soft-lavender">Generated Images</h2>
+                    {currentUserProfile?.username && (
+                      <span className="text-sm text-soft-lavender/70">
+                        by @{currentUserProfile.username}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {generatedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative group cursor-pointer">
+                        <img
+                          src={imageUrl}
+                          alt={`Generated artwork ${index + 1}`}
+                          className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105"
+                          onClick={() => openImageViewer(index)}
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                          <Eye className="w-8 h-8 text-white" />
+                        </div>
+                        {/* Username overlay on each image */}
+                        {currentUserProfile?.username && (
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                            @{currentUserProfile.username}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openImageViewer(0)}
+                      className="flex-1"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Gallery
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSavePrompt(generatedImages[0])}
+                      className="flex-1"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Save with Image
                     </Button>
                   </div>
                 </div>
