@@ -35,8 +35,7 @@ import { generateImagesWithFallback, testEdgeFunctionAvailability, getImageGener
 import { ExtractedPrompt } from '../types';
 
 interface PromptData {
-  subject: string;
-  setting: string;
+  subjectAndSetting: string;
   lighting: string;
   style: string;
   mood: string;
@@ -55,8 +54,7 @@ const PromptBuilder: React.FC = () => {
 
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
-    subject: '',
-    setting: '',
+    subjectAndSetting: '',
     lighting: '',
     style: '',
     mood: '',
@@ -175,8 +173,7 @@ const PromptBuilder: React.FC = () => {
       
       // Map extracted data to form fields
       setPromptData({
-        subject: extractedData.mainPrompt.split('.')[0] || '', // First sentence as subject
-        setting: extractedData.composition || '',
+        subjectAndSetting: `${extractedData.mainPrompt.split('.')[0] || ''} in ${extractedData.composition || ''}`.trim(),
         lighting: extractedData.lighting || '',
         style: extractedData.styleElements.join(', ') || '',
         mood: extractedData.mood || '',
@@ -216,8 +213,7 @@ const PromptBuilder: React.FC = () => {
         try {
           console.log('🔧 Using local prompt generation');
           const localPromptData: LocalPromptData = {
-            subject: promptData.subject,
-            setting: promptData.setting,
+            subjectAndSetting: promptData.subjectAndSetting,
             lighting: promptData.lighting,
             style: promptData.style,
             mood: promptData.mood,
@@ -303,10 +299,10 @@ const PromptBuilder: React.FC = () => {
       
       // Try fallback local generation if API completely fails
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        const { subject, setting, lighting, style, mood } = promptData;
+        const { subjectAndSetting, lighting, style, mood } = promptData;
         
-        if (subject && setting && lighting && style && mood) {
-          let prompt = `${subject} in ${setting}, ${lighting}, ${style} style, ${mood} mood`;
+        if (subjectAndSetting && lighting && style && mood) {
+          let prompt = `${subjectAndSetting}, ${lighting}, ${style} style, ${mood} mood`;
           
           if (promptData['post-processing']) {
             prompt += `, ${promptData['post-processing']}`;
@@ -587,8 +583,7 @@ const PromptBuilder: React.FC = () => {
 
   const resetForm = () => {
     setPromptData({
-      subject: '',
-      setting: '',
+      subjectAndSetting: '',
       lighting: '',
       style: '',
       mood: '',
@@ -640,33 +635,18 @@ const PromptBuilder: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Subject */}
+                  {/* Subject & Setting Combined */}
                   <div>
                     <label className="block text-soft-lavender mb-2 font-medium">
                       <Target className="w-4 h-4 inline mr-2" />
-                      Subject
+                      Subject & Setting
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., A young woman with curly hair"
-                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                      value={promptData.subject}
-                      onChange={(e) => handleInputChange('subject', e.target.value)}
-                    />
-                  </div>
-
-                  {/* Setting */}
-                  <div>
-                    <label className="block text-soft-lavender mb-2 font-medium">
-                      <Camera className="w-4 h-4 inline mr-2" />
-                      Setting
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Modern coffee shop with large windows"
-                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                      value={promptData.setting}
-                      onChange={(e) => handleInputChange('setting', e.target.value)}
+                    <textarea
+                      rows={6}
+                      placeholder="e.g., A young woman with curly hair sitting in a modern coffee shop with large windows, natural light streaming through"
+                      className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-vertical min-h-[120px] max-h-[300px]"
+                      value={promptData.subjectAndSetting}
+                      onChange={(e) => handleInputChange('subjectAndSetting', e.target.value)}
                     />
                   </div>
 
@@ -851,7 +831,7 @@ const PromptBuilder: React.FC = () => {
                     size="lg"
                     className="w-full"
                     onClick={handleGeneratePrompt}
-                    disabled={isGeneratingPrompt || !promptData.subject || !promptData.setting || !promptData.lighting || !promptData.style || !promptData.mood}
+                    disabled={isGeneratingPrompt || !promptData.subjectAndSetting || !promptData.lighting || !promptData.style || !promptData.mood}
                   >
                     {isGeneratingPrompt ? (
                       <>
