@@ -32,19 +32,37 @@ const getOrientationHint = (dimensions: string): string => {
     case '2:3':
     case '4:5':
     case '9:16':
-      return 'vertical portrait orientation';
+      return 'tall vertical portrait format, subject positioned vertically from top to bottom of frame';
     case '3:2':
     case '16:9':
-      return 'horizontal landscape orientation';
+      return 'wide horizontal landscape format, subject positioned horizontally from left to right of frame';
     case '1:1':
-      return 'square composition';
+      return 'perfectly square composition, centered subject';
     default:
-      return 'balanced composition';
+      return 'balanced vertical composition';
+  }
+};
+
+// Get composition guidance for better orientation consistency
+const getCompositionGuidance = (dimensions: string): string => {
+  switch (dimensions) {
+    case '2:3':
+    case '4:5':
+    case '9:16':
+      return 'Frame the subject from head to torso or full body, emphasizing the vertical height of the composition. Position elements to fill the tall frame naturally.';
+    case '3:2':
+    case '16:9':
+      return 'Frame the subject across the width of the image, emphasizing the horizontal breadth of the composition. Use the wide format to show more of the environment or context.';
+    case '1:1':
+      return 'Center the subject in a balanced square frame with equal space on all sides.';
+    default:
+      return 'Frame the subject naturally within the vertical format.';
   }
 };
 // Optimize prompt for DALL-E 3
 const optimizePromptForDALLE3 = (prompt: string, dimensions: string): string => {
   const orientationHint = getOrientationHint(dimensions);
+  const compositionGuidance = getCompositionGuidance(dimensions);
   
   // DALL-E 3 works best with descriptive, natural language prompts
   // Remove technical photography jargon that might confuse the model
@@ -58,6 +76,8 @@ const optimizePromptForDALLE3 = (prompt: string, dimensions: string): string => 
     .replace(/\b(professional|commercial|studio)\s+photography,?\s*/gi, '')
     .replace(/\bhigh\s+resolution,?\s*/gi, '')
     .replace(/\b(RAW|JPEG|file format),?\s*/gi, '')
+    // Remove any existing orientation terms that might conflict
+    .replace(/\b(horizontal|vertical|landscape|portrait)\s*(orientation|format)?,?\s*/gi, '')
     // Clean up multiple spaces and commas
     .replace(/,\s*,/g, ',')
     .replace(/\s+/g, ' ')
@@ -77,10 +97,18 @@ const optimizePromptForDALLE3 = (prompt: string, dimensions: string): string => 
     }
   }
 
-  // Add orientation hint for better consistency
-  if (dimensions !== '1:1') {
-    optimized += `, ${orientationHint}`;
+  // Add strong orientation and composition guidance at the beginning for better consistency
+  if (dimensions === '9:16' || dimensions === '2:3' || dimensions === '4:5') {
+    // For portrait ratios, make orientation guidance very explicit and early in prompt
+    optimized = `IMPORTANT: Create this image in ${orientationHint}. ${optimized}. ${compositionGuidance}`;
+  } else if (dimensions === '16:9' || dimensions === '3:2') {
+    // For landscape ratios, emphasize horizontal composition
+    optimized = `IMPORTANT: Create this image in ${orientationHint}. ${optimized}. ${compositionGuidance}`;
+  } else {
+    // For square, add balanced composition guidance
+    optimized = `${optimized}. ${compositionGuidance}`;
   }
+  
   return optimized;
 };
 
