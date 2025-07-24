@@ -305,21 +305,52 @@ const PromptBuilder: React.FC = () => {
       
       // Try fallback local generation if API completely fails
       if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        const { subjectAndSetting, lighting, style, mood } = promptData;
+        console.log('🔄 API failed, using sophisticated local generation...');
+        try {
+          const localPromptData: LocalPromptData = {
+            subjectAndSetting: promptData.subjectAndSetting,
+            lighting: promptData.lighting,
+            style: promptData.style,
+            mood: promptData.mood,
+            'post-processing': promptData['post-processing'],
+            enhancement: promptData.enhancement
+          };
         
-        if (subjectAndSetting && lighting && style && mood) {
-          let prompt = `${subjectAndSetting}, ${lighting}, ${style} style, ${mood} mood`;
-          
-          if (promptData['post-processing']) {
-            prompt += `, ${promptData['post-processing']}`;
+          const result = generatePromptLocally(localPromptData);
+          if (!result || !result.prompt) {
+            throw new Error('Local generation returned empty result');
           }
           
-          if (promptData.enhancement) {
-            prompt += `, ${promptData.enhancement}`;
+          let finalPrompt = result.prompt;
+          
+          // Apply enhancement if enabled
+          if (enhanceLevel > 0) {
+            finalPrompt = enhancePromptWithCategory(finalPrompt, selectedCategory, enhanceLevel);
           }
+          
+          setGeneratedPrompt(finalPrompt);
+          setError('✅ Generated using advanced local templates - AI generation temporarily unavailable');
+          return;
+          
+        } catch (localError) {
+          console.error('Sophisticated local generation failed:', localError);
+          // Only then fall back to basic generation
+          const { subjectAndSetting, lighting, style, mood } = promptData;
+          
+          if (subjectAndSetting && lighting && style && mood) {
+            let basicPrompt = `${subjectAndSetting}, ${lighting}, ${style} style, ${mood} mood`;
+            
+            if (promptData['post-processing']) {
+              basicPrompt += `, ${promptData['post-processing']}`;
+            }
+            
+            if (promptData.enhancement) {
+              basicPrompt += `, ${promptData.enhancement}`;
+            }
 
-          setGeneratedPrompt(prompt);
-          setError('Used basic fallback prompt generation (Edge Functions unavailable)');
+            setGeneratedPrompt(basicPrompt);
+            setError('⚠️ Using basic fallback generation - Both AI and advanced local generation failed');
+          }
         }
       }
     } finally {
