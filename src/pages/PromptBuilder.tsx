@@ -1140,6 +1140,63 @@ const PromptBuilder: React.FC = () => {
                 </div>
               )}
 
+              {/* Generated Images Section */}
+              {generatedImages.length > 0 && (
+                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-soft-lavender">Generated Images</h2>
+                    {currentUserProfile?.username && (
+                      <span className="text-sm text-soft-lavender/70">
+                        by @{currentUserProfile.username}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {generatedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative group cursor-pointer">
+                        <img
+                          src={imageUrl}
+                          alt={`Generated artwork ${index + 1}`}
+                          className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105"
+                          onClick={() => openImageViewer(index)}
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
+                          <Eye className="w-8 h-8 text-white" />
+                        </div>
+                        {/* Username overlay on each image */}
+                        {currentUserProfile?.username && (
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                            @{currentUserProfile.username}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openImageViewer(0)}
+                      className="flex-1"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Gallery
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSavePrompt(generatedImages[0])}
+                      className="flex-1"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Save with Image
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Error Display */}
               {error && (
                 <div className={`border rounded-lg p-4 ${
@@ -1160,65 +1217,6 @@ const PromptBuilder: React.FC = () => {
                         {error}
                       </p>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Generated Images Section */}
-              {generatedImages.length > 0 && (
-                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                  <h2 className="text-xl font-bold text-soft-lavender mb-4">Generated Images</h2>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {generatedImages.map((imageUrl, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={imageUrl}
-                          alt={`Generated image ${index + 1}`}
-                          className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => openImageViewer(index)}
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleSavePrompt(imageUrl)}
-                            className="bg-white/10 backdrop-blur-sm"
-                          >
-                            <Save className="w-4 h-4 mr-2" />
-                            Save with Image
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Image Generation Progress */}
-              {isGeneratingImages && (
-                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                  <h3 className="text-lg font-semibold text-soft-lavender mb-4 flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-electric-cyan" />
-                    Generating Images...
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div className="w-full bg-deep-bg rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-electric-cyan to-cosmic-purple h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${imageGenProgress}%` }}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-between text-sm text-soft-lavender/70">
-                      <span>{Math.round(imageGenProgress)}% complete</span>
-                      <span>{imageGenTimer}s elapsed</span>
-                    </div>
-                    
-                    <p className="text-soft-lavender/70 text-sm text-center">
-                      Generating {numberOfImages} image{numberOfImages > 1 ? 's' : ''} using DALL-E 3...
-                    </p>
                   </div>
                 </div>
               )}
