@@ -159,6 +159,7 @@ const PromptBuilder: React.FC = () => {
         // Test key functions with longer timeout
         const promptAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-prompt', 5000);
         const imageAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'generate-image', 5000);
+        const extractAvailable = await testEdgeFunctionAvailability(supabaseUrl, 'extract-prompt', 5000);
         
         const available = promptAvailable || imageAvailable; // At least one should work
         console.log('🔍 Edge Function availability results:', {
@@ -683,7 +684,7 @@ const PromptBuilder: React.FC = () => {
         sref: sref,
         notes: `Generated using Prompt Builder\nSettings: ${promptData.lighting}, ${promptData.style}, ${promptData.mood}\nDimensions: ${imageDimensions}\nImages: ${numberOfImages}`,
         mediaUrl: selectedImageUrl,
-        tags: ['Prompt Builder']
+        tags: ['Prompt Builder'],
         mediaUrl: selectedImageUrl
       }
     });
@@ -1186,6 +1187,7 @@ const PromptBuilder: React.FC = () => {
                     </Button>
                   </div>
                 </div>
+              )}
 
                 {/* Progress Timer - Placed under Generated Prompt */}
                 {isGeneratingImages && (
@@ -1223,7 +1225,6 @@ const PromptBuilder: React.FC = () => {
                     </div>
                   </div>
                 )}
-              )}
 
               {/* Generated Images Section */}
               {generatedImages.length > 0 && (
@@ -1278,8 +1279,8 @@ const PromptBuilder: React.FC = () => {
                           >
                             <Download className="w-3 h-3 mr-1" />
                             Download
-                          </div>
-                        )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
