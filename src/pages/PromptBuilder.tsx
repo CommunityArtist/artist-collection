@@ -676,15 +676,6 @@ const PromptBuilder: React.FC = () => {
   };
 
   const handleDownloadImage = (imageUrl: string, index: number) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `generated-image-${generateSREF()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleSavePrompt = async (selectedImageUrl?: string) => {
     const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
     const sref = generateSREF();
     
