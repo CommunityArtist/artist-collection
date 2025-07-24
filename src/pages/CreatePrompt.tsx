@@ -132,7 +132,6 @@ const CreatePrompt: React.FC = () => {
         notes: generatedNotes,
         mediaUrl
       } = location.state;
-      const { generatedPrompt, promptData, imageDimensions, numberOfImages, mediaUrl } = location.state;
       
       // Generate a title based on the subject
       const subjectWords = promptData.subject.split(' ').slice(0, 3).join(' ');
