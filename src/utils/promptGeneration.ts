@@ -117,47 +117,6 @@ export function generatePromptLocally(promptData: PromptData): GeneratedPromptRe
     throw error instanceof Error ? error : new Error('Unknown error in local prompt generation');
   }
 }
-  
-  // Choose template based on style
-  let template = PROMPT_TEMPLATES.photography.base;
-  
-  if (style.toLowerCase().includes('professional') || style.toLowerCase().includes('headshot')) {
-    template = PROMPT_TEMPLATES.photography.professional;
-  } else if (style.toLowerCase().includes('cinematic') || style.toLowerCase().includes('dramatic')) {
-    template = PROMPT_TEMPLATES.photography.cinematic;
-  } else if (style.toLowerCase().includes('fine art') || style.toLowerCase().includes('portrait')) {
-    template = PROMPT_TEMPLATES.photography.artistic;
-  }
-  
-  // Build the main prompt
-  let prompt = template
-    .replace('{main_description}', subjectAndSetting)
-    .replace('{lighting}', lighting.toLowerCase())
-    .replace('{style}', style.toLowerCase())
-    .replace('{mood}', mood.toLowerCase())
-    .replace('{post-processing}', promptData['post-processing'] || 'natural color grading');
-  
-  // Add enhancements
-  const enhancementType = determineEnhancementType(style, mood, lighting);
-  const enhancement = PROMPT_TEMPLATES.enhancement[enhancementType];
-  prompt += `, ${enhancement}`;
-  
-  // Add technical details
-  prompt += ", shot on professional camera, 85mm lens, shallow depth of field";
-  
-  // Add enhancement codes if provided
-  if (promptData.enhancement) {
-    prompt += `, ${promptData.enhancement}`;
-  }
-  
-  // Generate negative prompt
-  const negativePrompt = NEGATIVE_PROMPT_ELEMENTS.join(', ');
-  
-  return {
-    prompt: prompt,
-    negativePrompt: negativePrompt
-  };
-}
 
 function determineEnhancementType(style: string, mood: string, lighting: string): keyof typeof PROMPT_TEMPLATES.enhancement {
   const styleStr = style.toLowerCase();
