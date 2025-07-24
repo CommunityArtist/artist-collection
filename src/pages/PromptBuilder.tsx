@@ -226,7 +226,7 @@ const PromptBuilder: React.FC = () => {
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`,
-            
+            },
             // ✅ Actually call the fallback function
             body: JSON.stringify({
               subjectAndSetting: promptData.subject, // Combined field now
@@ -368,29 +368,28 @@ const PromptBuilder: React.FC = () => {
           
         } catch (edgeError) {
           console.warn('Edge Function failed, using fallback:', edgeError);
-          
-          // ✅ Actually call the fallback function
+          // Fall back to placeholder generation
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
             dimensions: imageDimensions,
             numberOfImages
           });
           
-          if (result.success && result.imageUrls && result.imageUrls.length > 0 && result.imageUrls.every(url => url && typeof url === 'string')) {
+          if (result.success && result.imageUrls && result.imageUrls.length > 0) {
             setGeneratedImages(result.imageUrls);
           } else {
-            throw new Error(result.error || 'Fallback failed to generate images');
+            throw new Error(result.error || 'Failed to generate images');
           }
         }
       } else {
-        // ✅ Use fallback generation when Edge Functions not available
+        // Use fallback generation
         const result = await generateImagesWithFallback({
           prompt: promptToUse,
           dimensions: imageDimensions,
           numberOfImages
         });
         
-        if (result.success && result.imageUrls && result.imageUrls.length > 0 && result.imageUrls.every(url => url && typeof url === 'string')) {
+        if (result.success && result.imageUrls && result.imageUrls.length > 0) {
           setGeneratedImages(result.imageUrls);
         } else {
           throw new Error(result.error || 'Failed to generate images');
