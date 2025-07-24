@@ -26,8 +26,26 @@ const mapDimensionsToSize = (dimensions: string): string => {
   }
 };
 
+// Get orientation hint for prompt optimization
+const getOrientationHint = (dimensions: string): string => {
+  switch (dimensions) {
+    case '2:3':
+    case '4:5':
+    case '9:16':
+      return 'vertical portrait orientation';
+    case '3:2':
+    case '16:9':
+      return 'horizontal landscape orientation';
+    case '1:1':
+      return 'square composition';
+    default:
+      return 'balanced composition';
+  }
+};
 // Optimize prompt for DALL-E 3
-const optimizePromptForDALLE3 = (prompt: string): string => {
+const optimizePromptForDALLE3 = (prompt: string, dimensions: string): string => {
+  const orientationHint = getOrientationHint(dimensions);
+  
   // DALL-E 3 works best with descriptive, natural language prompts
   // Remove technical photography jargon that might confuse the model
   let optimized = prompt
@@ -59,6 +77,10 @@ const optimizePromptForDALLE3 = (prompt: string): string => {
     }
   }
 
+  // Add orientation hint for better consistency
+  if (dimensions !== '1:1') {
+    optimized += `, ${orientationHint}`;
+  }
   return optimized;
 };
 
@@ -139,9 +161,10 @@ Deno.serve(async (req) => {
     validateDALLE3Params(size, numberOfImages);
     
     // Optimize prompt for DALL-E 3
-    const optimizedPrompt = optimizePromptForDALLE3(prompt);
+    const optimizedPrompt = optimizePromptForDALLE3(prompt, imageDimensions);
     console.log('Original prompt length:', prompt.length);
     console.log('Optimized prompt length:', optimizedPrompt.length);
+    console.log('Target dimensions:', imageDimensions, '-> DALL-E size:', size);
     
     // DALL-E 3 only supports generating 1 image at a time
     // For multiple images, we'll generate them sequentially
@@ -155,6 +178,11 @@ Deno.serve(async (req) => {
     for (let i = 0; i < imagesToGenerate; i++) {
       try {
         console.log(`Generating image ${i + 1}/${imagesToGenerate}`);
+        
+        // Add a small delay between requests to avoid rate limiting
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
         
         const response = await openai.images.generate({
           model: "dall-e-3",
