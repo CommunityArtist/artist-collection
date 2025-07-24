@@ -13,13 +13,13 @@ const mapDimensionsToSize = (dimensions: string): string => {
   switch (dimensions) {
     case '1:1':
       return '1024x1024';
+    case '3:2': // Closest landscape
     case '16:9':
       return '1792x1024';
+    case '2:3': // Closest portrait
+    case '4:5': // Closest portrait
     case '9:16':
       return '1024x1792';
-    case '2:3':
-    case '3:2':
-    case '4:5':
     default:
       // For unsupported ratios, default to square
       return '1024x1024';
