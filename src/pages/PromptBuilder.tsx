@@ -327,13 +327,10 @@ const PromptBuilder: React.FC = () => {
         return;
       }
 
-     console.log('Starting image generation with prompt:', promptToUse);
-     console.log('Edge Functions available:', edgeFunctionsAvailable);
 
       // Try Edge Function first if available
       if (edgeFunctionsAvailable && import.meta.env.VITE_SUPABASE_URL) {
         try {
-         console.log('Attempting Edge Function image generation...');
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) {
             throw new Error('Please sign in to generate images');
@@ -359,11 +356,9 @@ const PromptBuilder: React.FC = () => {
           }
 
           const data = await response.json();
-         console.log('Edge Function response:', data);
           const imageUrls = Array.isArray(data.imageUrls) ? data.imageUrls : [data.imageUrl].filter(Boolean);
          
-         if (imageUrls.length > 0) {
-           console.log('Setting generated images:', imageUrls);
+         if (imageUrls.length > 0 && imageUrls.every(url => url && typeof url === 'string')) {
            setGeneratedImages(imageUrls);
          } else {
            throw new Error('No image URLs received from Edge Function');
@@ -372,16 +367,13 @@ const PromptBuilder: React.FC = () => {
         } catch (edgeError) {
           console.warn('Edge Function failed, using fallback:', edgeError);
           // Fall back to placeholder generation
-         console.log('Attempting fallback image generation...');
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
             dimensions: imageDimensions,
             numberOfImages
           });
           
-         console.log('Fallback result:', result);
-          if (result.success && result.imageUrls) {
-           console.log('Setting fallback images:', result.imageUrls);
+          if (result.success && result.imageUrls && result.imageUrls.length > 0) {
             setGeneratedImages(result.imageUrls);
           } else {
             throw new Error(result.error || 'Failed to generate images');
@@ -389,16 +381,13 @@ const PromptBuilder: React.FC = () => {
         }
       } else {
         // Use fallback generation
-       console.log('Using direct fallback image generation...');
         const result = await generateImagesWithFallback({
           prompt: promptToUse,
           dimensions: imageDimensions,
           numberOfImages
         });
         
-       console.log('Direct fallback result:', result);
-        if (result.success && result.imageUrls) {
-         console.log('Setting direct fallback images:', result.imageUrls);
+        if (result.success && result.imageUrls && result.imageUrls.length > 0) {
           setGeneratedImages(result.imageUrls);
         } else {
           throw new Error(result.error || 'Failed to generate images');
