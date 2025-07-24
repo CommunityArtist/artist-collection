@@ -88,7 +88,6 @@ When enhancement codes are provided, integrate them naturally into the flowing t
 
 Write your response as one continuous, descriptive paragraph that reads naturally while incorporating all technical details, enhancements, and realism requirements without any formatting symbols or structure markers.`;
 
-    let userPrompt = `Create a detailed photorealistic photography prompt as a single flowing paragraph with these specifications: Subject is ${promptData.subject}, Lighting is ${promptData.lighting}, Style is ${promptData.style}, Mood is ${promptData.mood}, Setting is ${promptData.setting}`;
     let userPrompt = `Create a detailed photorealistic photography prompt as a single flowing paragraph with these specifications: Subject and Setting is ${promptData.subjectAndSetting}, Lighting is ${promptData.lighting}, Style is ${promptData.style}, Mood is ${promptData.mood}`;
 
     if (promptData['post-processing']) {
@@ -100,6 +99,15 @@ Write your response as one continuous, descriptive paragraph that reads naturall
     }
 
     userPrompt += `. Create a cohesive, detailed prompt that produces photorealistic, human-like images with natural skin texture with visible pores and subtle imperfections, realistic lighting that shows natural shadows and highlights, authentic human expressions and genuine emotions, natural hair texture and individual strand details, realistic fabric textures and natural clothing drape, and candid, unposed feeling with authentic atmosphere. Include specific camera and lens recommendations optimized for natural human photography. Focus on creating vivid, lifelike imagery while maintaining photographic authenticity and professional quality. Avoid artificial or overly perfect descriptions and emphasize natural, realistic human features. Write everything as one continuous paragraph without any formatting symbols, headings, or bullet points.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7,
     });
 
     const response = completion.choices[0]?.message?.content?.trim();
