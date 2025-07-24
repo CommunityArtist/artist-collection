@@ -20,15 +20,24 @@ import {
   Lightbulb,
   Target,
   Film,
-  Image as ImageIcon,
-  ChevronDown,
-  ChevronUp,
-  X,
-  Plus,
+import { 
+  Wand2, 
+  Sparkles, 
+  Settings, 
+  Plus, 
   Minus,
-  Clock
+  Clock,
+  Image as ImageIcon, 
+  Download, 
+  Eye, 
+  Lightbulb, 
+  Palette, 
+  Camera, 
+  Zap, 
+  Play, 
+  ChevronLeft, 
+  ChevronRight 
 } from 'lucide-react';
-import { Wand2, Sparkles, Image as ImageIcon, Download, Eye, Settings, Plus, Lightbulb, Palette, Camera, Zap, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
