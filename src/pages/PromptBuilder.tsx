@@ -51,6 +51,7 @@ const PromptBuilder: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<{username?: string} | null>(null);
 
   // Form state
   const [promptData, setPromptData] = useState<PromptData>({
@@ -93,9 +94,28 @@ const PromptBuilder: React.FC = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         setIsAuthenticated(!!user);
+        
+        if (user) {
+          // Fetch user profile to get username
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError) {
+            console.warn('Failed to fetch user profile:', profileError);
+            setCurrentUserProfile(null);
+          } else {
+            setCurrentUserProfile(profile);
+          }
+        } else {
+          setCurrentUserProfile(null);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAuthenticated(false);
+        setCurrentUserProfile(null);
       } finally {
         setIsCheckingAuth(false);
       }
@@ -1021,7 +1041,14 @@ const PromptBuilder: React.FC = () => {
               {/* Generated Images Section */}
               {generatedImages.length > 0 && (
                 <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                  <h2 className="text-xl font-bold text-soft-lavender mb-4">Generated Images</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-soft-lavender">Generated Images</h2>
+                    {currentUserProfile?.username && (
+                      <span className="text-sm text-soft-lavender/70">
+                        by @{currentUserProfile.username}
+                      </span>
+                    )}
+                  </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {generatedImages.map((imageUrl, index) => (
@@ -1035,6 +1062,12 @@ const PromptBuilder: React.FC = () => {
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
                           <Eye className="w-8 h-8 text-white" />
                         </div>
+                        {/* Username overlay on each image */}
+                        {currentUserProfile?.username && (
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                            @{currentUserProfile.username}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
