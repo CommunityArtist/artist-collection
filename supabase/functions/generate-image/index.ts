@@ -8,6 +8,56 @@ const corsHeaders = {
   'Access-Control-Max-Age': '3600'
 };
 
+// Function to download and store image in Supabase
+async function downloadAndStoreImage(imageUrl: string, supabase: any, userId: string): Promise<string> {
+  try {
+    console.log('Downloading image from DALL-E:', imageUrl);
+    
+    // Download the image from OpenAI
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to download image: ${imageResponse.status}`);
+    }
+    
+    const imageBlob = await imageResponse.blob();
+    const imageBuffer = await imageBlob.arrayBuffer();
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(7);
+    const fileName = `dalle-${timestamp}-${randomId}.png`;
+    const filePath = `${userId}/generated/${fileName}`;
+    
+    console.log('Uploading image to Supabase storage:', filePath);
+    
+    // Upload to Supabase storage
+    const { error: uploadError, data: uploadData } = await supabase.storage
+      .from('prompt-media')
+      .upload(filePath, new Uint8Array(imageBuffer), {
+        contentType: 'image/png',
+        cacheControl: '3600'
+      });
+    
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw new Error(`Failed to upload image: ${uploadError.message}`);
+    }
+    
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('prompt-media')
+      .getPublicUrl(filePath);
+    
+    console.log('Image successfully stored:', publicUrl);
+    return publicUrl;
+    
+  } catch (error) {
+    console.error('Error downloading and storing image:', error);
+    // Return original URL as fallback
+    return imageUrl;
+  }
+}
+
 // Map frontend dimension ratios to DALL-E 3 supported sizes
 const mapDimensionsToSize = (dimensions: string): string => {
   switch (dimensions) {
@@ -224,6 +274,7 @@ Deno.serve(async (req) => {
     // For multiple images, we'll generate them sequentially
     const imagesToGenerate = Math.min(numberOfImages, 4); // Limit to 4 for performance
     const imageUrls: string[] = [];
+    const storedImageUrls: string[] = [];
     const revisedPrompts: string[] = [];
     let lastError: Error | null = null;
 
@@ -250,6 +301,12 @@ Deno.serve(async (req) => {
         const imageData = response.data[0];
         if (imageData?.url) {
           imageUrls.push(imageData.url);
+          
+          // Download and store the image in Supabase
+          console.log(`Storing image ${i + 1} in Supabase...`);
+          const storedUrl = await downloadAndStoreImage(imageData.url, supabase, user.id);
+          storedImageUrls.push(storedUrl);
+          
           // Store the revised prompt that DALL-E 3 actually used
           if (imageData.revised_prompt) {
             revisedPrompts.push(imageData.revised_prompt);
@@ -271,7 +328,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (imageUrls.length === 0) {
+    if (storedImageUrls.length === 0) {
       // Provide more specific error information
       if (lastError) {
         throw lastError;
@@ -280,17 +337,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Successfully generated ${imageUrls.length} images`);
+    console.log(`Successfully generated and stored ${storedImageUrls.length} images`);
 
     // Return comprehensive response with DALL-E 3 specific data
     return new Response(
       JSON.stringify({ 
-        imageUrl: imageUrls[0],
-        imageUrls: imageUrls,
+        imageUrl: storedImageUrls[0],
+        imageUrls: storedImageUrls,
+        originalUrls: imageUrls, // Keep original URLs for reference
         revisedPrompts: revisedPrompts,
         originalPrompt: prompt,
         optimizedPrompt: optimizedPrompt,
-        generatedCount: imageUrls.length,
+        generatedCount: storedImageUrls.length,
         requestedCount: numberOfImages,
         dimensions: imageDimensions,
         actualSize: size,

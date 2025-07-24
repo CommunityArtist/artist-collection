@@ -1247,6 +1247,22 @@ const PromptBuilder: React.FC = () => {
                           alt={`Generated artwork ${index + 1}`}
                           className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
                           onClick={() => openImageViewer(index)}
+                          onError={(e) => {
+                            console.error('Image failed to load:', imageUrl);
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const errorDiv = document.createElement('div');
+                              errorDiv.className = 'w-full h-64 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-center';
+                              errorDiv.innerHTML = '<div class="text-red-500 text-center"><p>Image failed to load</p><p class="text-xs mt-1">Click to retry</p></div>';
+                              errorDiv.onclick = () => {
+                                target.style.display = 'block';
+                                target.src = imageUrl + '?retry=' + Date.now();
+                              };
+                              parent.appendChild(errorDiv);
+                            }
+                          }}
                         />
                         
                         {/* Hover Overlay */}
