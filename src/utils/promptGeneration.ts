@@ -23,11 +23,11 @@ const PROMPT_TEMPLATES = {
     artistic: "Artistic {style} portrait of {main_description}. {lighting} with {mood} expression. Creative composition, {post-processing}, fine art photography"
   },
   enhancement: {
-    natural: "natural skin texture, realistic lighting, authentic expression, candid moment, unretouched quality",
-    professional: "professional studio lighting, polished composition, commercial photography quality, perfect exposure",
-    dramatic: "dramatic lighting, intense shadows, high contrast, moody atmosphere, cinematic quality",
-    soft: "soft diffused lighting, gentle shadows, warm tones, intimate atmosphere, dreamy quality",
-    vibrant: "vibrant colors, dynamic lighting, energetic composition, bold contrasts, striking visual impact"
+    natural: "natural skin texture with visible pores, realistic soft lighting, authentic expression, candid moment, unretouched quality, balanced facial features, organic textures",
+    professional: "professional studio lighting with natural shadows, polished composition, commercial photography quality, balanced exposure, symmetrical features, realistic skin texture",
+    dramatic: "cinematic lighting with natural contrast, moody atmosphere, dramatic but realistic shadows, authentic emotional expression, natural facial proportions",
+    soft: "soft diffused natural lighting, gentle realistic shadows, warm organic tones, intimate atmosphere, natural skin variations, authentic textures",
+    vibrant: "vibrant natural colors, dynamic realistic lighting, energetic composition, natural contrasts, authentic visual impact, realistic material properties"
   }
 };
 
