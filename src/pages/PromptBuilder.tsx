@@ -27,7 +27,7 @@ import {
   Plus,
   Minus,
   Clock
-import { Wand2, Sparkles, Image as ImageIcon, Download, Eye, Settings, Plus, Lightbulb, Palette, Camera, Zap, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
