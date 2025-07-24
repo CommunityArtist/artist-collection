@@ -122,11 +122,26 @@ const CreatePrompt: React.FC = () => {
   // Handle data from Prompt Builder
   useEffect(() => {
     if (location.state?.generatedPrompt && location.state?.promptData) {
+      const { 
+        title: generatedTitle,
+        generatedPrompt, 
+        promptData, 
+        imageDimensions, 
+        numberOfImages, 
+        sref: generatedSref,
+        notes: generatedNotes,
+        mediaUrl
+      } = location.state;
       const { generatedPrompt, promptData, imageDimensions, numberOfImages, mediaUrl } = location.state;
       
       // Generate a title based on the subject
       const subjectWords = promptData.subject.split(' ').slice(0, 3).join(' ');
       setTitle(subjectWords || 'Generated Prompt');
+      
+      // Set title, SREF, and notes if provided
+      if (generatedTitle) setTitle(generatedTitle);
+      if (generatedSref) setSref(generatedSref);
+      if (generatedNotes) setNotes(generatedNotes);
       
       // Set the generated prompt
       setPrompt(generatedPrompt);
@@ -146,6 +161,12 @@ const CreatePrompt: React.FC = () => {
       
       // Set default privacy to false for shared prompts
       setIsPrivate(false);
+      
+      // Set media URL if provided
+      if (mediaUrl) {
+        setPreviewUrl(mediaUrl);
+        setIsVideo(mediaUrl.match(/\.(mp4|webm|ogg)$/i) ? true : false);
+      }
       
       // Add relevant tags based on the prompt data
       const autoTags = [];

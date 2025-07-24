@@ -73,6 +73,8 @@ const PromptBuilder: React.FC = () => {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [imageGenStatus, setImageGenStatus] = useState('');
+  const [startTime, setStartTime] = useState<number | null>(null);
   const [imageGenProgress, setImageGenProgress] = useState(0);
   const [imageGenTimer, setImageGenTimer] = useState(0);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -162,6 +164,7 @@ const PromptBuilder: React.FC = () => {
         console.log('🔍 Edge Function availability results:', {
           prompt: promptAvailable,
           image: imageAvailable,
+          extract: extractAvailable,
           overall: available
         });
         
@@ -387,15 +390,23 @@ const PromptBuilder: React.FC = () => {
   // Progress timer effect
   useEffect(() => {
     if (isGeneratingImages) {
+      setStartTime(Date.now());
       setImageGenProgress(0);
       setImageGenTimer(0);
+      setImageGenStatus('Initializing AI model...');
+      
       const interval = setInterval(() => {
         setImageGenTimer(prev => prev + 1);
-        // Simulate realistic progress for DALL-E 3 (typically 10-30 seconds per image)
+        
+        // Update status messages based on time elapsed
+        const elapsed = Date.now() - (startTime || Date.now());
+        if (elapsed > 5000) setImageGenStatus('Processing your prompt...');
+        if (elapsed > 10000) setImageGenStatus('Generating images with AI...');
+        if (elapsed > 20000) setImageGenStatus('Finalizing artwork...');
+        
+        // Simulate realistic progress
         setImageGenProgress(prev => {
-          const timeElapsed = (Date.now() - Date.now()) / 1000;
-          const estimatedTotal = numberOfImages * 20; // 20 seconds per image estimate
-          const naturalProgress = Math.min((prev + 1) / estimatedTotal * 100, 95);
+          const naturalProgress = Math.min(prev + (100 / (numberOfImages * 20)), 95);
           return Math.min(naturalProgress + Math.random() * 2, 95); // Add some natural variance
         });
       }, 1000);
@@ -405,6 +416,9 @@ const PromptBuilder: React.FC = () => {
         clearInterval(progressInterval);
         setProgressInterval(null);
       }
+      setImageGenStatus('');
+      setStartTime(null);
+      setImageGenProgress(0);
     }
   }, [isGeneratingImages, numberOfImages]);
 
@@ -419,6 +433,7 @@ const PromptBuilder: React.FC = () => {
       setIsGeneratingImages(true);
       setImageGenProgress(5); // Start with 5% to show immediate feedback
       setImageGenTimer(0);
+      setImageGenStatus('Connecting to AI service...');
       setError(null);
       
       const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
@@ -512,6 +527,7 @@ const PromptBuilder: React.FC = () => {
 
       setImageGenProgress(100); // Complete
       setGeneratedImages(imageUrls);
+      setImageGenStatus('Complete!');
       
       // Show success message with provider info
       if (usingFallback) {
@@ -569,6 +585,8 @@ const PromptBuilder: React.FC = () => {
     } finally {
       setIsGeneratingImages(false);
       setImageGenProgress(0);
+      setImageGenStatus('');
+      setStartTime(null);
       setImageGenTimer(0);
       if (progressInterval) {
         clearInterval(progressInterval);
@@ -623,8 +641,31 @@ const PromptBuilder: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const generateSREF = () => {
+    return `SREF-${Math.floor(1000 + Math.random() * 8999)}`;
+  };
+
+  const handleDownloadImage = (imageUrl: string, index: number) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `generated-image-${generateSREF()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleSavePrompt = async (selectedImageUrl?: string) => {
     const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+    const sref = generateSREF();
+    
+    if (!promptToUse) {
+      setError('No prompt to save');
+      return;
+    }
+
+    // Generate title from subject
+    const subjectWords = promptData.subjectAndSetting.split(' ').slice(0, 4).join(' ');
+    const generatedTitle = subjectWords || 'Generated Artwork';
     
     if (!promptToUse) {
       setError('No prompt to save');
@@ -634,10 +675,15 @@ const PromptBuilder: React.FC = () => {
     // Navigate to create prompt page with the generated prompt and form data
     navigate('/create-prompt', {
       state: {
+        title: generatedTitle,
         generatedPrompt: promptToUse,
         promptData: promptData,
         imageDimensions: imageDimensions,
         numberOfImages: numberOfImages,
+        sref: sref,
+        notes: `Generated using Prompt Builder\nSettings: ${promptData.lighting}, ${promptData.style}, ${promptData.mood}\nDimensions: ${imageDimensions}\nImages: ${numberOfImages}`,
+        mediaUrl: selectedImageUrl,
+        tags: ['Prompt Builder']
         mediaUrl: selectedImageUrl
       }
     });
@@ -740,6 +786,8 @@ const PromptBuilder: React.FC = () => {
     setEnhancedPrompt('');
     setGeneratedImages([]);
     setError(null);
+    setImageGenProgress(0);
+    setImageGenStatus('');
     setSelectedCategory('Natural Photography');
     setEnhanceLevel(0);
   };
@@ -1138,6 +1186,43 @@ const PromptBuilder: React.FC = () => {
                     </Button>
                   </div>
                 </div>
+
+                {/* Progress Timer - Placed under Generated Prompt */}
+                {isGeneratingImages && (
+                  <div className="mt-4 p-4 bg-deep-bg border border-border-color rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-electric-cyan" />
+                        <span className="text-soft-lavender font-medium">Generating Images</span>
+                      </div>
+                      <div className="text-soft-lavender font-mono">
+                        {Math.floor(imageGenTimer / 60).toString().padStart(2, '0')}:
+                        {(imageGenTimer % 60).toString().padStart(2, '0')}
+                      </div>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="mb-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm text-soft-lavender/70">{imageGenStatus}</span>
+                        <span className="text-sm text-soft-lavender/70">{Math.round(imageGenProgress)}%</span>
+                      </div>
+                      <div className="w-full bg-border-color rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-cosmic-purple via-electric-cyan to-neon-pink transition-all duration-500 ease-out"
+                          style={{ width: `${imageGenProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Status Message */}
+                    <div className="text-center">
+                      <p className="text-sm text-soft-lavender/60">
+                        Generating {numberOfImages} image{numberOfImages > 1 ? 's' : ''} with DALL-E 3...
+                      </p>
+                    </div>
+                  </div>
+                )}
               )}
 
               {/* Generated Images Section */}
@@ -1154,23 +1239,64 @@ const PromptBuilder: React.FC = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {generatedImages.map((imageUrl, index) => (
-                      <div key={index} className="relative group cursor-pointer">
+                      <div key={index} className="relative group">
+                        {/* Main Image - Clickable */}
                         <img
                           src={imageUrl}
                           alt={`Generated artwork ${index + 1}`}
-                          className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105"
+                          className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
                           onClick={() => openImageViewer(index)}
                         />
+                        
+                        {/* Hover Overlay */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
                           <Eye className="w-8 h-8 text-white" />
                         </div>
+                        
                         {/* Username overlay on each image */}
                         {currentUserProfile?.username && (
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
                             @{currentUserProfile.username}
                           </div>
                         )}
+                        
+                        {/* SREF Number */}
+                        <div className="absolute top-2 right-2 bg-cosmic-purple/90 text-white text-xs px-2 py-1 rounded backdrop-blur-sm font-mono">
+                          {generateSREF()}
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="absolute bottom-2 left-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadImage(imageUrl, index);
+                            }}
+                            className="flex-1 text-xs bg-black/70 backdrop-blur-sm border-white/20 text-white hover:bg-black/90"
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            Download
+                          </div>
+                        )}
                       </div>
+                    ))}
+                  </div>
+
+                  {/* Individual Save Buttons */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                    {generatedImages.map((imageUrl, index) => (
+                      <Button
+                        key={index}
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleSavePrompt(imageUrl)}
+                        className="text-sm"
+                      >
+                        <Save className="w-3 h-3 mr-2" />
+                        Save Image #{index + 1}
+                      </Button>
                     ))}
                   </div>
 
