@@ -84,6 +84,10 @@ const optimizePromptForDALLE3 = (prompt: string, dimensions: string): string => 
     .replace(/,\s*$/, '')
     .trim();
 
+  // Add EXTREMELY strong anti-digital-art prefixes to prevent artificial appearance
+  const realismPrefix = "REAL PHOTOGRAPH - NOT DIGITAL ART: ";
+  const antiArtificial = "ABSOLUTELY NOT digital art, NEVER illustration, NEVER painting, NEVER CGI, NEVER rendered, NEVER artificial, NEVER perfect, NEVER waxy skin, NEVER sculpted hair, ";
+  
   // Ensure the prompt starts with a clear subject description
   if (!optimized.match(/^(A|An|The)\s/i)) {
     if (optimized.toLowerCase().includes('woman') || optimized.toLowerCase().includes('girl')) {
@@ -97,16 +101,19 @@ const optimizePromptForDALLE3 = (prompt: string, dimensions: string): string => 
     }
   }
 
+  // Add STRONG realism emphasis and natural texture requirements
+  const realismRequirements = ", MUST HAVE natural skin with visible pores and subtle imperfections, MUST HAVE slightly imperfect hair with natural texture and movement, MUST HAVE realistic lighting with natural shadows and highlights, MUST HAVE authentic human expression with genuine emotion, MUST HAVE candid documentary photography style, MUST AVOID any digital art appearance";
+  
   // Add strong orientation and composition guidance at the beginning for better consistency
   if (dimensions === '9:16' || dimensions === '2:3' || dimensions === '4:5') {
     // For portrait ratios, make orientation guidance very explicit and early in prompt
-    optimized = `IMPORTANT: Create this image in ${orientationHint}. ${optimized}. ${compositionGuidance}`;
+    optimized = `${realismPrefix}${antiArtificial}IMPORTANT: Create this image in ${orientationHint}. ${optimized}${realismRequirements}. ${compositionGuidance}`;
   } else if (dimensions === '16:9' || dimensions === '3:2') {
     // For landscape ratios, emphasize horizontal composition
-    optimized = `IMPORTANT: Create this image in ${orientationHint}. ${optimized}. ${compositionGuidance}`;
+    optimized = `${realismPrefix}${antiArtificial}IMPORTANT: Create this image in ${orientationHint}. ${optimized}${realismRequirements}. ${compositionGuidance}`;
   } else {
     // For square, add balanced composition guidance
-    optimized = `${optimized}. ${compositionGuidance}`;
+    optimized = `${realismPrefix}${antiArtificial}${optimized}${realismRequirements}. ${compositionGuidance}`;
   }
   
   return optimized;
@@ -190,8 +197,27 @@ Deno.serve(async (req) => {
     
     // Optimize prompt for DALL-E 3
     const optimizedPrompt = optimizePromptForDALLE3(prompt, imageDimensions);
+    
+    // Add comprehensive negative prompt to prevent artificial appearance
+    const negativePromptElements = [
+      "digital art", "illustration", "painting", "CGI", "rendered", "3D render",
+      "artificial", "synthetic", "plastic skin", "waxy appearance", "doll-like",
+      "perfect skin", "airbrushed", "retouched", "smooth skin", "glossy skin",
+      "cartoon", "anime", "fantasy", "surreal", "stylized", "artistic rendering",
+      "computer graphics", "digital painting", "concept art", "game art",
+      "overly saturated", "artificial lighting", "neon colors", "glowing eyes",
+      "perfect symmetry", "flawless features", "unnatural proportions",
+      "sculpted hair", "perfect hair", "too perfect", "digital portrait",
+      "overly polished", "artificial perfection", "digital makeup",
+      "flawless composition", "studio perfection", "idealized features",
+      "Instagram filter", "beauty filter", "digital enhancement"
+    ].join(", ");
+    
+    // Enhanced prompt with STRONG negative guidance placed at the beginning
+    const enhancedPrompt = `CRITICAL: This MUST be a real photograph, NOT digital art. AVOID: ${negativePromptElements}. ${optimizedPrompt}`;
+    
     console.log('Original prompt length:', prompt.length);
-    console.log('Optimized prompt length:', optimizedPrompt.length);
+    console.log('Enhanced prompt length:', enhancedPrompt.length);
     console.log('Target dimensions:', imageDimensions, '-> DALL-E size:', size);
     
     // DALL-E 3 only supports generating 1 image at a time
@@ -214,7 +240,7 @@ Deno.serve(async (req) => {
         
         const response = await openai.images.generate({
           model: "dall-e-3",
-          prompt: optimizedPrompt,
+          prompt: enhancedPrompt,
           n: 1, // DALL-E 3 only supports n=1
           size: size as "1024x1024" | "1792x1024" | "1024x1792",
           quality: "hd",

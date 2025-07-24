@@ -77,16 +77,26 @@ Deno.serve(async (req) => {
 CRITICAL OUTPUT FORMAT REQUIREMENT:
 You must respond with a valid JSON object containing exactly two keys: "prompt" and "negativePrompt". Do not include any other text, markdown formatting, or explanations outside of this JSON structure.
 
+ABSOLUTE PRIORITY - PHOTOGRAPHIC REALISM:
+Every prompt MUST result in images that look like REAL PHOTOGRAPHS, never digital art. This is the highest priority requirement.
+
 REALISM REQUIREMENTS FOR HUMAN SUBJECTS:
 REALISM KEYWORDS TO NATURALLY INTEGRATE:
-Seamlessly weave these terms throughout your response: photorealistic, natural skin texture, realistic lighting, authentic, genuine, detailed pores, natural imperfections, lifelike, candid, unretouched quality.
+Seamlessly weave these terms throughout your response: photorealistic, natural skin texture with visible pores, realistic lighting with natural shadows, authentic, genuine, detailed pores and skin imperfections, natural hair texture with realistic movement, lifelike, candid, unretouched documentary quality, real photograph.
+
+CRITICAL HAIR AND SKIN REQUIREMENTS:
+HAIR MUST ALWAYS be: natural texture, slightly imperfect, with realistic movement and natural variations, never perfectly sculpted or styled, with individual strands visible, organic and authentic appearance.
+SKIN MUST ALWAYS be: natural texture with visible pores, subtle imperfections, natural color variations, never waxy or overly smooth, with authentic human characteristics and natural aging signs.
 
 RAW PHOTOGRAPHY EMPHASIS:
-Emphasize raw, unprocessed photographic qualities by including terms like: unretouched skin, natural blemishes, realistic skin variations, authentic lighting imperfections, natural shadows and highlights, candid moment capture, documentary-style realism, street photography authenticity, natural environmental lighting, and unposed genuine expressions. Avoid any mention of perfection or idealization.
+Emphasize raw, unprocessed photographic qualities by including terms like: unretouched skin with natural texture, natural blemishes and imperfections, realistic skin variations, authentic lighting imperfections, natural shadows and highlights, candid moment capture, documentary-style realism, street photography authenticity, natural environmental lighting, unposed genuine expressions, and slightly imperfect natural hair. NEVER mention perfection, idealization, or flawless features.
 
 When enhancement codes are provided, integrate them naturally into the flowing text while maintaining focus on photorealism and natural human features.
 
-Write your response as one continuous, descriptive paragraph that reads naturally while incorporating all technical details, enhancements, and realism requirements without any formatting symbols or structure markers.`;
+Write your response as one continuous, descriptive paragraph that reads naturally while incorporating all technical details, enhancements, and realism requirements without any formatting symbols or structure markers.
+
+NEGATIVE PROMPT REQUIREMENTS:
+The negativePrompt field MUST include strong prohibitions against: digital art, illustration, painting, CGI, rendered, artificial, synthetic, plastic skin, waxy appearance, perfect skin, sculpted hair, perfect hair, overly polished, digital portrait, beauty filter, Instagram filter, artificial perfection.`;
 
     let userPrompt = `Create a detailed photorealistic photography prompt as a single flowing paragraph with these specifications: Subject and Setting is ${promptData.subjectAndSetting}, Lighting is ${promptData.lighting}, Style is ${promptData.style}, Mood is ${promptData.mood}`;
 
@@ -98,7 +108,7 @@ Write your response as one continuous, descriptive paragraph that reads naturall
       userPrompt += `, Enhancement Codes are ${promptData.enhancement}`;
     }
 
-    userPrompt += `. Create a cohesive, detailed prompt that produces photorealistic, human-like images with natural skin texture with visible pores and subtle imperfections, realistic lighting that shows natural shadows and highlights, authentic human expressions and genuine emotions, natural hair texture and individual strand details, realistic fabric textures and natural clothing drape, and candid, unposed feeling with authentic atmosphere. Include specific camera and lens recommendations optimized for natural human photography. Focus on creating vivid, lifelike imagery while maintaining photographic authenticity and professional quality. Avoid artificial or overly perfect descriptions and emphasize natural, realistic human features. Write everything as one continuous paragraph without any formatting symbols, headings, or bullet points.`;
+    userPrompt += `. Create a cohesive, detailed prompt that produces REAL PHOTOGRAPHS that look like they were taken with an actual camera, NEVER digital art. The images MUST have natural skin texture with visible pores and subtle imperfections, natural hair with realistic texture and slight imperfections (never sculpted or perfect), realistic lighting that shows natural shadows and highlights, authentic human expressions and genuine emotions, realistic fabric textures and natural clothing drape, and candid, unposed feeling with authentic atmosphere. Include specific camera and lens recommendations optimized for natural human photography. Focus on creating vivid, lifelike imagery while maintaining photographic authenticity and professional quality. ABSOLUTELY AVOID any digital art appearance, artificial perfection, waxy skin, sculpted hair, or overly polished looks. The result MUST look like a real photograph taken by a professional photographer, not digital art. Write everything as one continuous paragraph without any formatting symbols, headings, or bullet points.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
