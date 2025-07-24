@@ -28,7 +28,6 @@ import {
   Minus,
   Clock
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
