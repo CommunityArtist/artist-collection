@@ -1285,22 +1285,6 @@ const PromptBuilder: React.FC = () => {
                     ))}
                   </div>
 
-                  {/* Individual Save Buttons */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-                    {generatedImages.map((imageUrl, index) => (
-                      <Button
-                        key={index}
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleSavePrompt(imageUrl)}
-                        className="text-sm"
-                      >
-                        <Save className="w-3 h-3 mr-2" />
-                        Save Image #{index + 1}
-                      </Button>
-                    ))}
-                  </div>
-
                   <div className="flex gap-3">
                     <Button
                       variant="outline"
