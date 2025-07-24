@@ -77,6 +77,7 @@ const PromptBuilder: React.FC = () => {
   // Image generation settings
   const [imageDimensions, setImageDimensions] = useState('1:1');
   const [numberOfImages, setNumberOfImages] = useState(1);
+  const [imageStyle, setImageStyle] = useState('natural');
   
   // Image viewer state
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
@@ -410,7 +411,8 @@ const PromptBuilder: React.FC = () => {
       const requestPayload = {
         prompt: promptToUse,
         imageDimensions: imageDimensions,
-        numberOfImages: numberOfImages
+        numberOfImages: numberOfImages,
+        style: imageStyle
       };
 
       console.log('🖼️ Attempting AI image generation...', { apiUrl, numberOfImages, dimensions: imageDimensions });
@@ -856,6 +858,19 @@ const PromptBuilder: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                   {/* DALL-E 3 Style */}
+                   <div>
+                     <label className="block text-soft-lavender mb-2 font-medium">DALL-E 3 Style</label>
+                     <select
+                       className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
+                       value={imageStyle}
+                       onChange={(e) => setImageStyle(e.target.value)}
+                     >
+                       <option value="natural">Natural - More photorealistic and natural looking images</option>
+                       <option value="vivid">Vivid - More artistic and stylized images with enhanced colors</option>
+                     </select>
+                   </div>
                 </div>
 
                 {/* Generate Prompt Button */}
