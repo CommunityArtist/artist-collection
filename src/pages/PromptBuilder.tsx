@@ -240,7 +240,7 @@ const PromptBuilder: React.FC = () => {
           return;
         } catch (localError) {
           console.error('Local prompt generation failed:', localError);
-          setError('Local prompt generation failed. Please check your inputs and try again.');
+          setError('Failed to generate prompt locally.');
           return;
         }
       }
@@ -798,29 +798,6 @@ const PromptBuilder: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
-                
-                {/* Mode Information */}
-                <div className="mt-4 p-3 bg-deep-bg rounded-lg flex items-center justify-between">
-                  <p className="text-xs text-soft-lavender/60">
-                    <Info className="w-3 h-3 inline mr-1" />
-                    Mode: {edgeFunctionsAvailable ? '🤖 AI-powered prompt generation' : '🔧 Local template generation'}
-                  </p>
-                  {!edgeFunctionsAvailable && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={forceRefreshEdgeFunctions}
-                      disabled={isCheckingFunctions}
-                      className="text-xs px-2 py-1"
-                    >
-                      {isCheckingFunctions ? (
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3 h-3" />
-                      )}
-                    </Button>
                   )}
                 </div>
 
