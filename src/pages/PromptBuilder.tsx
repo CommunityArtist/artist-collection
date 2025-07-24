@@ -1211,63 +1211,6 @@ const PromptBuilder: React.FC = () => {
                 </div>
               )}
 
-              {/* Generated Images Section */}
-              {generatedImages.length > 0 && (
-                <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-soft-lavender">Generated Images</h2>
-                    {currentUserProfile?.username && (
-                      <span className="text-sm text-soft-lavender/70">
-                        by @{currentUserProfile.username}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    {generatedImages.map((imageUrl, index) => (
-                      <div key={index} className="relative group cursor-pointer">
-                        <img
-                          src={imageUrl}
-                          alt={`Generated artwork ${index + 1}`}
-                          className="w-full h-64 object-cover rounded-lg transition-transform duration-300 hover:scale-105"
-                          onClick={() => openImageViewer(index)}
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
-                          <Eye className="w-8 h-8 text-white" />
-                        </div>
-                        {/* Username overlay on each image */}
-                        {currentUserProfile?.username && (
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                            @{currentUserProfile.username}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openImageViewer(0)}
-                      className="flex-1"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Gallery
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleSavePrompt(generatedImages[0])}
-                      className="flex-1"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      Save with Image
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {/* Error Display */}
               {error && (
                 <div className={`border rounded-lg p-4 ${
