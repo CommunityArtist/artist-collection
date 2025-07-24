@@ -675,8 +675,14 @@ const PromptBuilder: React.FC = () => {
     return `SREF-${Math.floor(1000 + Math.random() * 8999)}`;
   };
 
-        tags: ['Prompt Builder'],
-        mediaUrl: selectedImageUrl
+  const handleSavePrompt = async (selectedImageUrl?: string) => {
+    navigate('/saved-prompts', {
+      state: {
+        newPrompt: {
+          prompt: promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt,
+          tags: ['Prompt Builder'],
+          mediaUrl: selectedImageUrl
+        }
       }
     });
   };
