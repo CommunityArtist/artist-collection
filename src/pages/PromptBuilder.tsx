@@ -28,6 +28,8 @@ import {
   Minus,
   Clock
 } from 'lucide-react';
+import { Wand2, Sparkles, Image as ImageIcon, Download, Eye, Settings, Plus, Lightbulb, Palette, Camera, Zap, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
@@ -88,7 +90,6 @@ const PromptBuilder: React.FC = () => {
   // Image viewer state
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const navigate = useNavigate();
 
   // Enhancement categories and levels
   const [selectedCategory, setSelectedCategory] = useState('Natural Photography');
@@ -668,43 +669,42 @@ const PromptBuilder: React.FC = () => {
     } catch (error) {
       console.error('Download failed:', error);
       // Fallback: open in new tab if download fails
+      window.open(imageUrl, '_blank');
+    }
+  };
+
   const handleSaveWithImage = () => {
-    if (!generatedPrompt || generatedImageUrls.length === 0) {
+    if (!generatedPrompt || generatedImages.length === 0) {
       alert('Please generate a prompt and images first');
       return;
     }
 
     // Create title from main subject
-    const subjectWords = (promptData.main_subject || promptData.subject || 'Generated Artwork').split(' ').slice(0, 3).join(' ');
+    const subjectWords = (promptData.subjectAndSetting || 'Generated Artwork').split(' ').slice(0, 3).join(' ');
     
     // Prepare data to pass to CreatePrompt
     const dataToPass = {
       title: `${subjectWords} Study`,
       generatedPrompt: promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt,
       promptData: promptData,
-      imageDimensions: dimensions,
+      imageDimensions: imageDimensions,
       numberOfImages: numberOfImages,
-      sref: generatedSrefs[0] || generateSREF(),
+      sref: imageMetadata[0]?.sref || generateSREF(),
       notes: `Generated with AI Prompt Builder
 
 Settings:
-- Subject: ${promptData.main_subject || promptData.subject}
-- Setting: ${promptData.setting || 'Not specified'}
-- Lighting: ${promptData.lighting_setup || 'Not specified'}
-- Style: ${promptData.art_style || 'Not specified'}
-- Mood: ${promptData['mood_&_atmosphere'] || 'Not specified'}
+- Subject: ${promptData.subjectAndSetting}
+- Lighting: ${promptData.lighting}
+- Style: ${promptData.style}
+- Mood: ${promptData.mood}
 - Enhancement Level: ${enhanceLevel}/5
-- Dimensions: ${dimensions}
+- Dimensions: ${imageDimensions}
 - Number of Images: ${numberOfImages}`,
-      mediaUrl: generatedImageUrls[0] // Use the first generated image
+      mediaUrl: generatedImages[0] // Use the first generated image
     };
 
     // Navigate to CreatePrompt with data
     navigate('/create-prompt', { state: dataToPass });
-  };
-
-      window.open(imageUrl, '_blank');
-    }
   };
 
   const generateSREF = () => {
