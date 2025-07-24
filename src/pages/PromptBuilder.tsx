@@ -27,7 +27,8 @@ import {
   Plus,
   Minus,
   Clock
-} from 'lucide-react';
+import { Wand2, Sparkles, Image as ImageIcon, Download, Eye, Settings, Plus, Lightbulb, Palette, Camera, Zap, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
@@ -88,6 +89,7 @@ const PromptBuilder: React.FC = () => {
   // Image viewer state
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const navigate = useNavigate();
 
   // Enhancement categories and levels
   const [selectedCategory, setSelectedCategory] = useState('Natural Photography');
@@ -667,6 +669,41 @@ const PromptBuilder: React.FC = () => {
     } catch (error) {
       console.error('Download failed:', error);
       // Fallback: open in new tab if download fails
+  const handleSaveWithImage = () => {
+    if (!generatedPrompt || generatedImageUrls.length === 0) {
+      alert('Please generate a prompt and images first');
+      return;
+    }
+
+    // Create title from main subject
+    const subjectWords = (promptData.main_subject || promptData.subject || 'Generated Artwork').split(' ').slice(0, 3).join(' ');
+    
+    // Prepare data to pass to CreatePrompt
+    const dataToPass = {
+      title: `${subjectWords} Study`,
+      generatedPrompt: promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt,
+      promptData: promptData,
+      imageDimensions: dimensions,
+      numberOfImages: numberOfImages,
+      sref: generatedSrefs[0] || generateSREF(),
+      notes: `Generated with AI Prompt Builder
+
+Settings:
+- Subject: ${promptData.main_subject || promptData.subject}
+- Setting: ${promptData.setting || 'Not specified'}
+- Lighting: ${promptData.lighting_setup || 'Not specified'}
+- Style: ${promptData.art_style || 'Not specified'}
+- Mood: ${promptData['mood_&_atmosphere'] || 'Not specified'}
+- Enhancement Level: ${enhanceLevel}/5
+- Dimensions: ${dimensions}
+- Number of Images: ${numberOfImages}`,
+      mediaUrl: generatedImageUrls[0] // Use the first generated image
+    };
+
+    // Navigate to CreatePrompt with data
+    navigate('/create-prompt', { state: dataToPass });
+  };
+
       window.open(imageUrl, '_blank');
     }
   };
@@ -1026,6 +1063,15 @@ const PromptBuilder: React.FC = () => {
                         Generate Prompt
                       </>
                     )}
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    size="lg"
+                    onClick={handleSaveWithImage}
+                    className="flex-1"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Save with Image
                   </Button>
                 </div>
               </div>
