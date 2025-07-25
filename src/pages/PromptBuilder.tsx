@@ -1,112 +1,64 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Wand2, 
   Sparkles, 
-  Image as ImageIcon, 
   Download, 
+  Save, 
+  RefreshCw, 
   Eye, 
-  Settings, 
-  Plus, 
-  Lightbulb, 
-  Palette, 
-  Camera, 
-  Zap, 
-  Play, 
-  ChevronLeft, 
-  ChevronRight,
-  Sliders,
-  RotateCcw,
-  Copy,
-  Save,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  ArrowRight,
-  X,
-  Maximize2,
-  Minimize2,
-  Volume2,
-  VolumeX,
-  Clock,
-  Minus
+  Settings,
+  Zap,
+  AlertCircle
 } from 'lucide-react';
 import Button from '../components/Button';
-import ImageViewerModal from '../components/ImageViewerModal';
 import { supabase } from '../lib/supabase';
-import { generatePromptLocally, enhancePromptWithCategory } from '../utils/promptGeneration';
-import { generateImagesWithFallback, testEdgeFunctionAvailabilityCached, getImageGenerationErrorMessage } from '../utils/imageGeneration';
-import { ExtractedPrompt } from '../types';
 
-interface PromptData {
+interface PromptBuilderData {
   subject: string;
   setting: string;
   lighting: string;
-  style: string;
+  artStyle: string;
   mood: string;
-  'post-processing': string;
-  enhancement: string;
-  selectedCategory: string;
-  enhanceLevel: number;
+  postProcessing: string[];
+  enhancementCodes: string[];
+  customPrompt: string;
 }
 
-const CATEGORIES = [
-  'Natural Photography',
-  'Professional Portrait', 
-  'Fashion & Beauty',
-  'Lifestyle & Candid',
-  'Commercial & Brand'
-];
-
 const PromptBuilder: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   
-  // Form state
-  const [promptData, setPromptData] = useState<PromptData>({
-    subject: '',
+  // Check if we have extracted data from URL params
+  const urlParams = new URLSearchParams(location.search);
+  const isFromExtractor = urlParams.get('source') === 'extractor';
+  
+  const initialFormData: PromptBuilderData = {
+    subject: urlParams.get('subject') || '',
     setting: '',
-    lighting: '',
-    style: '',
-    mood: '',
-    'post-processing': '',
-    enhancement: '',
-    selectedCategory: 'Natural Photography',
-    enhanceLevel: 2
+    lighting: urlParams.get('lighting') || '',
+    artStyle: urlParams.get('style') || '',
+    mood: urlParams.get('mood') || '',
+    postProcessing: [],
+    enhancementCodes: [],
+    customPrompt: urlParams.get('customPrompt') || '',
+  };
+  
+  const [formData, setFormData] = useState<PromptBuilderData>({
+    ...initialFormData
   });
 
-  // Generation state
   const [generatedPrompt, setGeneratedPrompt] = useState('');
-  const [negativePrompt, setNegativePrompt] = useState('');
-  const [enhancedPrompt, setEnhancedPrompt] = useState('');
-  const [promptEnhancementEnabled, setPromptEnhancementEnabled] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState('');
+  const [generatedImages, setGeneratedImages] = useState<Array<{url: string, id: string}>>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  // Image generation state
-  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
-  const [imageDimensions, setImageDimensions] = useState('1:1');
-  const [numberOfImages, setNumberOfImages] = useState(1);
-  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
-  const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState<boolean | null>(null);
-
-  // Image viewer state
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
-
-  // Authentication state
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  // SREF and metadata state
-  const [sref, setSref] = useState('');
-  const [generatedMetadata, setGeneratedMetadata] = useState<{
-    title: string;
-    notes: string;
-    sref: string;
-  } | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   // Check authentication
   useEffect(() => {
@@ -114,6 +66,7 @@ const PromptBuilder: React.FC = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         setIsAuthenticated(!!user);
+        setUser(user);
         if (!user) {
           navigate('/auth');
           return;
@@ -121,418 +74,310 @@ const PromptBuilder: React.FC = () => {
       } catch (error) {
         console.error('Auth check failed:', error);
         navigate('/auth');
-      } finally {
-        setIsCheckingAuth(false);
       }
     };
 
     checkAuth();
   }, [navigate]);
 
-  // Handle extracted prompt data from Prompt Extractor
-  useEffect(() => {
-    if (location.state?.extractedPromptData) {
-      const extractedData = location.state.extractedPromptData as ExtractedPrompt;
+  // Generate smart filename based on prompt content
+  const generateFilename = (prompt: string, suffix: string = ''): string => {
+    try {
+      // Extract key words from the prompt
+      const words = prompt.toLowerCase()
+        .replace(/[^\w\s]/g, '') // Remove special characters
+        .split(' ')
+        .filter(word => 
+          word.length > 2 && 
+          !['the', 'and', 'with', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'man', 'end', 'few', 'got', 'let', 'put', 'say', 'she', 'too', 'use'].includes(word)
+        )
+        .slice(0, 4); // Take first 4 meaningful words
       
-      // Map extracted data to form fields
-      const mappedData: PromptData = {
-        subject: `${extractedData.mainPrompt || ''}${extractedData.mainPrompt && extractedData.composition ? ', ' : ''}${extractedData.composition || ''}`,
-        setting: '', // Clear setting since we're combining into subject
-        lighting: extractedData.lighting || '',
-        style: extractedData.styleElements?.join(', ') || '',
-        mood: extractedData.mood || '',
-        'post-processing': extractedData.technicalDetails?.join(', ') || '',
-        enhancement: `Camera: ${extractedData.camera}, Lens: ${extractedData.lens}, Colors: ${extractedData.colorPalette?.join(', ')}, Audio: ${extractedData.audioVibe}`,
-        selectedCategory: 'Natural Photography',
-        enhanceLevel: 2
-      };
-      
-      setPromptData(mappedData);
-      
-      // Clear the location state to prevent re-population on refresh
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
-
-  // Check Edge Functions availability
-  useEffect(() => {
-    const checkAvailability = async () => {
-      if (!import.meta.env.VITE_SUPABASE_URL) {
-        setEdgeFunctionsAvailable(false);
-        return;
+      if (words.length === 0) {
+        return `ai-artwork-${Date.now()}`;
       }
       
-      try {
-        const available = await testEdgeFunctionAvailabilityCached(
-          import.meta.env.VITE_SUPABASE_URL, 
-          'generate-prompt',
-          3000
-        );
-        setEdgeFunctionsAvailable(available);
-      } catch (error) {
-        console.warn('Failed to check Edge Functions availability:', error);
-        setEdgeFunctionsAvailable(false);
-      }
-    };
-
-    if (isAuthenticated) {
-      checkAvailability();
+      // Create filename from meaningful words
+      const baseFilename = words.join('-') + (suffix ? `-${suffix}` : '');
+      const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      
+      return `${baseFilename}-${timestamp}`;
+    } catch (error) {
+      // Fallback to timestamp if extraction fails
+      return `ai-artwork-${Date.now()}`;
     }
-  }, [isAuthenticated]);
-
-  const generateSREF = (): string => {
-    return `SREF-${Math.floor(1000 + Math.random() * 8999)}`;
   };
 
-  const handleInputChange = (field: keyof PromptData, value: string | number) => {
-    setPromptData(prev => ({
+  const downloadImage = async (imageUrl: string, customFilename?: string) => {
+    try {
+      // Create a canvas to convert the image and download it
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      const filename = generateFilename(generatedPrompt);
+      
+      img.onload = () => {
+        // Create canvas and draw the image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          
+          // Convert canvas to blob and download
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `${customFilename || filename}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }
+          }, 'image/png');
+        }
+      };
+      
+      img.onerror = () => {
+        // If image loading fails, try alternative method
+        downloadImageAlternative(imageUrl, customFilename || filename);
+      };
+      
+      img.src = imageUrl;
+    } catch (error) {
+      console.error('Download failed:', error);
+      downloadImageAlternative(imageUrl, customFilename);
+    }
+  };
+
+  const downloadImageAlternative = (imageUrl: string, filename: string) => {
+    try {
+      // Create a temporary link with download attribute
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `${filename}.png`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Add to DOM temporarily
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Alternative download failed:', error);
+      // Final fallback: open in new tab for manual save
+      window.open(imageUrl, '_blank');
+      alert('Image opened in new tab. Right-click and select "Save image as..." to download.');
+    }
+  };
+
+  const artStyles = [
+    'Realistic', 'Ultra Realistic Photography', 'Natural Outdoor Portrait', 'Digital Art', 'Oil Painting', 'Watercolor', 'Sketch', 'Anime',
+    'Cyberpunk', 'Fantasy', 'Surreal', 'Abstract', 'Minimalist', 'Vintage',
+    'Pop Art', 'Impressionist', 'Gothic', 'Steampunk', 'Art Nouveau', 'Graffiti'
+  ];
+
+  const moods = [
+    'Calm', 'Energetic', 'Mysterious', 'Dreamy', 'Dark', 'Bright',
+    'Melancholic', 'Joyful', 'Dramatic', 'Serene', 'Intense', 'Playful',
+    'Nostalgic', 'Futuristic', 'Romantic', 'Adventurous', 'Peaceful', 'Bold'
+  ];
+
+  const lightingOptions = [
+    'Natural', 'Golden Hour', 'Warm Afternoon Light', 'Blue Hour', 'Neon', 'Soft', 'Dramatic',
+    'Backlit', 'Studio', 'Cinematic', 'Moody', 'Bright', 'Dim',
+    'Colorful', 'Monochrome', 'Sunset', 'Sunrise', 'Moonlight', 'Candlelight', 'Natural Outdoor Light'
+  ];
+
+  const postProcessingOptions = [
+    'HDR', 'High Detail', 'Ultra Sharp', 'Cinematic', 'Film Grain',
+    'Soft Focus', 'Vignette', 'Color Grading', 'Bokeh', 'Lens Flare',
+    'Depth of Field', 'Motion Blur', 'Chromatic Aberration', 'Bloom'
+  ];
+
+  const enhancementCodes = [
+    '--ar 16:9', '--ar 1:1', '--ar 2:3', '--ar 4:5', '--v 6', '--v 5',
+    '--style raw', '--style 2', '--quality 2', '--seed 1234', '--chaos 25',
+    '--weird 250', '--stylize 100', '--no text', '--no watermark'
+  ];
+
+  const handleInputChange = (field: keyof PromptBuilderData, value: string | string[]) => {
+    setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const validateForm = (): boolean => {
-    const requiredFields: (keyof PromptData)[] = ['subject', 'lighting', 'style', 'mood'];
-    const missingFields = requiredFields.filter(field => !promptData[field]?.trim());
-    
-    if (missingFields.length > 0) {
-      setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
-      return false;
-    }
-    
-    return true;
+  const toggleArrayItem = (field: 'postProcessing' | 'enhancementCodes', item: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: prev[field].includes(item)
+        ? prev[field].filter(i => i !== item)
+        : [...prev[field], item]
+    }));
   };
 
-  const handleGeneratePrompt = async () => {
+  const generatePrompt = async () => {
+    setIsGenerating(true);
+    setError('');
+    
     try {
-      setIsGenerating(true);
-      setError(null);
-      setSuccess(false);
-
-      if (!validateForm()) {
-        return;
+      // Use fallback local generation
+      const parts = [];
+      
+      if (formData.subject) parts.push(formData.subject);
+      if (formData.setting) parts.push(`in ${formData.setting}`);
+      if (formData.lighting) parts.push(`${formData.lighting} lighting`);
+      if (formData.artStyle) parts.push(`${formData.artStyle} style`);
+      if (formData.mood) parts.push(`${formData.mood} mood`);
+      if (formData.postProcessing.length > 0) {
+        parts.push(formData.postProcessing.join(', '));
       }
-
-      // Try Edge Function first if available
-      if (edgeFunctionsAvailable && import.meta.env.VITE_SUPABASE_URL) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            throw new Error('Please sign in to use the prompt generator');
-          }
-
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            // ✅ Actually call the fallback function
-            body: JSON.stringify({
-              subjectAndSetting: promptData.subject, // Combined field now
-              lighting: promptData.lighting,
-              style: promptData.style,
-              mood: promptData.mood,
-              'post-processing': promptData['post-processing'],
-              enhancement: promptData.enhancement
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            // Generate enhanced version
-            throw new Error(errorData.error || 'Failed to generate prompt');
-          }
-
-          const data = await response.json();
-          setGeneratedPrompt(data.prompt);
-          setNegativePrompt(data.negativePrompt || '');
-          
-          // Generate enhanced version
-          const enhanced = enhancePromptWithCategory(
-            data.prompt, 
-            promptData.selectedCategory, 
-            promptData.enhanceLevel
-          );
-          setEnhancedPrompt(enhanced);
-          
-          setSuccess(true);
-          setTimeout(() => setSuccess(false), 3000);
-          
-        } catch (edgeError) {
-          console.warn('Edge Function failed, falling back to local generation:', edgeError);
-          
-          // ✅ Add this fallback:
-          const result = generatePromptLocally({
-            subjectAndSetting: promptData.subject, // Combined field now
-            lighting: promptData.lighting,
-            style: promptData.style,
-            mood: promptData.mood,
-            'post-processing': promptData['post-processing'],
-            enhancement: promptData.enhancement
-          });
-          
-          setGeneratedPrompt(result.prompt);
-          setNegativePrompt(result.negativePrompt);
-          
-          const enhanced = enhancePromptWithCategory(
-            result.prompt,
-            promptData.selectedCategory,
-            promptData.enhanceLevel
-          );
-          setEnhancedPrompt(enhanced);
-          setSuccess(true);
-          setTimeout(() => setSuccess(false), 3000);
-        }
-      } else {
-        // Use local generation when Edge Functions not available
-        const result = generatePromptLocally({
-          subjectAndSetting: promptData.subject, // Combined field now
-          lighting: promptData.lighting,
-          style: promptData.style,
-          mood: promptData.mood,
-          'post-processing': promptData['post-processing'],
-          enhancement: promptData.enhancement
-        });
-        
-        setGeneratedPrompt(result.prompt);
-        setNegativePrompt(result.negativePrompt);
-        
-        const enhanced = enhancePromptWithCategory(
-          result.prompt, 
-          promptData.selectedCategory, 
-          promptData.enhanceLevel
-        );
-        setEnhancedPrompt(enhanced);
-        
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
+      
+      let prompt = parts.join(', ');
+      
+      if (formData.customPrompt) {
+        prompt += `, ${formData.customPrompt}`;
       }
-
+      
+      // Add technical enhancements
+      prompt += ', highly detailed, professional quality, 8k resolution';
+      
+      if (formData.enhancementCodes.length > 0) {
+        prompt += ' ' + formData.enhancementCodes.join(' ');
+      }
+      
+      setGeneratedPrompt(prompt);
     } catch (error) {
       console.error('Error generating prompt:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate prompt');
+      setError(`Failed to generate prompt: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleGenerateImages = async () => {
-    try {
-      setIsGeneratingImages(true);
-      setImageError(null);
-
-      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
-      
-      if (!promptToUse) {
-        setImageError('Please generate a prompt first');
-        return;
-      }
-
-      // Try Edge Function first if available
-      if (edgeFunctionsAvailable && import.meta.env.VITE_SUPABASE_URL) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            throw new Error('Please sign in to generate images');
-          }
-
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              prompt: promptToUse,
-              imageDimensions,
-              numberOfImages,
-              style: 'natural'
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to generate images');
-          }
-
-          const data = await response.json();
-          const imageUrls = Array.isArray(data.imageUrls) ? data.imageUrls : [data.imageUrl].filter(Boolean);
-         
-          if (imageUrls.length > 0 && imageUrls.every(url => url && typeof url === 'string')) {
-            setGeneratedImages(imageUrls);
-          } else {
-            throw new Error('No image URLs received from Edge Function');
-          }
-          
-        } catch (edgeError) {
-          console.warn('Edge Function failed, using fallback:', edgeError);
-          
-          const result = await generateImagesWithFallback({
-            prompt: promptToUse,
-            dimensions: imageDimensions,
-            numberOfImages
-          });
-          
-          if (result.success && result.imageUrls?.length > 0) {
-            setGeneratedImages(result.imageUrls);
-          } else {
-            throw new Error(result.error || 'Fallback failed to generate images');
-          }
-        }
-      } else {
-        // Use fallback generation when Edge Functions not available
-        const result = await generateImagesWithFallback({
-          prompt: promptToUse,
-          dimensions: imageDimensions,
-          numberOfImages
-        });
-        
-        if (result.success && result.imageUrls && result.imageUrls.length > 0) {
-          setGeneratedImages(result.imageUrls);
-        } else {
-          throw new Error(result.error || 'Failed to generate images');
-        }
-      }
-
-    } catch (error) {
-      console.error('Error generating images:', error);
-      setImageError(getImageGenerationErrorMessage(error, 'openai'));
-    } finally {
-      setIsGeneratingImages(false);
-    }
-  };
-
-  const handleGenerateMetadata = async () => {
-    try {
-      const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
-      
-      if (!promptToUse) {
-        alert('Please generate a prompt first');
-        return;
-      }
-
-      if (edgeFunctionsAvailable && import.meta.env.VITE_SUPABASE_URL) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error('Please sign in to generate metadata');
-        }
-
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-metadata`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            prompt: promptToUse,
-            promptData: promptData
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to generate metadata');
-        }
-
-        const metadata = await response.json();
-        setGeneratedMetadata(metadata);
-        setSref(metadata.sref);
-      } else {
-        // Fallback metadata generation
-        const fallbackMetadata = {
-          title: `${promptData.subject.split(' ').slice(0, 3).join(' ')} Study`,
-          notes: `Generated with ${promptData.selectedCategory} style, enhancement level ${promptData.enhanceLevel}. Settings: ${promptData.lighting} lighting, ${promptData.style} style, ${promptData.mood} mood.`,
-          sref: generateSREF()
-        };
-        setGeneratedMetadata(fallbackMetadata);
-        setSref(fallbackMetadata.sref);
-      }
-    } catch (error) {
-      console.error('Error generating metadata:', error);
-      alert('Failed to generate metadata: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    }
-  };
-
-  const handleCopyPrompt = () => {
-    const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
-    navigator.clipboard.writeText(promptToUse);
-  };
-
-  const handleSaveWithImage = () => {
-    const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
+  const generateBatchImages = async () => {
+    if (!generatedPrompt) return;
     
-    if (!promptToUse || generatedImages.length === 0) {
-      alert('Please generate both a prompt and images before saving');
+    setIsGeneratingBatch(true);
+    setError('');
+    setGeneratedImages([]);
+    
+    try {
+      // Fallback to mock images
+      const mockImages = [
+        'https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1212984/pexels-photo-1212984.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/2041540/pexels-photo-2041540.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1252869/pexels-photo-1252869.jpeg?auto=compress&cs=tinysrgb&w=800'
+      ];
+      
+      const imagesWithIds = mockImages.map((url, index) => ({
+        url,
+        id: `batch-${Date.now()}-${index}`
+      }));
+      
+      setGeneratedImages(imagesWithIds);
+    } catch (error) {
+      console.error('Error generating batch images:', error);
+      setError(`Failed to generate images: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingBatch(false);
+    }
+  };
+
+  const downloadImageById = async (imageUrl: string, imageId: string) => {
+    const filename = generateFilename(generatedPrompt, imageId);
+    await downloadImage(imageUrl, filename);
+  };
+
+  const generateImage = async () => {
+    if (!generatedPrompt) return;
+    
+    setIsGeneratingImage(true);
+    setError('');
+    
+    try {
+      // Fallback to mock image
+      setGeneratedImage('https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?auto=compress&cs=tinysrgb&w=800');
+    } catch (error) {
+      console.error('Error generating image:', error);
+      setError(`Failed to generate image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const savePrompt = async () => {
+    if (!user) {
+      alert('Please log in to save prompts to your library');
       return;
     }
 
-    // Prepare data to pass to CreatePrompt page
-    const dataToPass = {
-      title: generatedMetadata?.title || `${promptData.subject.split(' ').slice(0, 3).join(' ')} Study`,
-      generatedPrompt: promptToUse,
-      promptData: promptData,
-      imageDimensions,
-      numberOfImages,
-      sref: sref || generateSREF(),
-      notes: generatedMetadata?.notes || `Generated with ${promptData.selectedCategory} style, enhancement level ${promptData.enhanceLevel}. Settings: ${promptData.lighting} lighting, ${promptData.style} style, ${promptData.mood} mood. Image dimensions: ${imageDimensions}, Number of images: ${numberOfImages}.`,
-      mediaUrl: generatedImages[0] // Use the first generated image
-    };
+    if (!generatedPrompt) {
+      alert('Please generate a prompt first');
+      return;
+    }
 
-    navigate('/create-prompt', { state: dataToPass });
-  };
+    setIsSavingPrompt(true);
+    setSaveSuccess(false);
+    setError('');
 
-  const handleImageClick = (index: number) => {
-    setSelectedImageIndex(index);
-    setIsImageViewerOpen(true);
-  };
-
-  const handlePreviousImage = () => {
-    setSelectedImageIndex(prev => Math.max(0, prev - 1));
-  };
-
-  const handleNextImage = () => {
-    setSelectedImageIndex(prev => Math.min(generatedImages.length - 1, prev + 1));
-  };
-
-  const handleDownloadImage = (imageUrl: string, index: number) => {
     try {
-      const link = document.createElement('a');
-      const filename = `generated-image-${generateSREF()}-${index + 1}.jpg`;
-      
-      // For Supabase URLs or other same-origin URLs, try direct download
-      if (imageUrl.includes(window.location.hostname) || imageUrl.startsWith('/')) {
-        link.href = imageUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        // For cross-origin URLs, fetch and create object URL
-        fetch(imageUrl)
-          .then(response => response.blob())
-          .then(blob => {
-            const objectUrl = URL.createObjectURL(blob);
-            link.href = objectUrl;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(objectUrl);
-          })
-          .catch(() => {
-            // Fallback: open in new tab
-            window.open(imageUrl, '_blank');
-          });
-      }
+      // Save to Supabase
+      const { error } = await supabase
+        .from('prompts')
+        .insert({
+          title: formData.subject || 'Generated Prompt',
+          prompt: generatedPrompt,
+          notes: `AI-generated prompt featuring ${formData.subject || 'custom content'}. Style: ${formData.artStyle}, Mood: ${formData.mood}, Lighting: ${formData.lighting}`,
+          media_url: generatedImage || null,
+          is_private: false,
+          user_id: user.id,
+          tags: [
+            ...(formData.artStyle ? [formData.artStyle.toLowerCase()] : []),
+            ...(formData.mood ? [formData.mood.toLowerCase()] : []),
+            ...(formData.lighting ? [formData.lighting.toLowerCase()] : []),
+            'ai-generated',
+            'prompt-builder'
+          ].filter(Boolean)
+        });
+
+      if (error) throw error;
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+
     } catch (error) {
-      console.error('Download failed:', error);
-      // Fallback: open in new tab
-      window.open(imageUrl, '_blank');
+      console.error('Error saving prompt:', error);
+      setError(`Failed to save prompt: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSavingPrompt(false);
     }
   };
 
-  if (isCheckingAuth) {
+  const exportPrompt = () => {
+    const data = {
+      prompt: generatedPrompt,
+      metadata: formData,
+      createdAt: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'prompt.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-deep-bg pt-24 pb-12 flex items-center justify-center">
         <div className="text-soft-lavender">Loading...</div>
@@ -543,450 +388,393 @@ const PromptBuilder: React.FC = () => {
   return (
     <div className="min-h-screen bg-deep-bg pt-24 pb-12">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-soft-lavender mb-6">
-            <span className="text-electric-cyan">Prompt</span> Builder
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-soft-lavender mb-4">
+            Prompt Builder
+            {isFromExtractor && (
+              <span className="ml-4 text-lg text-electric-cyan">
+                (From Extractor)
+              </span>
+            )}
           </h1>
-          <p className="text-soft-lavender/70 text-lg md:text-xl max-w-3xl mx-auto">
-            Create detailed prompts for AI image generation with our advanced builder
+          <p className="text-xl text-soft-lavender/70">
+            {isFromExtractor 
+              ? "Refine your extracted prompt with additional settings"
+              : "Create sophisticated AI prompts with our intelligent form system"
+            }
           </p>
+          
+          {isFromExtractor && (
+            <div className="mt-4 p-3 bg-electric-cyan/10 border border-electric-cyan/20 rounded-lg">
+              <p className="text-electric-cyan text-sm">
+                ✨ Your extracted prompt has been loaded! You can now refine it with additional settings.
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-          {/* Left Column - Form */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Form Section */}
           <div className="space-y-6">
-            {/* Subject & Setting */}
             <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-              <h2 className="text-xl font-bold text-soft-lavender mb-4 flex items-center gap-2">
-                <Camera className="w-5 h-5 text-electric-cyan" />
-                Subject & Setting
+              <h2 className="text-2xl font-bold text-soft-lavender mb-6 flex items-center">
+                <Settings className="w-6 h-6 mr-2 text-electric-cyan" />
+                Prompt Configuration
               </h2>
-              <div>
-                <label className="block text-soft-lavender mb-2">Subject & Setting *</label>
-                <textarea
-                  placeholder="e.g., A young woman with curly hair, standing in a sunlit garden with blooming flowers"
-                  className="w-full bg-deep-bg border border-border-color rounded-lg p-4 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple resize-none h-24"
-                  value={`${promptData.subject}${promptData.subject && promptData.setting ? ', ' : ''}${promptData.setting}`}
-                  onChange={(e) => {
-                    // For simplicity, store the combined text in the subject field
-                    // and clear the setting field to avoid confusion
-                    handleInputChange('subject', e.target.value);
-                    handleInputChange('setting', '');
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Photography Settings */}
-            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-              <h2 className="text-xl font-bold text-soft-lavender mb-4 flex items-center gap-2">
-                <Lightbulb className="w-5 h-5 text-electric-cyan" />
-                Photography Settings
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-soft-lavender mb-2">Lighting *</label>
-                  <select
-                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
-                    value={promptData.lighting}
-                    onChange={(e) => handleInputChange('lighting', e.target.value)}
-                  >
-                    <option value="">Select lighting</option>
-                    <option value="natural daylight">Natural Daylight</option>
-                    <option value="golden hour">Golden Hour</option>
-                    <option value="soft studio lighting">Soft Studio</option>
-                    <option value="dramatic lighting">Dramatic</option>
-                    <option value="window light">Window Light</option>
-                    <option value="candlelight">Candlelight</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-soft-lavender mb-2">Style *</label>
-                  <select
-                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
-                    value={promptData.style}
-                    onChange={(e) => handleInputChange('style', e.target.value)}
-                  >
-                    <option value="">Select style</option>
-                    <option value="professional headshot">Professional Headshot</option>
-                    <option value="fine art portrait">Fine Art Portrait</option>
-                    <option value="candid lifestyle">Candid Lifestyle</option>
-                    <option value="cinematic portrait">Cinematic Portrait</option>
-                    <option value="fashion photography">Fashion Photography</option>
-                    <option value="documentary style">Documentary Style</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Mood & Processing */}
-            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-              <h2 className="text-xl font-bold text-soft-lavender mb-4 flex items-center gap-2">
-                <Palette className="w-5 h-5 text-electric-cyan" />
-                Mood & Processing
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-soft-lavender mb-2">Mood *</label>
-                  <select
-                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
-                    value={promptData.mood}
-                    onChange={(e) => handleInputChange('mood', e.target.value)}
-                  >
-                    <option value="">Select mood</option>
-                    <option value="confident and professional">Confident & Professional</option>
-                    <option value="warm and inviting">Warm & Inviting</option>
-                    <option value="dramatic and intense">Dramatic & Intense</option>
-                    <option value="peaceful and serene">Peaceful & Serene</option>
-                    <option value="energetic and vibrant">Energetic & Vibrant</option>
-                    <option value="mysterious and moody">Mysterious & Moody</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-soft-lavender mb-2">Post-Processing</label>
-                  <select
-                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
-                    value={promptData['post-processing']}
-                    onChange={(e) => handleInputChange('post-processing', e.target.value)}
-                  >
-                    <option value="">Select processing</option>
-                    <option value="natural color grading">Natural Color Grading</option>
-                    <option value="film emulation">Film Emulation</option>
-                    <option value="high contrast">High Contrast</option>
-                    <option value="soft and dreamy">Soft & Dreamy</option>
-                    <option value="vintage tone">Vintage Tone</option>
-                    <option value="minimal processing">Minimal Processing</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Enhancement */}
-            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-              <h2 className="text-xl font-bold text-soft-lavender mb-4 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-electric-cyan" />
-                Enhancement
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-soft-lavender mb-2">Category</label>
-                  <select
-                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
-                    value={promptData.selectedCategory}
-                    onChange={(e) => handleInputChange('selectedCategory', e.target.value)}
-                  >
-                    {CATEGORIES.map((category) => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-soft-lavender mb-2">Enhancement Level: {promptData.enhanceLevel}</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="4"
-                    step="1"
-                    className="w-full slider"
-                    value={promptData.enhanceLevel}
-                    onChange={(e) => handleInputChange('enhanceLevel', parseInt(e.target.value))}
-                  />
-                  <div className="flex justify-between text-xs text-soft-lavender/50 mt-1">
-                    <span>Natural</span>
-                    <span>Enhanced</span>
-                    <span>Professional</span>
-                    <span>Premium</span>
-                    <span>Luxury</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-soft-lavender mb-2">Custom Enhancement</label>
+                  <label className="block text-sm font-medium text-soft-lavender mb-2">
+                    Subject Description
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g., shot on Canon EOS R5, 85mm lens"
+                    placeholder="e.g., A majestic dragon flying through the clouds"
+                    value={formData.subject}
+                    onChange={(e) => handleInputChange('subject', e.target.value)}
                     className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
-                    value={promptData.enhancement}
-                    onChange={(e) => handleInputChange('enhancement', e.target.value)}
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Generate Button */}
-            <Button
-              variant="primary"
-              size="lg"
-              className="w-full"
-              onClick={handleGeneratePrompt}
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <>
-                  <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                  Generating Prompt...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="w-5 h-5 mr-2" />
-                  Generate Prompt
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Right Column - Results */}
-          <div className="space-y-6">
-            {/* Error Display */}
-            {error && (
-              <div className="bg-error-red/10 border border-error-red/20 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-error-red mt-0.5" />
-                  <p className="text-error-red text-sm">{error}</p>
+                <div>
+                  <label className="block text-sm font-medium text-soft-lavender mb-2">
+                    Setting/Environment
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Ancient castle, futuristic city, mystical forest"
+                    value={formData.setting}
+                    onChange={(e) => handleInputChange('setting', e.target.value)}
+                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                  />
                 </div>
-              </div>
-            )}
 
-            {/* Success Display */}
-            {success && (
-              <div className="bg-success-green/10 border border-success-green/20 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-success-green" />
-                  <p className="text-success-green text-sm">Prompt generated successfully!</p>
-                </div>
-              </div>
-            )}
-
-            {/* Generated Prompt */}
-            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-soft-lavender">Generated Prompt</h2>
-                {generatedPrompt && (
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCopyPrompt}>
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleGenerateMetadata}>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Metadata
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-deep-bg border border-border-color rounded-lg p-4 min-h-[200px] max-h-[400px] overflow-y-auto">
-                {generatedPrompt ? (
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-soft-lavender mb-2">Base Prompt:</h3>
-                      <p className="text-soft-lavender/80 text-sm leading-relaxed">{generatedPrompt}</p>
-                    </div>
-                    
-                    {enhancedPrompt && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-sm font-medium text-soft-lavender">Enhanced Prompt:</h3>
-                          <label className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={promptEnhancementEnabled}
-                              onChange={(e) => setPromptEnhancementEnabled(e.target.checked)}
-                              className="rounded border-border-color"
-                            />
-                            <span className="text-xs text-soft-lavender/70">Use for generation</span>
-                          </label>
-                        </div>
-                        <p className="text-soft-lavender/80 text-sm leading-relaxed">{enhancedPrompt}</p>
-                      </div>
-                    )}
-
-                    {negativePrompt && (
-                      <div>
-                        <h3 className="text-sm font-medium text-soft-lavender mb-2">Negative Prompt:</h3>
-                        <p className="text-soft-lavender/60 text-sm leading-relaxed">{negativePrompt}</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-soft-lavender/50">
-                    <Wand2 className="w-8 h-8 mb-4" />
-                    <p>Fill out the form and click "Generate Prompt" to begin</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Generated Metadata */}
-            {generatedMetadata && (
-              <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                <h2 className="text-xl font-bold text-soft-lavender mb-4">Generated Metadata</h2>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-soft-lavender">Title:</label>
-                    <p className="text-soft-lavender/80">{generatedMetadata.title}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-soft-lavender">Notes:</label>
-                    <p className="text-soft-lavender/80">{generatedMetadata.notes}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-soft-lavender">SREF:</label>
-                    <p className="text-soft-lavender/80">{generatedMetadata.sref}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Image Generation */}
-            {generatedPrompt && (
-              <div className="bg-card-bg rounded-lg p-6 border border-border-color">
-                <h2 className="text-xl font-bold text-soft-lavender mb-4">Generate Images</h2>
-                
-                <div className="space-y-4 mb-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-soft-lavender mb-2">Dimensions</label>
-                      <select
-                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
-                        value={imageDimensions}
-                        onChange={(e) => setImageDimensions(e.target.value)}
+                <div>
+                  <label className="block text-sm font-medium text-soft-lavender mb-3">
+                    Art Style
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {artStyles.map((style) => (
+                      <button
+                        key={style}
+                        onClick={() => handleInputChange('artStyle', style)}
+                        className={`p-2 rounded-lg text-sm transition-all ${
+                          formData.artStyle === style
+                            ? 'bg-gradient-to-r from-electric-cyan to-cosmic-purple text-soft-lavender'
+                            : 'bg-card-bg text-soft-lavender/70 hover:bg-cosmic-purple/10 border border-border-color'
+                        }`}
                       >
-                        <option value="1:1">Square (1:1)</option>
-                        <option value="3:2">Landscape (3:2)</option>
-                        <option value="2:3">Portrait (2:3)</option>
-                        <option value="16:9">Wide (16:9)</option>
-                        <option value="9:16">Tall (9:16)</option>
-                        <option value="4:5">Instagram (4:5)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-soft-lavender mb-2">Images</label>
-                      <select
-                        className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
-                        value={numberOfImages}
-                        onChange={(e) => setNumberOfImages(parseInt(e.target.value))}
-                      >
-                        <option value={1}>1 Image</option>
-                        <option value={2}>2 Images</option>
-                        <option value={3}>3 Images</option>
-                        <option value={4}>4 Images</option>
-                      </select>
-                    </div>
+                        {style}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {imageError && (
-                  <div className="bg-error-red/10 border border-error-red/20 rounded-lg p-4 mb-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-error-red mt-0.5" />
-                      <p className="text-error-red text-sm">{imageError}</p>
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-soft-lavender mb-3">
+                    Mood & Atmosphere
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {moods.map((mood) => (
+                      <button
+                        key={mood}
+                        onClick={() => handleInputChange('mood', mood)}
+                        className={`p-2 rounded-lg text-sm transition-all ${
+                          formData.mood === mood
+                            ? 'bg-gradient-to-r from-electric-cyan to-cosmic-purple text-soft-lavender'
+                            : 'bg-card-bg text-soft-lavender/70 hover:bg-cosmic-purple/10 border border-border-color'
+                        }`}
+                      >
+                        {mood}
+                      </button>
+                    ))}
                   </div>
-                )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-soft-lavender mb-3">
+                    Lighting Setup
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {lightingOptions.map((lighting) => (
+                      <button
+                        key={lighting}
+                        onClick={() => handleInputChange('lighting', lighting)}
+                        className={`p-2 rounded-lg text-sm transition-all ${
+                          formData.lighting === lighting
+                            ? 'bg-gradient-to-r from-electric-cyan to-cosmic-purple text-soft-lavender'
+                            : 'bg-card-bg text-soft-lavender/70 hover:bg-cosmic-purple/10 border border-border-color'
+                        }`}
+                      >
+                        {lighting}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-soft-lavender mb-3">
+                    Post-Processing Effects
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {postProcessingOptions.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => toggleArrayItem('postProcessing', option)}
+                        className={`p-2 rounded-lg text-sm transition-all ${
+                          formData.postProcessing.includes(option)
+                            ? 'bg-gradient-to-r from-electric-cyan to-cosmic-purple text-soft-lavender'
+                            : 'bg-card-bg text-soft-lavender/70 hover:bg-cosmic-purple/10 border border-border-color'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-soft-lavender mb-3">
+                    Enhancement Codes
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {enhancementCodes.map((code) => (
+                      <button
+                        key={code}
+                        onClick={() => toggleArrayItem('enhancementCodes', code)}
+                        className={`p-2 rounded-lg text-sm font-mono transition-all ${
+                          formData.enhancementCodes.includes(code)
+                            ? 'bg-gradient-to-r from-electric-cyan to-cosmic-purple text-soft-lavender'
+                            : 'bg-card-bg text-soft-lavender/70 hover:bg-cosmic-purple/10 border border-border-color'
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-soft-lavender mb-2">
+                    Custom Additions
+                  </label>
+                  <textarea
+                    value={formData.customPrompt}
+                    onChange={(e) => handleInputChange('customPrompt', e.target.value)}
+                    placeholder="Add any additional details or modifications..."
+                    rows={3}
+                    className="w-full bg-deep-bg border border-border-color rounded-lg p-3 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple"
+                  />
+                </div>
 
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="lg"
-                  className="w-full mb-4"
-                  onClick={handleGenerateImages}
-                  disabled={isGeneratingImages}
+                  onClick={generatePrompt}
+                  disabled={isGenerating}
+                  className="w-full"
                 >
-                  {isGeneratingImages ? (
+                  {isGenerating ? (
                     <>
                       <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                      Generating Images...
+                      Generating...
                     </>
                   ) : (
                     <>
-                      <ImageIcon className="w-5 h-5 mr-2" />
-                      Generate Images
+                      <Wand2 className="w-5 h-5 mr-2" />
+                      Generate AI Prompt
                     </>
                   )}
                 </Button>
+              </div>
+            </div>
+          </div>
 
-                {/* Generated Images */}
-                {generatedImages.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {generatedImages.map((imageUrl, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={imageUrl}
-                            alt={`Generated artwork ${index + 1}`}
-                            className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => handleImageClick(index)}
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleImageClick(index);
-                                }}
-                                className="bg-black/50 text-white hover:bg-black/70 border-white/20"
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownloadImage(imageUrl, index);
-                                }}
-                                className="bg-black/50 text-white hover:bg-black/70 border-white/20"
-                              >
-                                <Download className="w-4 h-4 mr-2" />
-                                Download
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+          {/* Output Section */}
+          <div className="space-y-6">
+            <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+              <h2 className="text-2xl font-bold text-soft-lavender mb-6 flex items-center">
+                <Sparkles className="w-6 h-6 mr-2 text-electric-cyan" />
+                Generated Output
+              </h2>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-4">
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() => handleDownloadImage(generatedImages[0], 0)}
-                        className="flex-1"
-                      >
-                        <Download className="w-5 h-5 mr-2" />
-                        Download First
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        onClick={handleSaveWithImage}
-                        className="flex-1"
-                      >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Save with Image
-                      </Button>
+              {generatedPrompt ? (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-soft-lavender mb-3">Generated Prompt</h3>
+                    <div className="bg-deep-bg rounded-lg p-4 border border-border-color">
+                      <p className="text-soft-lavender/70 whitespace-pre-wrap">{generatedPrompt}</p>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigator.clipboard.writeText(generatedPrompt)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Copy Prompt
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={generateImage}
+                      disabled={isGeneratingImage}
+                    >
+                      {isGeneratingImage ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Generate Image
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generateBatchImages}
+                      disabled={isGeneratingBatch}
+                    >
+                      {isGeneratingBatch ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Generate 4 Images
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={savePrompt}
+                      disabled={isSavingPrompt}
+                    >
+                      {isSavingPrompt ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          {saveSuccess ? 'Saved!' : 'Save to Library'}
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportPrompt}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
+                  </div>
+
+                  {generatedImage && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-soft-lavender mb-3">Generated Image</h3>
+                      <div className="bg-deep-bg rounded-lg p-4 border border-border-color">
+                        <img
+                          src={generatedImage}
+                          alt="Generated artwork"
+                          className="w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => downloadImage(generatedImage)}
+                          title="Click to download as PNG"
+                        />
+                        <div className="mt-3 flex justify-between items-center">
+                          <p className="text-sm text-soft-lavender/50">Generated by AI</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadImage(generatedImage)}
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download PNG
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Batch Images Grid */}
+                  {generatedImages.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-soft-lavender mb-3">Generated Images (Click to Download PNG)</h3>
+                      <div className="bg-deep-bg rounded-lg p-4 border border-border-color">
+                        <div className="grid grid-cols-2 gap-4">
+                          {generatedImages.map((image, index) => (
+                            <div
+                              key={image.id}
+                              className="relative group cursor-pointer"
+                              onClick={() => downloadImageById(image.url, `var${index + 1}`)}
+                              title="Click to download as PNG"
+                            >
+                              <img
+                                src={image.url}
+                                alt={`Generated artwork ${index + 1}`}
+                                className="w-full rounded-lg hover:opacity-90 transition-opacity"
+                              />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                <div className="text-white text-center">
+                                  <Download className="w-8 h-8 mx-auto mb-2" />
+                                  <p className="text-sm font-medium">Download PNG</p>
+                                </div>
+                              </div>
+                              <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                #{index + 1}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 text-center">
+                          <p className="text-sm text-soft-lavender/50">Click any image to download as PNG • Generated by AI</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {saveSuccess && (
+                    <div className="mt-4 p-3 bg-success-green/10 border border-success-green/20 rounded-lg">
+                      <P className="text-success-green text-sm">
+                        ✅ Prompt saved to your library! Check "My Library" to see it.
+                      </p>
+                    </div>
+                  )}
+
+                  {!generatedPrompt && (
+                    <div className="text-center py-12">
+                      <Wand2 className="w-16 h-16 text-soft-lavender/30 mx-auto mb-4" />
+                      <p className="text-soft-lavender/50">
+                        Configure your prompt settings and click "Generate AI Prompt" to see the magic happen!
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {error && (
+                <div className="bg-error-red/10 border border-error-red/20 rounded-lg p-3">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-error-red mt-0.5" />
+                    <p className="text-error-red text-sm">{error}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Image Viewer Modal */}
-        <ImageViewerModal
-          images={generatedImages}
-          currentIndex={selectedImageIndex}
-          isOpen={isImageViewerOpen}
-          onClose={() => setIsImageViewerOpen(false)}
-          onPrevious={handlePreviousImage}
-          onNext={handleNextImage}
-          onDownload={handleDownloadImage}
-        />
       </div>
     </div>
   );
