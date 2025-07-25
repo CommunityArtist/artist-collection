@@ -18,8 +18,12 @@ export interface ImageGenerationResult {
 export async function generateImagesWithFallback(params: ImageGenerationParams): Promise<ImageGenerationResult> {
   const { prompt, dimensions, numberOfImages } = params;
   
+  console.log('🔄 Starting fallback image generation:', { prompt, dimensions, numberOfImages });
+  
   // For demonstration purposes, create placeholder images with different colors
   const placeholderImages = generatePlaceholderImages(numberOfImages, dimensions, prompt);
+  
+  console.log('📸 Generated placeholder URLs:', placeholderImages);
   
   return {
     success: true,
@@ -35,11 +39,14 @@ function generatePlaceholderImages(count: number, dimensions: string, prompt: st
   // Convert dimensions to pixel values
   const [width, height] = getDimensionsFromRatio(dimensions);
   
+  console.log('🎨 Creating placeholders:', { count, dimensions, width, height });
+  
   for (let i = 0; i < count; i++) {
     const color = colors[i % colors.length];
-    const shortPrompt = `AI+Art+${i + 1}`;
+    const shortPrompt = encodeURIComponent(`Generated Image ${i + 1}`);
     const placeholderUrl = `https://via.placeholder.com/${width}x${height}/${color}/ffffff?text=${shortPrompt}`;
     images.push(placeholderUrl);
+    console.log(`🖼️ Image ${i + 1} URL:`, placeholderUrl);
   }
   
   return images;
