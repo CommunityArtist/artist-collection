@@ -29,7 +29,7 @@ export async function generateImagesWithFallback(params: ImageGenerationParams):
 }
 
 function generatePlaceholderImages(count: number, dimensions: string, prompt: string): string[] {
-  const colors = ['4F46E5', '7C3AED', 'DB2777', 'DC2626', 'EA580C', '059669'];
+  const colors = ['6366f1', '8b5cf6', 'ec4899', 'ef4444', 'f97316', '10b981'];
   const images: string[] = [];
   
   // Convert dimensions to pixel values
@@ -37,8 +37,8 @@ function generatePlaceholderImages(count: number, dimensions: string, prompt: st
   
   for (let i = 0; i < count; i++) {
     const color = colors[i % colors.length];
-    const encodedPrompt = encodeURIComponent(prompt.substring(0, 50));
-    const placeholderUrl = `https://via.placeholder.com/${width}x${height}/${color}/FFFFFF?text=${encodedPrompt}`;
+    const shortPrompt = `AI+Art+${i + 1}`;
+    const placeholderUrl = `https://via.placeholder.com/${width}x${height}/${color}/ffffff?text=${shortPrompt}`;
     images.push(placeholderUrl);
   }
   
