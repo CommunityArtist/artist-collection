@@ -466,16 +466,6 @@ const PromptBuilder: React.FC = () => {
           )}
         </div>
 
-        {/* API Status */}
-        <div className="mb-8 p-4 bg-card-bg rounded-lg border border-border-color">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${edgeFunctionsAvailable ? 'bg-success-green' : 'bg-alert-orange'}`}></div>
-            <span className="text-soft-lavender">
-              {edgeFunctionsAvailable ? 'Advanced AI Generation Available' : 'Using Fallback Generation'}
-            </span>
-          </div>
-        </div>
-
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Form Section */}
           <div className="space-y-6">
