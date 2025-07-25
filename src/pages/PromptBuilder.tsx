@@ -324,19 +324,14 @@ const PromptBuilder: React.FC = () => {
 
       const promptToUse = promptEnhancementEnabled && enhancedPrompt ? enhancedPrompt : generatedPrompt;
       
-      console.log('📥 Prompt used for image generation:', promptToUse);
-      console.log('🔧 Image generation params:', { imageDimensions, numberOfImages });
-      
       if (!promptToUse) {
         setImageError('Please generate a prompt first');
         return;
       }
 
-
       // Try Edge Function first if available
       if (edgeFunctionsAvailable && import.meta.env.VITE_SUPABASE_URL) {
         try {
-          console.log('🔍 Attempting Edge Function image generation...');
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) {
             throw new Error('Please sign in to generate images');
@@ -364,65 +359,45 @@ const PromptBuilder: React.FC = () => {
           const data = await response.json();
           const imageUrls = Array.isArray(data.imageUrls) ? data.imageUrls : [data.imageUrl].filter(Boolean);
          
-          console.log('✅ Edge Function response:', data);
-          console.log('📸 Extracted image URLs:', imageUrls);
-          
-         if (imageUrls.length > 0 && imageUrls.every(url => url && typeof url === 'string')) {
-           setGeneratedImages(imageUrls);
-           console.log('✅ Images set in state from Edge Function');
-         } else {
-           throw new Error('No image URLs received from Edge Function');
-         }
+          if (imageUrls.length > 0 && imageUrls.every(url => url && typeof url === 'string')) {
+            setGeneratedImages(imageUrls);
+          } else {
+            throw new Error('No image URLs received from Edge Function');
+          }
           
         } catch (edgeError) {
-          console.warn('❌ Edge Function failed, using fallback:', edgeError);
+          console.warn('Edge Function failed, using fallback:', edgeError);
           
-          // ✅ Add this fallback:
           const result = await generateImagesWithFallback({
             prompt: promptToUse,
             dimensions: imageDimensions,
             numberOfImages
           });
           
-          console.log('📦 Fallback generation result:', result);
-          
           if (result.success && result.imageUrls?.length > 0) {
             setGeneratedImages(result.imageUrls);
-            console.log('✅ Images set in state from fallback');
           } else {
             throw new Error(result.error || 'Fallback failed to generate images');
           }
         }
       } else {
         // Use fallback generation when Edge Functions not available
-        console.log('⚠️ Edge Functions not available, using fallback...');
         const result = await generateImagesWithFallback({
           prompt: promptToUse,
           dimensions: imageDimensions,
           numberOfImages
         });
         
-        console.log('📦 Direct fallback result:', result);
-        
         if (result.success && result.imageUrls && result.imageUrls.length > 0) {
           setGeneratedImages(result.imageUrls);
-          console.log('✅ Images set in state from fallback');
         } else {
           throw new Error(result.error || 'Failed to generate images');
         }
       }
 
     } catch (error) {
-      console.error('❌ Final error generating images:', error);
+      console.error('Error generating images:', error);
       setImageError(getImageGenerationErrorMessage(error, 'openai'));
-      
-      // Emergency fallback - create simple placeholder URLs
-      console.log('🚨 Using emergency fallback images...');
-      const emergencyImages = Array.from({ length: numberOfImages }, (_, i) => 
-        `https://via.placeholder.com/400x400/6366f1/ffffff?text=${encodeURIComponent(`Emergency Image ${i + 1}`)}`
-      );
-      setGeneratedImages(emergencyImages);
-      console.log('🚨 Emergency images URLs:', emergencyImages);
     } finally {
       setIsGeneratingImages(false);
     }

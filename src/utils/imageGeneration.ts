@@ -18,12 +18,8 @@ export interface ImageGenerationResult {
 export async function generateImagesWithFallback(params: ImageGenerationParams): Promise<ImageGenerationResult> {
   const { prompt, dimensions, numberOfImages } = params;
   
-  console.log('🔄 Starting fallback image generation:', { prompt, dimensions, numberOfImages });
-  
   // For demonstration purposes, create placeholder images with different colors
   const placeholderImages = generatePlaceholderImages(numberOfImages, dimensions, prompt);
-  
-  console.log('📸 Generated placeholder URLs:', placeholderImages);
   
   return {
     success: true,
@@ -39,14 +35,11 @@ function generatePlaceholderImages(count: number, dimensions: string, prompt: st
   // Convert dimensions to pixel values
   const [width, height] = getDimensionsFromRatio(dimensions);
   
-  console.log('🎨 Creating placeholders:', { count, dimensions, width, height });
-  
   for (let i = 0; i < count; i++) {
     const color = colors[i % colors.length];
     const shortPrompt = encodeURIComponent(`Generated Image ${i + 1}`);
     const placeholderUrl = `https://via.placeholder.com/${width}x${height}/${color}/ffffff?text=${shortPrompt}`;
     images.push(placeholderUrl);
-    console.log(`🖼️ Image ${i + 1} URL:`, placeholderUrl);
   }
   
   return images;
@@ -76,36 +69,22 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
   try {
     // Validate supabaseUrl before making the request
     if (!supabaseUrl || typeof supabaseUrl !== 'string' || !supabaseUrl.startsWith('http')) {
-      console.warn(`❌ Invalid Supabase URL for ${functionName}:`, supabaseUrl);
       return false;
     }
     
     // Ensure it's a proper Supabase URL
     if (!supabaseUrl.includes('supabase.co')) {
-      console.warn(`❌ URL does not appear to be a Supabase URL for ${functionName}:`, supabaseUrl);
       return false;
     }
     
     // Get the current user session for authenticated requests
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      console.log(`⚠️ No user session available for ${functionName}, skipping authentication test`);
       return false;
     }
     
     // Ensure we're using the correct Supabase Edge Function URL format
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
-    console.log(`🔍 Testing Edge Function at:`, {
-      functionName,
-      url: edgeFunctionUrl,
-      baseUrl: supabaseUrl
-    });
-    
-    // Additional safety check for network connectivity
-    if (typeof window !== 'undefined' && !navigator.onLine) {
-      console.warn(`❌ No network connection available for ${functionName}`);
-      return false;
-    }
     
     // Use AbortController to timeout the request quickly
     const controller = new AbortController();
@@ -123,32 +102,21 @@ export async function testEdgeFunctionAvailability(supabaseUrl: string, function
     
     clearTimeout(timeoutId);
     
-    console.log(`🔍 Testing ${functionName}:`, {
-      url: edgeFunctionUrl,
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok
-    });
-    
     // More permissive detection - function exists if we get any HTTP response
     // Even 500 errors mean the function exists but may have runtime issues
     const exists = response.status >= 200;
-    console.log(`📊 ${functionName} detection result:`, exists);
     return exists;
   } catch (error) {
     // Handle specific network errors more gracefully
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      console.log(`🔄 Network error for ${functionName}: ${error.message}. URL attempted: ${supabaseUrl}/functions/v1/${functionName}`);
       return false;
     }
     
     // Handle AbortController timeout
     if (error instanceof Error && error.name === 'AbortError') {
-      console.log(`⏱️ Request timeout for ${functionName}, falling back to local generation`);
       return false;
     }
     
-    console.warn(`❌ Unexpected error testing ${functionName}:`, error);
     return false;
   }
 }
@@ -175,18 +143,12 @@ export async function testEdgeFunctionAvailabilityCached(supabaseUrl: string, fu
     timestamp: now
   };
   
-  // Log successful detection (but not failures to avoid spam)
-  if (available) {
-    console.log(`✅ Edge Functions detected and available: ${functionName}`);
-  }
-  
   return available;
 }
 
 // Force refresh cache (useful after deployment)
 export function clearEdgeFunctionCache() {
   edgeFunctionCache = {};
-  console.log('🔄 Edge Function detection cache cleared');
 }
 
 // Enhanced error messages for different scenarios
