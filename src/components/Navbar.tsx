@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 const navItems: NavItem[] = [
   { label: 'Home', href: '/' },
   { label: 'Library', href: '/library' },
-  { label: 'Prompt Builder', href: '/prompt-builder' },
+  // { label: 'Prompt Builder', href: '/prompt-builder' }, // Temporarily hidden for debugging
   { label: 'Premium Plans', href: '/premium-plans' },
   { label: 'AI Tools', href: '#' },
   { label: 'Help', href: 'https://eeelffno.genspark.space/' }
