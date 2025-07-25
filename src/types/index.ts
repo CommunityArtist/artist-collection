@@ -86,8 +86,7 @@ export interface ExtractedPrompt {
   mainPrompt: string;
   styleElements: string[];
   technicalDetails: string[];
-  colorPalette: string[];
-  composition: string;
+  subjectAndSetting: string;
   lighting: string;
   mood: string;
   camera: string;
