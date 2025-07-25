@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "setup-ssl": "npx mkcert -install && npx mkcert localhost"
+    "setup-ssl": "npx mkcert -install && npx mkcert localhost",
+    "deploy-functions": "echo 'Please use: supabase functions deploy' && echo 'See deploy-functions.md for detailed instructions'"
   },
   "dependencies": {
     "@supabase/auth-ui-react": "^0.4.7",
