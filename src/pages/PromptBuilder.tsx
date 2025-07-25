@@ -3,6 +3,7 @@ const initialFormData: PromptBuilderData = {
   lighting: urlParams.get('lighting') || '',
   artStyle: urlParams.get('style') || '',
   mood: urlParams.get('mood') || '',
+}
 
 const autoResize = (textarea: HTMLTextAreaElement) => {
   textarea.style.height = 'auto';
@@ -55,3 +56,4 @@ const autoResize = (textarea: HTMLTextAreaElement) => {
                     </div>
                   </div>
                 </div>
+    }
