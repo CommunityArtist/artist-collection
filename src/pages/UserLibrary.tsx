@@ -42,6 +42,91 @@ const AVAILABLE_TAGS: PromptTag[] = [
   'Synthesia'  
 ];
 
+// Optimized Image Component for fast loading
+const OptimizedImage: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+  isVideo?: boolean;
+}> = ({ src, alt, className = '', isVideo = false }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string>('');
+
+  useEffect(() => {
+    if (!src) return;
+    
+    // Reset states when src changes
+    setImageLoaded(false);
+    setImageError(false);
+    
+    // For Supabase storage URLs, we can add transformation parameters for optimization
+    let optimizedSrc = src;
+    if (src.includes('supabase.co') && src.includes('storage/v1/object/public/')) {
+      // Add width and quality parameters for faster loading of thumbnails
+      optimizedSrc = `${src}?width=400&quality=80`;
+    }
+    
+    setImageSrc(optimizedSrc);
+    
+    // Preload the image
+    const img = new Image();
+    img.onload = () => setImageLoaded(true);
+    img.onerror = () => setImageError(true);
+    img.src = optimizedSrc;
+  }, [src]);
+
+  if (isVideo) {
+    return (
+      <div className="relative w-full h-full">
+        <video
+          src={src}
+          className={`w-full h-full object-cover ${className}`}
+          preload="metadata"
+        />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <Play className="w-12 h-12 text-white" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative w-full h-full ${className}`}>
+      {/* Loading placeholder */}
+      {!imageLoaded && !imageError && (
+        <div className="absolute inset-0 bg-deep-bg animate-pulse flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-electric-cyan border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+      
+      {/* Error placeholder */}
+      {imageError && (
+        <div className="absolute inset-0 bg-deep-bg flex items-center justify-center">
+          <div className="text-soft-lavender/30 text-center">
+            <div className="text-2xl mb-2">🖼️</div>
+            <div className="text-xs">Failed to load</div>
+          </div>
+        </div>
+      )}
+      
+      {/* Actual image */}
+      {imageSrc && (
+        <img
+          src={imageSrc}
+          alt={alt}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          } ${className}`}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageError(true)}
+        />
+      )}
+    </div>
+  );
+};
 const UserLibrary: React.FC = () => {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -306,23 +391,12 @@ const UserLibrary: React.FC = () => {
                     onClick={() => setSelectedPrompt(prompt)}
                   >
                     {prompt.media_url ? (
-                      isVideoUrl(prompt.media_url) ? (
-                        <div className="relative w-full h-full">
-                          <video
-                            src={prompt.media_url}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                            <Play className="w-12 h-12 text-white" />
-                          </div>
-                        </div>
-                      ) : (
-                        <img
-                          src={prompt.media_url}
-                          alt={prompt.title}
-                          className="w-full h-full object-cover"
-                        />
-                      )
+                      <OptimizedImage
+                        src={prompt.media_url}
+                        alt={prompt.title}
+                        className="transition-transform duration-300 hover:scale-105"
+                        isVideo={isVideoUrl(prompt.media_url)}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-soft-lavender/30">
                         No media
