@@ -8,13 +8,13 @@ import { supabase } from '../lib/supabase';
 const navItems: NavItem[] = [
   { label: 'Home', href: '/' },
   { label: 'Library', href: '/library' },
-  { label: 'Prompt Builder', href: '/prompt-builder' },
   // { label: 'Premium Plans', href: '/premium-plans' }, // Temporarily hidden
   { label: 'AI Tools', href: '#' },
   { label: 'Help', href: 'https://eeelffno.genspark.space/' }
 ];
 
 const aiTools = [
+  { label: 'Prompt Builder', href: '/prompt-builder' },
   { label: 'Prompt Extractor', href: '/prompt-extractor' },
 ];
 
