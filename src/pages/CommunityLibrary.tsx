@@ -119,13 +119,50 @@ const CommunityLibrary: React.FC = () => {
     navigator.clipboard.writeText(prompt);
   };
 
-  const handleDownloadMedia = (url: string, title: string, isVideo: boolean) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${title.toLowerCase().replace(/\s+/g, '-')}.${isVideo ? 'mp4' : 'jpg'}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadMedia = async (url: string, title: string, isVideo: boolean) => {
+    try {
+      // Generate a clean filename
+      const filename = `${title.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-')}.${isVideo ? 'mp4' : 'jpg'}`;
+      
+      // Try to fetch the image as blob first (works for cross-origin)
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+      
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up blob URL
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      
+    } catch (error) {
+      console.error('Download failed, trying alternative method:', error);
+      
+      // Fallback method: try direct download
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${title.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-')}.${isVideo ? 'mp4' : 'jpg'}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (fallbackError) {
+        console.error('Fallback download failed:', fallbackError);
+        
+        // Final fallback: open in new window
+        window.open(url, '_blank');
+        alert('Image opened in new tab. Right-click and select "Save image as..." to download.');
+      }
+    }
   };
 
   const isVideoUrl = (url: string) => {
