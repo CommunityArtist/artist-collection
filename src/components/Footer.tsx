@@ -1,5 +1,5 @@
 import React from 'react';
-import { Github, Twitter, Linkedin } from 'lucide-react';
+import { Github, Twitter, Linkedin, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { FooterColumn } from '../types';
 
@@ -16,8 +16,7 @@ const footerColumns: FooterColumn[] = [
     links: [
       { label: 'About Us', href: '/about' },
       { label: 'Blog', href: '/blog' },
-      { label: 'Premium Plans', href: '/premium-plans' },
-      { label: 'Contact', href: '#' }
+      { label: 'Contact', href: '/contact' }
     ]
   },
   {
@@ -40,7 +39,7 @@ const Footer: React.FC = () => {
               <img 
                 src="https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
                 alt="Community Artist Logo" 
-                className="w-8 h-8 rounded-full object-cover"
+                className="w-10 h-10 rounded-full object-cover"
               />
               <span className="bg-gradient-to-r from-electric-cyan via-cosmic-purple to-neon-pink bg-clip-text text-transparent inline-block text-3xl font-bold">
                 Community Artist
@@ -52,6 +51,9 @@ const Footer: React.FC = () => {
             <div className="flex gap-4">
               <a href="#" className="text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200">
                 <Twitter className="w-5 h-5" />
+              </a>
+              <a href="#" className="text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200">
+                <Instagram className="w-5 h-5" />
               </a>
               <a href="#" className="text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200">
                 <Github className="w-5 h-5" />

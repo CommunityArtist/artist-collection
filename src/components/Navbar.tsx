@@ -8,8 +8,8 @@ import { supabase } from '../lib/supabase';
 const navItems: NavItem[] = [
   { label: 'Home', href: '/' },
   { label: 'Library', href: '/library' },
-  // { label: 'Premium Plans', href: '/premium-plans' }, // Temporarily hidden
   { label: 'AI Tools', href: '#' },
+  { label: 'Contact', href: '/contact' },
   { label: 'Help', href: 'https://eeelffno.genspark.space/' }
 ];
 
@@ -136,9 +136,9 @@ const Navbar: React.FC = () => {
               <img 
                 src="https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
                 alt="Community Artist Logo" 
-                className="w-8 h-8 rounded-full object-cover"
+                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
               />
-              <span className="bg-gradient-to-r from-electric-cyan via-cosmic-purple to-neon-pink bg-clip-text text-transparent inline-block text-3xl font-bold">
+              <span className="bg-gradient-to-r from-electric-cyan via-cosmic-purple to-neon-pink bg-clip-text text-transparent inline-block text-2xl md:text-3xl font-bold whitespace-nowrap">
                 Community Artist
               </span>
             </Link>

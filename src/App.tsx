@@ -23,6 +23,7 @@ import PremiumPlans from './pages/PremiumPlans';
 import PromptExtractor from './pages/PromptExtractor';
 import ApiConfig from './pages/ApiConfig';
 import ApiAccessManagement from './pages/ApiAccessManagement';
+import Contact from './pages/Contact';
 
 function App() {
   React.useEffect(() => {
@@ -65,6 +66,7 @@ function App() {
           <Route path="/prompt-extractor" element={<PromptExtractor />} />
           <Route path="/api-config" element={<ApiConfig />} />
           <Route path="/api-access" element={<ApiAccessManagement />} />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </MainLayout>
     </Router>
