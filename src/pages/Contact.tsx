@@ -55,15 +55,15 @@ const Contact: React.FC = () => {
 
   // Sample AI artwork images for the left side collage
   const artworkImages = [
-    'https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/7567443/pexels-photo-7567443.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/3182812/pexels-photo-3182812.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/8439093/pexels-photo-8439093.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/7130560/pexels-photo-7130560.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/4348401/pexels-photo-4348401.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/7130465/pexels-photo-7130465.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    'https://images.pexels.com/photos/5704849/pexels-photo-5704849.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2'
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/92383e96-bca8-4763-a97c-edf5967a2a46/0.7993861365321893.png',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/92383e96-bca8-4763-a97c-edf5967a2a46/0.664050780601223.png',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/92383e96-bca8-4763-a97c-edf5967a2a46/0.3931688149060354.png',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/bd559d06-8286-4e2d-bbcb-b545b6e32ea4/0.6796877870629032.PNG',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/92383e96-bca8-4763-a97c-edf5967a2a46/0.5516472420208619.jpg',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/bd559d06-8286-4e2d-bbcb-b545b6e32ea4/0.18572384615167004.jpg',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/92383e96-bca8-4763-a97c-edf5967a2a46/0.4063322316763298.jpg',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/92383e96-bca8-4763-a97c-edf5967a2a46/0.6962766707187353.jpg',
+    'https://trpznltoengquizgfelv.supabase.co/storage/v1/object/public/prompt-media/92383e96-bca8-4763-a97c-edf5967a2a46/0.4881718466348771.jpg'
   ];
 
   return (
