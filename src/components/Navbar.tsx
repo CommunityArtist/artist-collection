@@ -177,36 +177,36 @@ const Navbar: React.FC = () => {
                   {item.label === 'AI Tools' && dropdownOpen && (
                     <div 
                       ref={dropdownRef}
-                      className="absolute top-full mt-2 w-48 bg-card-bg rounded-lg shadow-lg border border-border-color py-2"
+                      className="absolute top-full mt-2 w-56 bg-card-bg rounded-lg shadow-xl border border-border-color py-2 z-50"
                     >
-                      {aiTools.map((tool) => (
-                        tool.href.startsWith('/') ? (
+                      <div className="py-1">
+                        <div className="px-4 py-2 text-xs font-medium text-soft-lavender/50 uppercase tracking-wider">
+                          AI Tools
+                        </div>
+                        {aiTools.map((tool) => (
                           <Link
                             key={tool.label}
                             to={tool.href}
-                            className="w-full text-left px-4 py-2 text-soft-lavender hover:bg-cosmic-purple/10 transition-colors duration-200"
+                            className="flex items-center px-4 py-3 text-soft-lavender hover:bg-cosmic-purple/10 hover:text-electric-cyan transition-all duration-200"
                             onClick={() => setDropdownOpen(false)}
                           >
-                            {tool.label}
+                            <span className="text-sm font-medium">{tool.label}</span>
                           </Link>
-                        ) : (
-                          <button
-                          key={tool.label}
-                          onClick={() => handleExternalLink(tool.href)}
-                          className="w-full text-left px-4 py-2 text-soft-lavender hover:bg-cosmic-purple/10 transition-colors duration-200"
-                        >
-                          {tool.label}
-                          </button>
-                        )
-                      ))}
+                        ))}
+                      </div>
                       {isAdmin && (
-                        <Link
-                          to="/api-access"
-                          className="w-full text-left px-4 py-2 text-soft-lavender hover:bg-cosmic-purple/10 transition-colors duration-200 border-t border-border-color"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          API Access Management
-                        </Link>
+                        <div className="border-t border-border-color">
+                          <div className="px-4 py-2 text-xs font-medium text-soft-lavender/50 uppercase tracking-wider">
+                            Admin
+                          </div>
+                          <Link
+                            to="/api-access"
+                            className="flex items-center px-4 py-3 text-soft-lavender hover:bg-cosmic-purple/10 hover:text-electric-cyan transition-all duration-200"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            <span className="text-sm font-medium">API Access</span>
+                          </Link>
+                        </div>
                       )}
                     </div>
                   )}
@@ -255,29 +255,16 @@ const Navbar: React.FC = () => {
                   {item.label === 'AI Tools' ? (
                     <div className="py-2">
                       <div className="text-soft-lavender font-medium mb-2">AI Tools</div>
-                      <div className="pl-4 space-y-2">
+                      <div className="pl-4 space-y-1">
                         {aiTools.map((tool) => (
-                          tool.href.startsWith('/') ? (
-                            <Link
-                              key={tool.label}
-                              to={tool.href}
-                              className="w-full text-left text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200 py-1"
-                              onClick={() => setIsMenuOpen(false)}
-                            >
-                              {tool.label}
-                            </Link>
-                          ) : (
-                            <button
+                          <Link
                             key={tool.label}
-                            onClick={() => {
-                              handleExternalLink(tool.href);
-                              setIsMenuOpen(false);
-                            }}
-                            className="w-full text-left text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200 py-1"
+                            to={tool.href}
+                            className="block text-soft-lavender/70 hover:text-electric-cyan transition-colors duration-200 py-2"
+                            onClick={() => setIsMenuOpen(false)}
                           >
                             {tool.label}
-                            </button>
-                          )
+                          </Link>
                         ))}
                       </div>
                     </div>
