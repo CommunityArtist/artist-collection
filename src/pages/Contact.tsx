@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, Mail, MessageSquare, User, ChevronDown } from 'lucide-react';
 import Button from '../components/Button';
+import { supabase } from '../lib/supabase';
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const Contact: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const contactReasons = [
     'General Inquiry',
@@ -34,23 +36,50 @@ const Contact: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitSuccess(false);
+    setError(null);
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setSubmitSuccess(true);
-    setIsSubmitting(false);
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setSubmitSuccess(false);
+    try {
+      // Get the user's session token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        throw new Error('You must be logged in to send a message. Please sign in first.');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-contact-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send message.');
+      }
+
+      setSubmitSuccess(true);
+      // Reset form after successful submission
       setFormData({
         fullName: '',
         reason: '',
         email: '',
         message: ''
       });
-    }, 3000);
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => setSubmitSuccess(false), 5000);
+
+    } catch (err) {
+      console.error('Error submitting contact form:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Sample AI artwork images for the left side collage
@@ -110,6 +139,22 @@ const Contact: React.FC = () => {
               <p className="text-soft-lavender/70">
                 Thank you for contacting us. We'll get back to you soon.
               </p>
+            </div>
+          ) : error ? (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-error-red/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-8 h-8 text-error-red" />
+              </div>
+              <h2 className="text-2xl font-bold text-error-red mb-2">Submission Failed!</h2>
+              <p className="text-soft-lavender/70 mb-4">
+                {error}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => setError(null)}
+              >
+                Try Again
+              </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
