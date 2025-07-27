@@ -1,188 +1,318 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
-import OpenAI from 'npm:openai@4.28.0';
+// Image generation utilities for Supabase Edge Functions
+import { supabase } from '../lib/supabase';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, accept',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '3600'
-};
+export interface ImageGenerationParams {
+  prompt: string;
+  dimensions: string;
+  numberOfImages: number;
+}
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    });
-  }
+export interface ImageGenerationResult {
+  success: boolean;
+  imageUrls?: string[];
+  error?: string;
+  provider: string;
+}
 
+/**
+ * Test if a Supabase Edge Function is available and accessible
+ */
+export async function testEdgeFunctionAvailability(
+  supabaseUrl: string, 
+  functionName: string, 
+  timeout: number = 5000
+): Promise<boolean> {
   try {
-    // Check user authentication
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Authentication required. Please sign in to use this feature.');
+    // Validate supabaseUrl
+    if (!supabaseUrl || typeof supabaseUrl !== 'string' || !supabaseUrl.startsWith('http')) {
+      console.error('Invalid Supabase URL provided:', supabaseUrl);
+      return false;
     }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase configuration missing');
+    // Ensure it's a proper Supabase URL
+    if (!supabaseUrl.includes('supabase.co')) {
+      console.error('URL does not appear to be a Supabase URL:', supabaseUrl);
+      return false;
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get user from auth token
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Get the current user session for authenticated requests
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('No active session found for Edge Function test');
+      return false;
+    }
     
-    if (authError || !user) {
-      throw new Error('Invalid authentication. Please sign in again.');
-    }
-
-    // Use shared OpenAI API key from environment variables
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      console.error('OpenAI API key not found in environment variables');
-      throw new Error('OpenAI API key not configured in system. Please contact support.');
-    }
-
-    console.log('OpenAI API key found, initializing OpenAI client');
-
-    const openai = new OpenAI({
-      apiKey: openaiApiKey,
+    // Construct the correct Supabase Edge Function URL
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
+    console.log('Testing Edge Function at:', edgeFunctionUrl);
+    
+    // Use AbortController to timeout the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ test: true }),
+      signal: controller.signal
     });
-
-    const promptData = await req.json();
-
-    // Validate required fields
-    const requiredFields = ['subjectAndSetting', 'lighting', 'style', 'mood'];
-    const missingFields = requiredFields.filter(field => !promptData[field]?.trim());
-
-    if (missingFields.length > 0) {
-      return new Response(
-        JSON.stringify({ 
-          error: `Missing required fields: ${missingFields.join(', ')}` 
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    const systemPrompt = `You are an expert professional photographer and prompt engineer specializing in creating detailed prompts for AI image generation that produce photorealistic, human-like results.
-
-CRITICAL OUTPUT FORMAT REQUIREMENT:
-You must respond with a valid JSON object containing exactly two keys: "prompt" and "negativePrompt". Do not include any other text, markdown formatting, or explanations outside of this JSON structure.
-
-ABSOLUTE PRIORITY - PHOTOGRAPHIC REALISM:
-Every prompt MUST result in images that look like REAL PHOTOGRAPHS, never digital art. This is the highest priority requirement.
-
-REALISM REQUIREMENTS FOR HUMAN SUBJECTS:
-REALISM KEYWORDS TO NATURALLY INTEGRATE:
-Seamlessly weave these terms throughout your response: photorealistic, natural skin texture with visible pores, realistic lighting with natural shadows, authentic, genuine, detailed pores and skin imperfections, natural hair texture with realistic movement, lifelike, candid, unretouched documentary quality, real photograph.
-
-CRITICAL HAIR AND SKIN REQUIREMENTS:
-HAIR MUST ALWAYS be: natural texture, slightly imperfect, with realistic movement and natural variations, never perfectly sculpted or styled, with individual strands visible, organic and authentic appearance.
-SKIN MUST ALWAYS be: natural texture with visible pores, subtle imperfections, natural color variations, never waxy or overly smooth, with authentic human characteristics and natural aging signs.
-
-RAW PHOTOGRAPHY EMPHASIS:
-Emphasize raw, unprocessed photographic qualities by including terms like: unretouched skin with natural texture, natural blemishes and imperfections, realistic skin variations, authentic lighting imperfections, natural shadows and highlights, candid moment capture, documentary-style realism, street photography authenticity, natural environmental lighting, unposed genuine expressions, and slightly imperfect natural hair. NEVER mention perfection, idealization, or flawless features.
-
-When enhancement codes are provided, integrate them naturally into the flowing text while maintaining focus on photorealism and natural human features.
-
-Write your response as one continuous, descriptive paragraph that reads naturally while incorporating all technical details, enhancements, and realism requirements without any formatting symbols or structure markers.
-
-NEGATIVE PROMPT REQUIREMENTS:
-The negativePrompt field MUST include strong prohibitions against: digital art, illustration, painting, CGI, rendered, artificial, synthetic, plastic skin, waxy appearance, perfect skin, sculpted hair, perfect hair, overly polished, digital portrait, beauty filter, Instagram filter, artificial perfection.`;
-
-    let userPrompt = `Create a detailed photorealistic photography prompt as a single flowing paragraph with these specifications: Subject and Setting is ${promptData.subjectAndSetting}, Lighting is ${promptData.lighting}, Style is ${promptData.style}, Mood is ${promptData.mood}`;
-
-    if (promptData['post-processing']) {
-      userPrompt += `, Post-Processing is ${promptData['post-processing']}`;
-    }
-
-    if (promptData.enhancement) {
-      userPrompt += `, Enhancement Codes are ${promptData.enhancement}`;
-    }
-
-    userPrompt += `. Create a cohesive, detailed prompt that produces REAL PHOTOGRAPHS that look like they were taken with an actual camera, NEVER digital art. The images MUST have natural skin texture with visible pores and subtle imperfections, natural hair with realistic texture and slight imperfections (never sculpted or perfect), realistic lighting that shows natural shadows and highlights, authentic human expressions and genuine emotions, realistic fabric textures and natural clothing drape, and candid, unposed feeling with authentic atmosphere. Include specific camera and lens recommendations optimized for natural human photography. Focus on creating vivid, lifelike imagery while maintaining photographic authenticity and professional quality. ABSOLUTELY AVOID any digital art appearance, artificial perfection, waxy skin, sculpted hair, or overly polished looks. The result MUST look like a real photograph taken by a professional photographer, not digital art. Write everything as one continuous paragraph without any formatting symbols, headings, or bullet points.`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      max_tokens: 1000,
-      temperature: 0.7,
-    });
-
-    const response = completion.choices[0]?.message?.content?.trim();
-
-    if (!response) {
-      throw new Error('OpenAI API returned an empty response');
-    }
-
-    let promptResponse;
-    try {
-      // Parse the JSON response
-      promptResponse = JSON.parse(response);
-      
-      // Validate the response structure
-      if (!promptResponse.prompt || !promptResponse.negativePrompt) {
-        throw new Error('Invalid response structure: missing prompt or negativePrompt');
-      }
-      
-      if (typeof promptResponse.prompt !== 'string' || typeof promptResponse.negativePrompt !== 'string') {
-        throw new Error('Invalid response structure: prompt and negativePrompt must be strings');
-      }
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', parseError);
-      console.error('Raw response:', response);
-      throw new Error('Failed to parse AI response. Please try again.');
-    }
-
-    console.log('Successfully generated prompt');
-
-    return new Response(
-      JSON.stringify(promptResponse),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
-
+    
+    clearTimeout(timeoutId);
+    
+    // Function exists if we get any HTTP response (even errors)
+    const exists = response.status >= 200;
+    console.log(`Edge Function ${functionName} test result:`, response.status, exists);
+    return exists;
+    
   } catch (error) {
-    console.error('Error in generate-prompt function:', error);
-    
-    let errorMessage = 'An unexpected error occurred';
-    
-    if (error instanceof Error) {
-      if (error.message.includes('Incorrect API key')) {
-        errorMessage = 'Invalid OpenAI API key. Please contact support.';
-      } else if (error.message.includes('You exceeded your current quota')) {
-        errorMessage = 'OpenAI API quota exceeded. Please contact support.';
-      } else if (error.message.includes('API key not found')) {
-        errorMessage = 'OpenAI API key not configured in system. Please contact support.';
-      } else if (error.message.includes('insufficient_quota')) {
-        errorMessage = 'Insufficient OpenAI credits. Please contact support.';
-      } else if (error.message.includes('invalid_api_key')) {
-        errorMessage = 'Invalid OpenAI API key. Please contact support.';
-      } else if (error.message.includes('network')) {
-        errorMessage = 'Network error occurred while connecting to OpenAI';
-      } else {
-        errorMessage = error.message;
-      }
+    // Handle specific network errors
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      console.error('Network error - Edge Function may not be deployed:', error.message);
+      return false;
     }
     
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    // Handle AbortController timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('Edge Function test timed out after', timeout, 'ms');
+      return false;
+    }
+    
+    console.error('Edge Function test failed:', error);
+    return false;
   }
-});
+}
+
+/**
+ * Generate images using Supabase Edge Function
+ */
+export async function generateImagesWithFallback(params: ImageGenerationParams): Promise<ImageGenerationResult> {
+  const { prompt, dimensions, numberOfImages } = params;
+  
+  try {
+    console.log('Starting image generation with fallback:', { prompt: prompt.substring(0, 50) + '...', dimensions, numberOfImages });
+    
+    // Validate required environment variables
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!supabaseUrl) {
+      throw new Error('VITE_SUPABASE_URL environment variable is not configured');
+    }
+    
+    // Get the current user session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('No active session found for image generation');
+      throw new Error('Authentication required. Please sign in to generate images.');
+    }
+    
+    console.log('User session found:', session.user?.email);
+    
+    // Construct the Edge Function URL
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/generate-image`;
+    console.log('Calling Edge Function at:', edgeFunctionUrl);
+    
+    // Call the Supabase Edge Function
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        imageDimensions: dimensions,
+        numberOfImages: numberOfImages,
+        style: 'natural' // Default to natural style
+      }),
+    });
+    
+    console.log('Edge Function response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Edge Function error response:', errorData);
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorJson = JSON.parse(errorData);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        // Use the raw text if JSON parsing fails
+        errorMessage = errorData || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const data = await response.json();
+    console.log('Edge Function response:', data);
+    
+    // Handle different response formats
+    let imageUrls: string[] = [];
+    
+    if (data.imageUrls && Array.isArray(data.imageUrls)) {
+      imageUrls = data.imageUrls;
+    } else if (data.imageUrl) {
+      imageUrls = Array.isArray(data.imageUrl) ? data.imageUrl : [data.imageUrl];
+    } else if (data.images && Array.isArray(data.images)) {
+      imageUrls = data.images;
+    } else {
+      throw new Error('No valid image URLs returned from the API');
+    }
+    
+    if (imageUrls.length === 0) {
+      throw new Error('No images were generated');
+    }
+    
+    return {
+      success: true,
+      imageUrls: imageUrls,
+      provider: 'supabase-edge-function',
+    };
+    
+  } catch (error) {
+    console.error('Error in generateImagesWithFallback:', error);
+    
+    const errorMessage = getImageGenerationErrorMessage(error, 'supabase-edge-function');
+    
+    return {
+      success: false,
+      error: errorMessage,
+      provider: 'supabase-edge-function',
+    };
+  }
+}
+
+// Cached result to avoid repeated checks
+let edgeFunctionCache: { [key: string]: { available: boolean; timestamp: number } } = {};
+const CACHE_DURATION = 30 * 1000; // 30 seconds
+
+export async function testEdgeFunctionAvailabilityCached(
+  supabaseUrl: string, 
+  functionName: string, 
+  timeout: number = 5000
+): Promise<boolean> {
+  const cacheKey = `${supabaseUrl}/${functionName}`;
+  const now = Date.now();
+  
+  // Check cache first
+  if (edgeFunctionCache[cacheKey] && (now - edgeFunctionCache[cacheKey].timestamp < CACHE_DURATION)) {
+    return edgeFunctionCache[cacheKey].available;
+  }
+  
+  // Test availability
+  const available = await testEdgeFunctionAvailability(supabaseUrl, functionName, timeout);
+  
+  // Cache result
+  edgeFunctionCache[cacheKey] = {
+    available,
+    timestamp: now
+  };
+  
+  return available;
+}
+
+// Force refresh cache (useful after deployment)
+export function clearEdgeFunctionCache() {
+  edgeFunctionCache = {};
+}
+
+/**
+ * Get user-friendly error messages for different scenarios
+ */
+export function getImageGenerationErrorMessage(error: unknown, provider: string): string {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    
+    // Network and connectivity errors
+    if (message.includes('failed to fetch') || message.includes('network error')) {
+      return 'Unable to connect to the image generation service. Please check your internet connection and try again.';
+    }
+    
+    // CORS errors
+    if (message.includes('cors')) {
+      return 'Cross-origin request blocked. The image generation service may not be properly configured.';
+    }
+    
+    // Authentication errors
+    if (message.includes('authentication') || message.includes('unauthorized') || message.includes('401')) {
+      return 'Authentication failed. Please sign in again and try generating images.';
+    }
+    
+    // OpenAI API specific errors
+    if (message.includes('incorrect api key') || message.includes('invalid api key')) {
+      return 'Invalid OpenAI API key. Please contact support to configure the API key.';
+    }
+    
+    if (message.includes('quota') || message.includes('insufficient_quota')) {
+      return 'OpenAI API quota exceeded. Please contact support or try again later.';
+    }
+    
+    if (message.includes('content filters') || message.includes('safety system')) {
+      return 'Your prompt was blocked by content filters. Please modify your prompt to comply with usage policies.';
+    }
+    
+    if (message.includes('rate limit')) {
+      return 'Rate limit exceeded. Please wait a moment and try again.';
+    }
+    
+    // Configuration errors
+    if (message.includes('environment variable') || message.includes('not configured')) {
+      return 'Image generation service is not properly configured. Please contact support.';
+    }
+    
+    // Supabase specific errors
+    if (message.includes('supabase')) {
+      return 'Database service error. Please try again or contact support if the problem persists.';
+    }
+    
+    // Generic HTTP errors
+    if (message.includes('http 500')) {
+      return 'Internal server error. Please try again or contact support if the problem persists.';
+    }
+    
+    if (message.includes('http 404')) {
+      return 'Image generation service not found. Please contact support.';
+    }
+    
+    if (message.includes('http 429')) {
+      return 'Too many requests. Please wait a moment and try again.';
+    }
+    
+    // Return the original error message for specific known errors
+    if (message.includes('no valid image urls') || 
+        message.includes('no images were generated') ||
+        message.includes('prompt was blocked')) {
+      return error.message;
+    }
+    
+    // Generic fallback
+    return `Image generation failed: ${error.message}`;
+  }
+  
+  return 'An unexpected error occurred during image generation. Please try again.';
+}
+
+/**
+ * Utility function to validate Supabase configuration
+ */
+export function validateSupabaseConfig(): { valid: boolean; error?: string } {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl) {
+    return { valid: false, error: 'VITE_SUPABASE_URL environment variable is missing' };
+  }
+  
+  if (!supabaseAnonKey) {
+    return { valid: false, error: 'VITE_SUPABASE_ANON_KEY environment variable is missing' };
+  }
+  
+  if (!supabaseUrl.includes('supabase.co')) {
+    return { valid: false, error: 'VITE_SUPABASE_URL does not appear to be a valid Supabase URL' };
+  }
+  
+  return { valid: true };
+}

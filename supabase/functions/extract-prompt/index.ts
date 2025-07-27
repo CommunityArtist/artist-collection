@@ -1,253 +1,318 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
-import OpenAI from 'npm:openai@4.28.0';
+// Image generation utilities for Supabase Edge Functions
+import { supabase } from '../lib/supabase';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, accept',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '3600'
-};
+export interface ImageGenerationParams {
+  prompt: string;
+  dimensions: string;
+  numberOfImages: number;
+}
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    });
-  }
+export interface ImageGenerationResult {
+  success: boolean;
+  imageUrls?: string[];
+  error?: string;
+  provider: string;
+}
 
+/**
+ * Test if a Supabase Edge Function is available and accessible
+ */
+export async function testEdgeFunctionAvailability(
+  supabaseUrl: string, 
+  functionName: string, 
+  timeout: number = 5000
+): Promise<boolean> {
   try {
-    console.log('Extract-prompt function called');
-    
-    // Check user authentication
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Authentication required. Please sign in to use this feature.');
+    // Validate supabaseUrl
+    if (!supabaseUrl || typeof supabaseUrl !== 'string' || !supabaseUrl.startsWith('http')) {
+      console.error('Invalid Supabase URL provided:', supabaseUrl);
+      return false;
     }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase configuration missing');
+    // Ensure it's a proper Supabase URL
+    if (!supabaseUrl.includes('supabase.co')) {
+      console.error('URL does not appear to be a Supabase URL:', supabaseUrl);
+      return false;
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get user from auth token
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      throw new Error('Invalid authentication. Please sign in again.');
+    // Get the current user session for authenticated requests
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('No active session found for Edge Function test');
+      return false;
     }
-
-    // Use shared OpenAI API key from environment variables
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      console.error('OpenAI API key not found in environment variables');
-      throw new Error('OpenAI API key not configured in system. Please contact support.');
-    }
-
-    console.log('OpenAI API key found, initializing OpenAI client');
     
-    const openai = new OpenAI({
-      apiKey: openaiApiKey,
+    // Construct the correct Supabase Edge Function URL
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
+    console.log('Testing Edge Function at:', edgeFunctionUrl);
+    
+    // Use AbortController to timeout the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ test: true }),
+      signal: controller.signal
     });
-
-    const { imageUrl } = await req.json();
-    console.log('Received image URL:', imageUrl);
-
-    if (!imageUrl) {
-      return new Response(
-        JSON.stringify({ error: 'Image URL is required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    const systemPrompt = `You are an expert AI art analyst, professional photographer, and prompt engineer with deep expertise in visual analysis and technical photography. Your task is to describe images and provide comprehensive, detailed prompts that could be used to recreate similar artwork using AI image generation tools like Leonardo AI, Midjourney, or DALL-E.
-
-CRITICAL REQUIREMENT: The MAIN PROMPT must describe the ACTUAL VISUAL CONTENT of the image in specific detail. Do not use generic artistic descriptions. Describe exactly what you see - the subjects, objects, their appearance, positioning, and the scene.
-
-When analyzing an image, provide a detailed breakdown including:
-
-1. MAIN PROMPT: A comprehensive, flowing description that captures the complete visual content of the image in specific detail (3-4 sentences minimum)
-   - Describe the actual subjects, objects, and scene elements visible
-   - Include specific details about appearance, positioning, materials, textures
-   - Mention the setting, environment, and background elements
-   - Be concrete and specific, not abstract or generic
-   - Include specific details like clothing, accessories, facial features, poses
-   - Describe the exact arrangement and composition of elements
-   - Mention specific colors, materials, and textures you can see
-
-2. STYLE ELEMENTS: Artistic style, aesthetic choices, and visual approach (provide exactly 5-6 specific style descriptors as an array)
-
-3. TECHNICAL DETAILS: Camera settings, lens information, lighting setup, and technical specifications (provide exactly 5-6 specific technical items as an array)
-
-4. COLOR PALETTE: Dominant colors, color schemes, and color relationships (provide exactly 4-6 specific color descriptions as an array)
-
-5. COMPOSITION: Layout, framing, rule of thirds, focal points, and visual balance (single detailed paragraph)
-
-6. LIGHTING: Light sources, direction, quality, mood, and shadows (single detailed paragraph)
-
-7. MOOD: Emotional tone, feeling, and overall atmosphere (single detailed paragraph)
-
-8. CAMERA: Specific camera model recommendation that would best capture this type of shot (single camera model)
-
-9. LENS: Specific lens recommendation with focal length and aperture (single lens specification)
-
-10. AUDIO VIBE: Suggested audio atmosphere that would complement the visual mood (single descriptive phrase)
-
-ANALYSIS GUIDELINES:
-- Be extremely detailed and specific about all visible elements
-- Describe the actual content, not just artistic qualities
-- Include specific details about subjects, objects, materials, textures
-- Mention exact positioning, arrangements, and spatial relationships
-- Use descriptive language that would help an AI recreate the specific scene
-- Focus on concrete visual elements rather than abstract concepts
-- Provide professional-level technical specifications
-- If it's food, describe the specific ingredients, preparation, plating
-- If it's a person, describe clothing, pose, expression, setting in detail
-- If it's architecture, describe materials, style, lighting, perspective
-- If it's nature, describe specific elements, weather, time of day
-
-RESPONSE FORMAT:
-Respond in JSON format with these exact keys: "mainPrompt", "styleElements", "technicalDetails", "colorPalette", "composition", "lighting", "mood", "camera", "lens", "audioVibe"`;
-
-    const userPrompt = `Analyze this image and extract a comprehensive prompt that could be used to recreate similar artwork. Be extremely detailed and specific about all visual elements you can see in the image. Describe the actual subjects, objects, scene, and their specific characteristics rather than using generic artistic terms. 
-
-Focus on:
-- What exactly is in the image (people, objects, food, architecture, etc.)
-- Specific details about appearance, materials, textures, colors
-- Exact positioning and arrangement of elements
-- Setting and environment details
-- Specific clothing, accessories, or decorative elements
-- Precise descriptions that would help an AI recreate this exact scene
-
-The goal is to create a prompt that would generate a very similar-looking image when used with AI art tools.`;
-
-    console.log('Calling OpenAI API...');
     
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { 
-          role: "user", 
-          content: [
-            { type: "text", text: userPrompt },
-            { type: "image_url", image_url: { url: imageUrl } }
-          ]
-        }
-      ],
-      temperature: 0.2, // Very low temperature for consistent, detailed analysis
-      max_tokens: 2500,
-    });
-
-    console.log('OpenAI response received');
+    clearTimeout(timeoutId);
     
-    const response = completion.choices[0]?.message?.content?.trim();
-
-    if (!response) {
-      throw new Error('OpenAI API returned an empty response');
-    }
-
-    let extractedData;
-    try {
-      console.log('Parsing OpenAI response:', response);
-      
-      // Extract JSON from response, handling markdown code blocks and other formatting
-      let jsonString = response.trim();
-      
-      // Check if response is wrapped in markdown code block
-      const jsonBlockMatch = jsonString.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-      if (jsonBlockMatch) {
-        jsonString = jsonBlockMatch[1].trim();
-      } else {
-        // Check if there's JSON content between other text
-        const jsonMatch = jsonString.match(/(\{[\s\S]*\})/);
-        if (jsonMatch) {
-          jsonString = jsonMatch[1].trim();
-        }
-      }
-      
-      extractedData = JSON.parse(jsonString);
-    } catch (parseError) {
-      console.error('JSON parsing failed:', parseError);
-      console.error('Original response:', response);
-      throw new Error('Failed to parse AI response. The AI returned invalid data. Please try again.');
-    }
-
-    // Ensure all required fields exist and have proper structure
-    const requiredFields = ['mainPrompt', 'styleElements', 'technicalDetails', 'colorPalette', 'composition', 'lighting', 'mood', 'camera', 'lens', 'audioVibe'];
-    for (const field of requiredFields) {
-      if (!extractedData[field]) {
-        throw new Error(`AI response is missing required field: ${field}. Please try again.`);
-      }
-    }
-
-    // Validate array fields have proper structure
-    const arrayFields = ['styleElements', 'technicalDetails', 'colorPalette'];
-    for (const field of arrayFields) {
-      if (!Array.isArray(extractedData[field]) || extractedData[field].length === 0) {
-        throw new Error(`AI response has invalid ${field} format. Please try again.`);
-      }
-    }
-
-    // Validate string fields are not empty
-    const stringFields = ['mainPrompt', 'composition', 'lighting', 'mood', 'camera', 'lens', 'audioVibe'];
-    for (const field of stringFields) {
-      if (typeof extractedData[field] !== 'string' || extractedData[field].trim().length === 0) {
-        throw new Error(`AI response has invalid ${field} format. Please try again.`);
-      }
-    }
-
-    console.log('Successfully extracted prompt data');
-    return new Response(
-      JSON.stringify(extractedData),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
-
+    // Function exists if we get any HTTP response (even errors)
+    const exists = response.status >= 200;
+    console.log(`Edge Function ${functionName} test result:`, response.status, exists);
+    return exists;
+    
   } catch (error) {
-    console.error('Error in extract-prompt function:', error);
-    
-    let errorMessage = 'An unexpected error occurred';
-    
-    if (error instanceof Error) {
-      if (error.message.includes('Incorrect API key')) {
-        errorMessage = 'Invalid OpenAI API key. Please contact support.';
-      } else if (error.message.includes('You exceeded your current quota')) {
-        errorMessage = 'OpenAI API quota exceeded. Please contact support.';
-      } else if (error.message.includes('API key not found')) {
-        errorMessage = 'OpenAI API key not configured in system. Please contact support.';
-      } else if (error.message.includes('insufficient_quota')) {
-        errorMessage = 'Insufficient OpenAI credits. Please contact support.';
-      } else if (error.message.includes('invalid_api_key')) {
-        errorMessage = 'Invalid OpenAI API key. Please contact support.';
-      } else if (error.message.includes('network')) {
-        errorMessage = 'Network error occurred while connecting to OpenAI';
-      } else if (error.message.includes('image')) {
-        errorMessage = 'Failed to process the image. Please ensure the image URL is valid and accessible.';
-      } else if (error.message.includes('Failed to parse AI response') || error.message.includes('AI response')) {
-        errorMessage = error.message; // Use the specific parsing error message
-      } else {
-        errorMessage = error.message;
-      }
+    // Handle specific network errors
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      console.error('Network error - Edge Function may not be deployed:', error.message);
+      return false;
     }
     
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    // Handle AbortController timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('Edge Function test timed out after', timeout, 'ms');
+      return false;
+    }
+    
+    console.error('Edge Function test failed:', error);
+    return false;
   }
-});
+}
+
+/**
+ * Generate images using Supabase Edge Function
+ */
+export async function generateImagesWithFallback(params: ImageGenerationParams): Promise<ImageGenerationResult> {
+  const { prompt, dimensions, numberOfImages } = params;
+  
+  try {
+    console.log('Starting image generation with fallback:', { prompt: prompt.substring(0, 50) + '...', dimensions, numberOfImages });
+    
+    // Validate required environment variables
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!supabaseUrl) {
+      throw new Error('VITE_SUPABASE_URL environment variable is not configured');
+    }
+    
+    // Get the current user session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('No active session found for image generation');
+      throw new Error('Authentication required. Please sign in to generate images.');
+    }
+    
+    console.log('User session found:', session.user?.email);
+    
+    // Construct the Edge Function URL
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/generate-image`;
+    console.log('Calling Edge Function at:', edgeFunctionUrl);
+    
+    // Call the Supabase Edge Function
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        imageDimensions: dimensions,
+        numberOfImages: numberOfImages,
+        style: 'natural' // Default to natural style
+      }),
+    });
+    
+    console.log('Edge Function response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Edge Function error response:', errorData);
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      
+      try {
+        const errorJson = JSON.parse(errorData);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        // Use the raw text if JSON parsing fails
+        errorMessage = errorData || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const data = await response.json();
+    console.log('Edge Function response:', data);
+    
+    // Handle different response formats
+    let imageUrls: string[] = [];
+    
+    if (data.imageUrls && Array.isArray(data.imageUrls)) {
+      imageUrls = data.imageUrls;
+    } else if (data.imageUrl) {
+      imageUrls = Array.isArray(data.imageUrl) ? data.imageUrl : [data.imageUrl];
+    } else if (data.images && Array.isArray(data.images)) {
+      imageUrls = data.images;
+    } else {
+      throw new Error('No valid image URLs returned from the API');
+    }
+    
+    if (imageUrls.length === 0) {
+      throw new Error('No images were generated');
+    }
+    
+    return {
+      success: true,
+      imageUrls: imageUrls,
+      provider: 'supabase-edge-function',
+    };
+    
+  } catch (error) {
+    console.error('Error in generateImagesWithFallback:', error);
+    
+    const errorMessage = getImageGenerationErrorMessage(error, 'supabase-edge-function');
+    
+    return {
+      success: false,
+      error: errorMessage,
+      provider: 'supabase-edge-function',
+    };
+  }
+}
+
+// Cached result to avoid repeated checks
+let edgeFunctionCache: { [key: string]: { available: boolean; timestamp: number } } = {};
+const CACHE_DURATION = 30 * 1000; // 30 seconds
+
+export async function testEdgeFunctionAvailabilityCached(
+  supabaseUrl: string, 
+  functionName: string, 
+  timeout: number = 5000
+): Promise<boolean> {
+  const cacheKey = `${supabaseUrl}/${functionName}`;
+  const now = Date.now();
+  
+  // Check cache first
+  if (edgeFunctionCache[cacheKey] && (now - edgeFunctionCache[cacheKey].timestamp < CACHE_DURATION)) {
+    return edgeFunctionCache[cacheKey].available;
+  }
+  
+  // Test availability
+  const available = await testEdgeFunctionAvailability(supabaseUrl, functionName, timeout);
+  
+  // Cache result
+  edgeFunctionCache[cacheKey] = {
+    available,
+    timestamp: now
+  };
+  
+  return available;
+}
+
+// Force refresh cache (useful after deployment)
+export function clearEdgeFunctionCache() {
+  edgeFunctionCache = {};
+}
+
+/**
+ * Get user-friendly error messages for different scenarios
+ */
+export function getImageGenerationErrorMessage(error: unknown, provider: string): string {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    
+    // Network and connectivity errors
+    if (message.includes('failed to fetch') || message.includes('network error')) {
+      return 'Unable to connect to the image generation service. Please check your internet connection and try again.';
+    }
+    
+    // CORS errors
+    if (message.includes('cors')) {
+      return 'Cross-origin request blocked. The image generation service may not be properly configured.';
+    }
+    
+    // Authentication errors
+    if (message.includes('authentication') || message.includes('unauthorized') || message.includes('401')) {
+      return 'Authentication failed. Please sign in again and try generating images.';
+    }
+    
+    // OpenAI API specific errors
+    if (message.includes('incorrect api key') || message.includes('invalid api key')) {
+      return 'Invalid OpenAI API key. Please contact support to configure the API key.';
+    }
+    
+    if (message.includes('quota') || message.includes('insufficient_quota')) {
+      return 'OpenAI API quota exceeded. Please contact support or try again later.';
+    }
+    
+    if (message.includes('content filters') || message.includes('safety system')) {
+      return 'Your prompt was blocked by content filters. Please modify your prompt to comply with usage policies.';
+    }
+    
+    if (message.includes('rate limit')) {
+      return 'Rate limit exceeded. Please wait a moment and try again.';
+    }
+    
+    // Configuration errors
+    if (message.includes('environment variable') || message.includes('not configured')) {
+      return 'Image generation service is not properly configured. Please contact support.';
+    }
+    
+    // Supabase specific errors
+    if (message.includes('supabase')) {
+      return 'Database service error. Please try again or contact support if the problem persists.';
+    }
+    
+    // Generic HTTP errors
+    if (message.includes('http 500')) {
+      return 'Internal server error. Please try again or contact support if the problem persists.';
+    }
+    
+    if (message.includes('http 404')) {
+      return 'Image generation service not found. Please contact support.';
+    }
+    
+    if (message.includes('http 429')) {
+      return 'Too many requests. Please wait a moment and try again.';
+    }
+    
+    // Return the original error message for specific known errors
+    if (message.includes('no valid image urls') || 
+        message.includes('no images were generated') ||
+        message.includes('prompt was blocked')) {
+      return error.message;
+    }
+    
+    // Generic fallback
+    return `Image generation failed: ${error.message}`;
+  }
+  
+  return 'An unexpected error occurred during image generation. Please try again.';
+}
+
+/**
+ * Utility function to validate Supabase configuration
+ */
+export function validateSupabaseConfig(): { valid: boolean; error?: string } {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl) {
+    return { valid: false, error: 'VITE_SUPABASE_URL environment variable is missing' };
+  }
+  
+  if (!supabaseAnonKey) {
+    return { valid: false, error: 'VITE_SUPABASE_ANON_KEY environment variable is missing' };
+  }
+  
+  if (!supabaseUrl.includes('supabase.co')) {
+    return { valid: false, error: 'VITE_SUPABASE_URL does not appear to be a valid Supabase URL' };
+  }
+  
+  return { valid: true };
+}
