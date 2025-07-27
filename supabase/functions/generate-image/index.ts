@@ -190,9 +190,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('Generate-image function called');
+    
     // Check user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header provided');
       throw new Error('Authentication required. Please sign in to use this feature.');
     }
 
@@ -201,6 +204,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase configuration missing:', { supabaseUrl: !!supabaseUrl, supabaseServiceKey: !!supabaseServiceKey });
       throw new Error('Supabase configuration missing');
     }
 
@@ -211,8 +215,11 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
+      console.error('Authentication failed:', authError);
       throw new Error('Invalid authentication. Please sign in again.');
     }
+
+    console.log('User authenticated:', user.email);
 
     // Use shared OpenAI API key from environment variables
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -221,13 +228,21 @@ Deno.serve(async (req) => {
       throw new Error('OpenAI API key not configured in system. Please contact support.');
     }
 
-    console.log('OpenAI API key found, initializing DALL-E 3 client');
+    console.log('OpenAI API key found, initializing DALL-E 3 client for user:', user.email);
     
     const openai = new OpenAI({
       apiKey: openaiApiKey,
     });
 
     const { prompt, imageDimensions = '1:1', numberOfImages = 1, style = 'natural' } = await req.json();
+
+    console.log('Image generation request:', { 
+      userEmail: user.email, 
+      promptLength: prompt?.length || 0, 
+      imageDimensions, 
+      numberOfImages, 
+      style 
+    });
 
     if (!prompt) {
       return new Response(
