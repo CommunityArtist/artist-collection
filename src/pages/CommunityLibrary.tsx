@@ -14,29 +14,27 @@ const OptimizedImage: React.FC<{
 }> = ({ src, alt, className = '', isVideo = false }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [imageSrc, setImageSrc] = useState<string>('');
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     if (!src) return;
     
-    // Reset states when src changes
     setImageLoaded(false);
     setImageError(false);
+    setDebugInfo(`Loading: ${src.substring(0, 50)}...`);
     
-    // For Supabase storage URLs, we can add transformation parameters for optimization
-    let optimizedSrc = src;
-    if (src.includes('supabase.co') && src.includes('storage/v1/object/public/')) {
-      // Add width and quality parameters for faster loading of thumbnails
-      optimizedSrc = `${src}?width=400&quality=80`;
-    }
-    
-    setImageSrc(optimizedSrc);
-    
-    // Preload the image
+    // Simple preload test
     const img = new Image();
-    img.onload = () => setImageLoaded(true);
-    img.onerror = () => setImageError(true);
-    img.src = optimizedSrc;
+    img.onload = () => {
+      setImageLoaded(true);
+      setDebugInfo('✅ Image loaded successfully');
+    };
+    img.onerror = (error) => {
+      setImageError(true);
+      setDebugInfo(`❌ Failed to load: ${error}`);
+      console.error('Image load error:', src, error);
+    };
+    img.src = src; // Use original URL without transformation
   }, [src]);
 
   if (isVideo) {
@@ -59,7 +57,10 @@ const OptimizedImage: React.FC<{
       {/* Loading placeholder */}
       {!imageLoaded && !imageError && (
         <div className="absolute inset-0 bg-deep-bg animate-pulse flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-electric-cyan border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-electric-cyan border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <div className="text-xs text-soft-lavender/50">{debugInfo}</div>
+          </div>
         </div>
       )}
       
@@ -69,22 +70,40 @@ const OptimizedImage: React.FC<{
           <div className="text-soft-lavender/30 text-center">
             <ImageIcon className="w-8 h-8 mx-auto mb-2" />
             <div className="text-xs">Failed to load</div>
+            <div className="text-xs mt-1 text-red-400">{debugInfo}</div>
           </div>
         </div>
       )}
       
       {/* Actual image */}
-      {imageSrc && (
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full h-full object-cover transition-opacity duration-300 ${
+          imageLoaded ? 'opacity-100' : 'opacity-0'
+        } ${className}`}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => {
+          setImageLoaded(true);
+          setDebugInfo('✅ Display loaded');
+        }}
+        onError={(error) => {
+          setImageError(true);
+          setDebugInfo(`❌ Display failed: ${error}`);
+          console.error('Image display error:', src, error);
+        }}
+        style={{ 
+          display: imageError ? 'none' : 'block'
+        }}
+      />
+      
+      {/* Debug info for development */}
+      {process.env.NODE_ENV === 'development' && (
         <img
-          src={imageSrc}
-          alt={alt}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            imageLoaded ? 'opacity-100' : 'opacity-0'
-          } ${className}`}
-          loading="lazy"
-          decoding="async"
-          onLoad={() => setImageLoaded(true)}
-          onError={() => setImageError(true)}
+          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
+            URL: {src.substring(0, 30)}...
+          </div>
         />
       )}
     </div>
@@ -148,6 +167,8 @@ const CommunityLibrary: React.FC = () => {
       }
       setError(null);
       
+      console.log('🔍 Fetching community prompts...');
+      
       // First, fetch all public prompts
       const { data: promptsData, error: promptsError } = await supabase
         .from('prompts')
@@ -157,7 +178,18 @@ const CommunityLibrary: React.FC = () => {
 
       if (promptsError) throw promptsError;
       
+      console.log('📊 Found prompts:', promptsData?.length || 0);
+      console.log('🖼️ Prompts with media:', promptsData?.filter(p => p.media_url).length || 0);
+      
+      // Debug: Log some media URLs
+      if (promptsData && promptsData.length > 0) {
+        promptsData.slice(0, 3).forEach((prompt, index) => {
+          console.log(`📷 Media URL ${index + 1}:`, prompt.media_url);
+        });
+      }
+      
       if (!promptsData || promptsData.length === 0) {
+        console.log('⚠️ No prompts found in database');
         setPrompts([]);
         return;
       }
@@ -369,6 +401,7 @@ const CommunityLibrary: React.FC = () => {
               <div className="flex flex-col items-center">
                 <div className="w-8 h-8 border-2 border-electric-cyan border-t-transparent rounded-full animate-spin mb-4"></div>
                 <div className="text-soft-lavender">Loading community prompts...</div>
+                <div className="text-soft-lavender/50 text-sm mt-2">Fetching images from database...</div>
               </div>
             </div>
           ) : error ? (
@@ -408,12 +441,20 @@ const CommunityLibrary: React.FC = () => {
                 >
                   <div className="aspect-square overflow-hidden bg-deep-bg relative">
                     {prompt.media_url ? (
+                      <>
+                        {/* Debug info in development */}
+                        {process.env.NODE_ENV === 'development' && (
+                          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs p-1 rounded z-10">
+                            {prompt.media_url.includes('supabase.co') ? '🟢 Supabase' : '🔴 External'}
+                          </div>
+                        )}
                       <OptimizedImage
                         src={prompt.media_url}
                         alt={prompt.title}
                         className="transition-transform duration-300 hover:scale-105"
                         isVideo={isVideoUrl(prompt.media_url)}
                       />
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-soft-lavender/30">
                         <div className="text-center">
