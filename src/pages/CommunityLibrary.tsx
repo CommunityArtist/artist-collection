@@ -100,11 +100,9 @@ const OptimizedImage: React.FC<{
       
       {/* Debug info for development */}
       {process.env.NODE_ENV === 'development' && (
-        <img
-          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
+        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
             URL: {src.substring(0, 30)}...
           </div>
-        />
       )}
     </div>
   );
