@@ -109,8 +109,7 @@ serve(async (req) => {
     const { 
       prompt, 
       imageDimensions = '1:1', 
-      numberOfImages = 1,
-      model = 'yandexart/latest'
+      numberOfImages = 1
     } = await req.json();
 
     if (!prompt) {
@@ -126,11 +125,10 @@ serve(async (req) => {
     console.log('Generating images with Nebius AI:', {
       prompt: prompt.substring(0, 100) + '...',
       dimensions: imageDimensions,
-      count: numberOfImages,
-      model: model
+      count: numberOfImages
     });
 
-    // Convert aspect ratio to width/height
+    // Convert aspect ratio to width/height for Nebius AI
     let width = 1024, height = 1024; // default square
     if (imageDimensions === '16:9') { width = 1792; height = 1024; }
     else if (imageDimensions === '9:16') { width = 1024; height = 1792; }
@@ -144,88 +142,83 @@ serve(async (req) => {
       try {
         console.log(`Generating image ${i + 1}/${numberOfImages} with Nebius AI`);
         
-        // Nebius AI API call
-        const response = await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync', {
+        // Updated Nebius AI API call with correct endpoint and format
+        const response = await fetch('https://api.studio.nebius.ai/v1/text-to-image/generate', {
           method: 'POST',
           headers: {
-            'Authorization': `Api-Key ${nebiusApiKey}`,
+            'Authorization': `Bearer ${nebiusApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            modelUri: `art://${model}`,
-            generationOptions: {
-              seed: Math.floor(Math.random() * 1000000),
-              aspectRatio: {
-                widthToHeightRatio: width / height
-              }
-            },
-            messages: [
-              {
-                weight: 1,
-                text: prompt
-              }
-            ]
+            prompt: prompt,
+            width: width,
+            height: height,
+            num_images: 1,
+            guidance_scale: 7.5,
+            num_inference_steps: 28,
+            seed: Math.floor(Math.random() * 2147483647),
+            scheduler: "euler_a"
           }),
         });
 
         if (!response.ok) {
           const errorData = await response.text();
           console.error('Nebius AI API error:', errorData);
-          throw new Error(`Nebius AI API error: ${response.status} ${response.statusText}`);
+          
+          if (response.status === 401) {
+            throw new Error('Invalid Nebius API key. Please check your API key configuration.');
+          } else if (response.status === 429) {
+            throw new Error('Nebius AI rate limit exceeded. Please wait and try again.');
+          } else if (response.status === 400) {
+            throw new Error('Invalid request to Nebius AI. Please check your prompt.');
+          } else {
+            throw new Error(`Nebius AI API error: ${response.status} ${response.statusText}`);
+          }
         }
 
         const responseData = await response.json();
-        console.log('Nebius AI response:', responseData);
+        console.log('Nebius AI response structure:', Object.keys(responseData));
         
-        // Nebius AI uses async generation, so we need to poll for results
-        if (responseData.id) {
-          // Poll for the result
-          const operationId = responseData.id;
-          let attempts = 0;
-          const maxAttempts = 30; // Wait up to 30 seconds
-          
-          while (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-            
-            const statusResponse = await fetch(`https://llm.api.cloud.yandex.net/operations/${operationId}`, {
-              headers: {
-                'Authorization': `Api-Key ${nebiusApiKey}`,
-              },
-            });
-            
-            if (statusResponse.ok) {
-              const statusData = await statusResponse.json();
-              
-              if (statusData.done) {
-                if (statusData.response && statusData.response.image) {
-                  // Convert base64 to data URL
-                  const imageDataUrl = `data:image/jpeg;base64,${statusData.response.image}`;
-                  imageUrls.push(imageDataUrl);
-                  console.log(`Successfully generated image ${i + 1}`);
-                  break;
-                } else if (statusData.error) {
-                  throw new Error(`Nebius AI generation failed: ${statusData.error.message}`);
-                }
-              }
-            }
-            
-            attempts++;
+        // Handle different possible response formats from Nebius AI
+        if (responseData.images && Array.isArray(responseData.images) && responseData.images.length > 0) {
+          // If images are returned as array
+          const imageData = responseData.images[0];
+          if (typeof imageData === 'string') {
+            // If it's a base64 string
+            imageUrls.push(`data:image/png;base64,${imageData}`);
+          } else if (imageData.url) {
+            // If it's an object with URL
+            imageUrls.push(imageData.url);
+          } else if (imageData.image) {
+            // If it's an object with base64 image
+            imageUrls.push(`data:image/png;base64,${imageData.image}`);
           }
-          
-          if (attempts >= maxAttempts) {
-            console.error(`Timeout waiting for image ${i + 1}`);
-          }
+          console.log(`Successfully generated image ${i + 1}`);
+        } else if (responseData.image) {
+          // Direct base64 image
+          imageUrls.push(`data:image/png;base64,${responseData.image}`);
+          console.log(`Successfully generated image ${i + 1}`);
+        } else if (responseData.url) {
+          // Direct URL
+          imageUrls.push(responseData.url);
+          console.log(`Successfully generated image ${i + 1}`);
         } else {
-          console.error(`No operation ID returned for image ${i + 1}`);
+          console.error('Unexpected Nebius AI response format:', responseData);
+          throw new Error('Nebius AI returned unexpected response format');
         }
+
       } catch (imageError) {
         console.error(`Error generating image ${i + 1}:`, imageError);
-        // Continue with other images
+        // If this is the only image and it failed, throw the error
+        if (numberOfImages === 1) {
+          throw imageError;
+        }
+        // Otherwise continue with other images
       }
     }
 
     if (imageUrls.length === 0) {
-      throw new Error('Failed to generate any images with Nebius AI');
+      throw new Error('Failed to generate any images with Nebius AI. Please try again.');
     }
 
     console.log(`Successfully generated ${imageUrls.length} images with Nebius AI`);

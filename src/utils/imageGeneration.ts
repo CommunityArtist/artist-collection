@@ -122,8 +122,7 @@ export async function generateImagesWithFallback(
         requestBody = {
           prompt: prompt,
           imageDimensions: dimensions,
-          numberOfImages: numberOfImages,
-          model: 'yandexart/latest'
+          numberOfImages: numberOfImages
         };
         break;
       case 'rendernet':
