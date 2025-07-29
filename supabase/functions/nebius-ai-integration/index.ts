@@ -12,7 +12,7 @@ async function getNebiusApiKey() {
   // First try environment variable (preferred for production)
   let apiKey = Deno.env.get('NEBIUS_API_KEY');
   
-  if (apiKey && apiKey !== 'eyJhbGciOiJIUzI1NiIsImtpZCI6IlV6SXJWd1h0dnprLVRvdzlLZWstc0M1akptWXBvX1VaVkxUZlpnMDRlOFUiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJnb29nbGUtb2F1dGgyfDEwODUzMjU3MzAzNTg3Nzc1MjY2MCIsInNjb3BlIjoib3BlbmlkIG9mZmxpbmVfYWNjZXNzIiwiaXNzIjoiYXBpX2tleV9pc3N1ZXIiLCJhdWQiOlsiaHR0cHM6Ly9uZWJpdXMtaW5mZXJlbmNlLmV1LmF1dGgwLmNvbS9hcGkvdjIvIl0sImV4cCI6MTkxMTUwMDkwNSwidXVpZCI6IjQ3ZjU3NTNhLTJjNWUtNGM4NC05YjcwLTI2ZWZmNGJmMWE3NCIsIm5hbWUiOiJOZWJpdXMgQm9sdCIsImV4cGlyZXNfYXQiOiIyMDMwLTA3LTI4VDIwOjI4OjI1KzAwMDAifQ.0nXA0vPVoRySHOc63j5OJl3uYQfnnkJ03AJUR_bMA-Q' && apiKey.length > 10) {
+  if (apiKey && apiKey.length > 50) {
     console.log('Using Nebius API key from environment variable');
     return apiKey;
   }
@@ -105,6 +105,7 @@ serve(async (req) => {
     
     // Get Nebius API key with fallback logic
     const nebiusApiKey = await getNebiusApiKey();
+    console.log('API key retrieved, length:', nebiusApiKey.length);
 
     const { 
       prompt, 
@@ -118,7 +119,7 @@ serve(async (req) => {
       console.log('Test request received - checking Nebius AI API connectivity');
       
       try {
-        // Simple test request to Nebius AI to check connectivity
+        // Simple test request to check connectivity and authentication
         const testResponse = await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/completion', {
           method: 'POST',
           headers: {
@@ -140,6 +141,8 @@ serve(async (req) => {
             ]
           }),
         });
+
+        console.log('Test response status:', testResponse.status);
 
         if (testResponse.ok) {
           const testData = await testResponse.json();
@@ -182,12 +185,12 @@ serve(async (req) => {
       count: numberOfImages
     });
 
-    // Convert aspect ratio to width/height for Nebius AI
-    let width = 1024, height = 1024; // default square
-    if (imageDimensions === '16:9') { width = 1792; height = 1024; }
-    else if (imageDimensions === '9:16') { width = 1024; height = 1792; }
-    else if (imageDimensions === '4:3') { width = 1024; height = 768; }
-    else if (imageDimensions === '3:4') { width = 768; height = 1024; }
+    // Convert aspect ratio to width/height ratio for Nebius AI
+    let aspectRatio = 1.0; // default square
+    if (imageDimensions === '16:9') aspectRatio = 16/9;
+    else if (imageDimensions === '9:16') aspectRatio = 9/16;
+    else if (imageDimensions === '4:3') aspectRatio = 4/3;
+    else if (imageDimensions === '3:4') aspectRatio = 3/4;
 
     const imageUrls: string[] = [];
     
@@ -196,29 +199,35 @@ serve(async (req) => {
       try {
         console.log(`Generating image ${i + 1}/${numberOfImages} with Nebius AI`);
         
-        // Use Yandex Cloud AI Foundation Models for image generation
+        // Step 1: Start async image generation
+        const requestBody = {
+          modelUri: 'art://b1ghh9hpaq9fh7rrvjf8/yandex-art/latest',
+          generationOptions: {
+            seed: Math.floor(Math.random() * 2147483647),
+            aspectRatio: {
+              widthToHeightRatio: aspectRatio
+            }
+          },
+          messages: [
+            {
+              weight: 1,
+              text: prompt
+            }
+          ]
+        };
+
+        console.log('Sending request to Nebius AI:', JSON.stringify(requestBody, null, 2));
+
         const response = await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${nebiusApiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            modelUri: 'art://b1ghh9hpaq9fh7rrvjf8/yandex-art/latest',
-            generationOptions: {
-              seed: Math.floor(Math.random() * 2147483647),
-              aspectRatio: {
-                widthToHeightRatio: width / height
-              }
-            },
-            messages: [
-              {
-                weight: 1,
-                text: prompt
-              }
-            ]
-          }),
+          body: JSON.stringify(requestBody),
         });
+
+        console.log('Initial response status:', response.status, response.statusText);
 
         if (!response.ok) {
           const errorData = await response.text();
@@ -229,9 +238,11 @@ serve(async (req) => {
           } else if (response.status === 429) {
             throw new Error('Nebius AI rate limit exceeded. Please wait and try again.');
           } else if (response.status === 400) {
-            throw new Error('Invalid request to Nebius AI. Please check your prompt.');
+            throw new Error(`Invalid request to Nebius AI: ${errorData}`);
+          } else if (response.status === 403) {
+            throw new Error('Nebius AI access forbidden. Please check your API key permissions.');
           } else {
-            throw new Error(`Nebius AI API error: ${response.status} ${response.statusText}`);
+            throw new Error(`Nebius AI API error: ${response.status} ${response.statusText} - ${errorData}`);
           }
         }
 
@@ -239,10 +250,12 @@ serve(async (req) => {
         console.log('Nebius AI async response:', responseData);
         
         if (responseData.id) {
-          // Poll for completion
+          // Step 2: Poll for completion
           const operationId = responseData.id;
           let attempts = 0;
-          const maxAttempts = 30; // 30 seconds max wait
+          const maxAttempts = 60; // 60 seconds max wait
+          
+          console.log('Starting polling for operation:', operationId);
           
           while (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
@@ -250,40 +263,53 @@ serve(async (req) => {
             
             console.log(`Checking operation status (attempt ${attempts}/${maxAttempts})`);
             
-            const statusResponse = await fetch(`https://llm.api.cloud.yandex.net/operations/${operationId}`, {
-              headers: {
-                'Authorization': `Bearer ${nebiusApiKey}`,
-              },
-            });
-            
-            if (statusResponse.ok) {
-              const statusData = await statusResponse.json();
-              console.log('Operation status:', statusData.done, statusData.error ? 'ERROR' : 'OK');
+            try {
+              const statusResponse = await fetch(`https://llm.api.cloud.yandex.net/operations/${operationId}`, {
+                headers: {
+                  'Authorization': `Bearer ${nebiusApiKey}`,
+                },
+              });
               
-              if (statusData.done) {
-                if (statusData.error) {
-                  throw new Error(`Nebius AI generation failed: ${statusData.error.message || 'Unknown error'}`);
-                }
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json();
+                console.log('Operation status:', {
+                  done: statusData.done,
+                  hasError: !!statusData.error,
+                  hasResponse: !!statusData.response
+                });
                 
-                if (statusData.response && statusData.response.image) {
-                  // Convert base64 to data URL
-                  const imageUrl = `data:image/png;base64,${statusData.response.image}`;
-                  imageUrls.push(imageUrl);
-                  console.log(`Successfully generated image ${i + 1}`);
-                  break;
-                } else {
-                  throw new Error('Nebius AI completed but returned no image data');
+                if (statusData.done) {
+                  if (statusData.error) {
+                    console.error('Generation error:', statusData.error);
+                    throw new Error(`Nebius AI generation failed: ${statusData.error.message || JSON.stringify(statusData.error)}`);
+                  }
+                  
+                  if (statusData.response && statusData.response.image) {
+                    // Convert base64 to data URL
+                    const imageUrl = `data:image/png;base64,${statusData.response.image}`;
+                    imageUrls.push(imageUrl);
+                    console.log(`Successfully generated image ${i + 1} (${imageUrl.substring(0, 50)}...)`);
+                    break;
+                  } else {
+                    console.error('No image data in response:', statusData);
+                    throw new Error('Nebius AI completed but returned no image data');
+                  }
                 }
+              } else {
+                console.error('Failed to check operation status:', statusResponse.status, await statusResponse.text());
+                // Continue polling on status check failures
               }
-            } else {
-              console.error('Failed to check operation status:', statusResponse.status);
+            } catch (pollError) {
+              console.error('Error during polling:', pollError);
+              // Continue polling on individual failures
             }
           }
           
           if (attempts >= maxAttempts) {
-            throw new Error('Nebius AI generation timed out after 30 seconds');
+            throw new Error('Nebius AI generation timed out after 60 seconds');
           }
         } else {
+          console.error('No operation ID returned:', responseData);
           throw new Error('Nebius AI did not return an operation ID');
         }
 
@@ -309,7 +335,7 @@ serve(async (req) => {
         imageUrls: imageUrls,
         generatedCount: imageUrls.length,
         requestedCount: numberOfImages,
-        dimensions: `${width}x${height}`,
+        dimensions: `${aspectRatio}:1`,
         provider: 'nebius-ai'
       }),
       {
@@ -323,8 +349,12 @@ serve(async (req) => {
     let errorMessage = 'Failed to generate image with Nebius AI';
     
     if (error instanceof Error) {
-      if (error.message.includes('Invalid API key') || error.message.includes('401')) {
+      if (error.message.includes('fetch')) {
+        errorMessage = 'Network connection error. Unable to reach Nebius AI servers. Please check your internet connection.';
+      } else if (error.message.includes('Invalid API key') || error.message.includes('401')) {
         errorMessage = 'Invalid Nebius API key. Please check your API key configuration.';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'Nebius AI access forbidden. Please verify your API key has the correct permissions.';
       } else if (error.message.includes('quota') || error.message.includes('limit')) {
         errorMessage = 'Nebius AI quota exceeded. Please check your account limits.';
       } else if (error.message.includes('content') || error.message.includes('safety')) {
@@ -333,12 +363,12 @@ serve(async (req) => {
         errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
       } else if (error.message.includes('API key not configured')) {
         errorMessage = 'Nebius AI API key not configured. Please contact support to set up the API key.';
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        errorMessage = 'Network error occurred while connecting to Nebius AI. Please check your internet connection.';
       } else if (error.message.includes('timeout')) {
         errorMessage = 'Nebius AI generation timed out. Please try again with a simpler prompt.';
+      } else if (error.message.includes('authentication')) {
+        errorMessage = 'Authentication failed. Please sign in again.';
       } else {
-        errorMessage = error.message;
+        errorMessage = `Nebius AI Error: ${error.message}`;
       }
     }
     

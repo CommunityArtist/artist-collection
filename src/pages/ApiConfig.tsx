@@ -315,7 +315,7 @@ const ApiConfig: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <Button
                     variant="primary"
                     size="lg"
@@ -330,11 +330,11 @@ const ApiConfig: React.FC = () => {
                     variant="outline"
                     size="lg"
                     onClick={testNebiusAPI}
-                    disabled={isLoading || isSaving}
+                    disabled={isLoading || isSaving || isTestingAPI}
                     className="flex-1"
                   >
                     <Zap className="w-5 h-5 mr-2" />
-                    Test Nebius API
+                    {isTestingAPI ? 'Testing...' : 'Test Nebius API'}
                   </Button>
                 </div>
               </div>
