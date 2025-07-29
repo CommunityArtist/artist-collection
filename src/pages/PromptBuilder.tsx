@@ -64,6 +64,7 @@ const PromptBuilder: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [edgeFunctionsAvailable, setEdgeFunctionsAvailable] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'nebius' | 'rendernet'>('openai');
 
   // Check authentication
   useEffect(() => {
@@ -310,7 +311,7 @@ const PromptBuilder: React.FC = () => {
         prompt: generatedPrompt,
         dimensions: '1:1',
         numberOfImages: 4
-      });
+      }, selectedProvider);
 
       if (result.success && result.imageUrls) {
         const imagesWithIds = result.imageUrls.map((url, index) => ({
@@ -346,7 +347,7 @@ const PromptBuilder: React.FC = () => {
         prompt: generatedPrompt,
         dimensions: '1:1',
         numberOfImages: 1
-      });
+      }, selectedProvider);
 
       if (result.success && result.imageUrls && result.imageUrls.length > 0) {
         setGeneratedImage(result.imageUrls[0]);
@@ -652,6 +653,20 @@ const PromptBuilder: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
+                    <div className="w-full mb-3">
+                      <label className="block text-sm font-medium text-soft-lavender mb-2">
+                        AI Provider
+                      </label>
+                      <select
+                        value={selectedProvider}
+                        onChange={(e) => setSelectedProvider(e.target.value as 'openai' | 'nebius' | 'rendernet')}
+                        className="w-full bg-card-bg border border-border-color rounded-lg px-4 py-2 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
+                      >
+                        <option value="openai">OpenAI DALL-E 3</option>
+                        <option value="nebius">Nebius AI (Yandex)</option>
+                        <option value="rendernet">RenderNet AI</option>
+                      </select>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
@@ -667,7 +682,7 @@ const PromptBuilder: React.FC = () => {
                       disabled={isGeneratingImage}
                     >
                       <Zap className="w-4 h-4 mr-2" />
-                      {isGeneratingImage ? 'Generating...' : 'Generate Image'}
+                      {isGeneratingImage ? 'Generating...' : `Generate with ${selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)}`}
                     </Button>
                     <Button
                       variant="outline"
@@ -676,7 +691,7 @@ const PromptBuilder: React.FC = () => {
                       disabled={isGeneratingBatch}
                     >
                       <Zap className="w-4 h-4 mr-2" />
-                      {isGeneratingBatch ? 'Generating...' : 'Generate 4 Images'}
+                      {isGeneratingBatch ? 'Generating...' : `Generate 4 with ${selectedProvider.charAt(0).toUpperCase() + selectedProvider.slice(1)}`}
                     </Button>
                     <Button
                       variant="outline"

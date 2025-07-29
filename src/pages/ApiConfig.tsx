@@ -193,7 +193,7 @@ const ApiConfig: React.FC = () => {
             <div className="bg-card-bg rounded-lg p-8 border border-border-color">
               <div className="flex items-center gap-3 mb-6">
                 <Users className="w-6 h-6 text-neon-pink" />
-                <h2 className="text-xl font-semibold text-soft-lavender">Global API Key Management</h2>
+                <h2 className="text-xl font-semibold text-soft-lavender">Global AI API Keys Management</h2>
               </div>
 
               <div className="space-y-6">
@@ -203,16 +203,18 @@ const ApiConfig: React.FC = () => {
                     <div className="text-sm text-soft-lavender">
                       <p className="font-medium mb-2">Admin Notice:</p>
                       <ul className="space-y-1 text-soft-lavender/80">
-                        <li>• This global API key is used by all Edge Functions</li>
+                        <li>• These global API keys are used by all Edge Functions</li>
                         <li>• Changes affect all users immediately</li>
-                        <li>• Key should also be set in Supabase Edge Functions environment variables</li>
+                        <li>• Keys should also be set in Supabase Edge Functions environment variables</li>
                         <li>• Get your OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-electric-cyan hover:underline">platform.openai.com</a></li>
+                        <li>• Get your Nebius AI API key from <a href="https://cloud.yandex.com/en/services/yandexgpt" target="_blank" rel="noopener noreferrer" className="text-electric-cyan hover:underline">Nebius AI Console</a></li>
                       </ul>
                     </div>
                   </div>
                 </div>
 
-                <div>
+                {/* OpenAI API Key */}
+                <div className="space-y-4">
                   <label className="block text-soft-lavender mb-3 font-medium">
                     Global OpenAI API Key <span className="text-cosmic-purple">*</span>
                   </label>
@@ -225,7 +227,23 @@ const ApiConfig: React.FC = () => {
                     disabled={isLoading || isSaving}
                   />
                   <p className="text-soft-lavender/60 text-sm mt-2">
-                    This key is used globally for all users' image generation
+                    This key is used globally for OpenAI DALL-E image generation
+                  </p>
+                </div>
+
+                {/* Nebius AI API Key */}
+                <div className="space-y-4">
+                  <label className="block text-soft-lavender mb-3 font-medium">
+                    Global Nebius AI API Key <span className="text-soft-lavender/50">(Optional)</span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter your Nebius AI API key..."
+                    className="w-full bg-deep-bg border border-border-color rounded-lg p-4 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple font-mono"
+                    disabled={isLoading || isSaving}
+                  />
+                  <p className="text-soft-lavender/60 text-sm mt-2">
+                    This key enables Nebius AI image generation as an alternative to OpenAI
                   </p>
                 </div>
 
@@ -256,7 +274,7 @@ const ApiConfig: React.FC = () => {
                     className="flex-1"
                   >
                     <Save className="w-5 h-5 mr-2" />
-                    {isSaving ? 'Saving...' : 'Save Global API Key'}
+                    {isSaving ? 'Saving...' : 'Save API Keys'}
                   </Button>
                 </div>
               </div>

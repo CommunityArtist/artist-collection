@@ -88,11 +88,19 @@ export async function testEdgeFunctionAvailability(
 /**
  * Generate images using Supabase Edge Function
  */
-export async function generateImagesWithFallback(params: ImageGenerationParams): Promise<ImageGenerationResult> {
+export async function generateImagesWithFallback(
+  params: ImageGenerationParams, 
+  provider: 'openai' | 'nebius' | 'rendernet' = 'openai'
+): Promise<ImageGenerationResult> {
   const { prompt, dimensions, numberOfImages } = params;
   
   try {
-    // Validate required environment variables
+    console.log('Starting image generation with fallback:', { 
+      prompt: prompt.substring(0, 50) + '...', 
+      dimensions, 
+      numberOfImages,
+      provider 
+    });
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     if (!supabaseUrl) {
       throw new Error('VITE_SUPABASE_URL environment variable is not configured');
@@ -104,8 +112,38 @@ export async function generateImagesWithFallback(params: ImageGenerationParams):
       throw new Error('Authentication required. Please sign in to generate images.');
     }
     
-    // Construct the Edge Function URL
-    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/generate-image`;
+    // Construct the Edge Function URL based on provider
+    let edgeFunctionUrl: string;
+    let requestBody: any;
+    
+    switch (provider) {
+      case 'nebius':
+        edgeFunctionUrl = `${supabaseUrl}/functions/v1/nebius-ai-integration`;
+        requestBody = {
+          prompt: prompt,
+          imageDimensions: dimensions,
+          numberOfImages: numberOfImages,
+          model: 'yandexart/latest'
+        };
+        break;
+      case 'rendernet':
+        edgeFunctionUrl = `${supabaseUrl}/functions/v1/affogato-integration`;
+        requestBody = {
+          prompt: prompt,
+          dimensions: dimensions,
+          numberOfImages: numberOfImages
+        };
+        break;
+      default: // openai
+        edgeFunctionUrl = `${supabaseUrl}/functions/v1/generate-image`;
+        requestBody = {
+          prompt: prompt,
+          imageDimensions: dimensions,
+          numberOfImages: numberOfImages,
+          style: 'natural'
+        };
+    }
+    
     console.log('Calling Edge Function at:', edgeFunctionUrl);
     
     // Call the Supabase Edge Function
@@ -115,12 +153,7 @@ export async function generateImagesWithFallback(params: ImageGenerationParams):
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({
-        prompt: prompt,
-        imageDimensions: dimensions,
-        numberOfImages: numberOfImages,
-        style: 'natural' // Default to natural style
-      }),
+      body: JSON.stringify(requestBody),
     });
     
     if (!response.ok) {
@@ -161,18 +194,18 @@ export async function generateImagesWithFallback(params: ImageGenerationParams):
     return {
       success: true,
       imageUrls: imageUrls,
-      provider: 'supabase-edge-function',
+      provider: `supabase-${provider}`,
     };
     
   } catch (error) {
     console.error('Error in generateImagesWithFallback:', error);
     
-    const errorMessage = getImageGenerationErrorMessage(error, 'supabase-edge-function');
+    const errorMessage = getImageGenerationErrorMessage(error, `supabase-${provider}`);
     
     return {
       success: false,
       error: errorMessage,
-      provider: 'supabase-edge-function',
+      provider: `supabase-${provider}`,
     };
   }
 }
