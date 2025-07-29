@@ -14,13 +14,14 @@ async function getOpenAIKey() {
   // First try environment variable (preferred for production)
   let apiKey = Deno.env.get('OPENAI_API_KEY');
   
-  if (apiKey && apiKey !== 'sk-REPLACE_WITH_YOUR_ACTUAL_OPENAI_API_KEY_FROM_PLATFORM_OPENAI_COM') {
+  if (apiKey && apiKey !== 'sk-REPLACE_WITH_YOUR_ACTUAL_OPENAI_API_KEY_FROM_PLATFORM_OPENAI_COM' && apiKey.startsWith('sk-')) {
     console.log('Using OpenAI API key from environment variable');
     return apiKey;
   }
   
   // Fallback: try to get from database
   try {
+    console.log('Environment API key not found, trying database...');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
@@ -33,11 +34,26 @@ async function getOpenAIKey() {
         .select('key_value')
         .eq('key_name', 'openai_api_key')
         .is('user_id', null) // Global key
+        .limit(1)
         .single();
       
-      if (!error && data?.key_value && data.key_value.startsWith('sk-')) {
+      if (!error && data?.key_value) {
+        console.log('Found API key in database:', data.key_value.substring(0, 15) + '...');
+        
+        // Validate the key format
+        if (data.key_value.startsWith('sk-')) {
+          console.log('Using valid OpenAI API key from database');
+          return data.key_value;
+        } else {
+          console.log('API key in database has invalid format');
+        }
+      } else {
         console.log('Using OpenAI API key from database (global)');
         return data.key_value;
+      }
+      
+      if (error) {
+        console.error('Database query error:', error);
       }
     }
   } catch (error) {
@@ -45,7 +61,7 @@ async function getOpenAIKey() {
   }
   
   // If no key found, throw descriptive error
-  throw new Error('OpenAI API key not configured. Please add OPENAI_API_KEY to your Supabase Edge Functions environment variables.');
+  throw new Error('OpenAI API key not found. Please configure your API key in the settings.');
 }
 
 Deno.serve(async (req) => {
@@ -57,6 +73,48 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('=== DALL-E 3 Image Generation Started ===');
+    
+    // Check user authentication first
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Authentication required. Please sign in to generate images.');
+    }
+
+    // Initialize Supabase client for user verification
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get user from auth token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      throw new Error('Invalid authentication. Please sign in again.');
+    }
+
+    console.log('User authenticated:', user.email);
+
+    // Check if user has API access (like narrativebottv@gmail.com)
+    const { data: apiAccess, error: accessError } = await supabase
+      .from('api_access')
+      .select('has_access')
+      .eq('user_email', user.email)
+      .single();
+
+    if (accessError || !apiAccess?.has_access) {
+      console.error('User lacks API access:', user.email, accessError);
+      throw new Error(`API access denied. Your account (${user.email}) does not have permission to generate images. Please contact support.`);
+    }
+
+    console.log('User has API access confirmed:', user.email);
+    
     console.log('=== DALL-E 3 Image Generation Started ===');
     
     // Get OpenAI API key with fallback logic
