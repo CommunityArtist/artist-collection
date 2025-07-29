@@ -1,9 +1,95 @@
 import React, { useState, useEffect } from 'react';
-import { Filter, RefreshCw, X, Copy, Download, Play, Search, Tag, Plus } from 'lucide-react';
+import { Filter, RefreshCw, X, Copy, Download, Play, Search, Tag, Plus, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import Button from '../components/Button';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Prompt, PromptTag } from '../types';
+
+// Optimized Image Component with better error handling and loading states
+const OptimizedImage: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+  isVideo?: boolean;
+}> = ({ src, alt, className = '', isVideo = false }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string>('');
+
+  useEffect(() => {
+    if (!src) return;
+    
+    // Reset states when src changes
+    setImageLoaded(false);
+    setImageError(false);
+    
+    // For Supabase storage URLs, we can add transformation parameters for optimization
+    let optimizedSrc = src;
+    if (src.includes('supabase.co') && src.includes('storage/v1/object/public/')) {
+      // Add width and quality parameters for faster loading of thumbnails
+      optimizedSrc = `${src}?width=400&quality=80`;
+    }
+    
+    setImageSrc(optimizedSrc);
+    
+    // Preload the image
+    const img = new Image();
+    img.onload = () => setImageLoaded(true);
+    img.onerror = () => setImageError(true);
+    img.src = optimizedSrc;
+  }, [src]);
+
+  if (isVideo) {
+    return (
+      <div className="relative w-full h-full">
+        <video
+          src={src}
+          className={`w-full h-full object-cover ${className}`}
+          preload="metadata"
+        />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <Play className="w-12 h-12 text-white" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative w-full h-full ${className}`}>
+      {/* Loading placeholder */}
+      {!imageLoaded && !imageError && (
+        <div className="absolute inset-0 bg-deep-bg animate-pulse flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-electric-cyan border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+      
+      {/* Error placeholder */}
+      {imageError && (
+        <div className="absolute inset-0 bg-deep-bg flex items-center justify-center">
+          <div className="text-soft-lavender/30 text-center">
+            <ImageIcon className="w-8 h-8 mx-auto mb-2" />
+            <div className="text-xs">Failed to load</div>
+          </div>
+        </div>
+      )}
+      
+      {/* Actual image */}
+      {imageSrc && (
+        <img
+          src={imageSrc}
+          alt={alt}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          } ${className}`}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageError(true)}
+        />
+      )}
+    </div>
+  );
+};
 
 const AVAILABLE_TAGS: PromptTag[] = [
   '3D',
@@ -46,6 +132,7 @@ const CommunityLibrary: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -53,7 +140,12 @@ const CommunityLibrary: React.FC = () => {
 
   const fetchPrompts = async () => {
     try {
-      setLoading(true);
+      const isInitialLoad = prompts.length === 0;
+      if (isInitialLoad) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setError(null);
       
       // First, fetch all public prompts
@@ -108,7 +200,13 @@ const CommunityLibrary: React.FC = () => {
       setError(error instanceof Error ? error.message : 'Failed to load community prompts');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    console.log('Manually refreshing community library...');
+    await fetchPrompts();
   };
 
   useEffect(() => {
@@ -196,9 +294,15 @@ const CommunityLibrary: React.FC = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-soft-lavender">Community Library</h1>
             <div className="flex gap-3">
-              <Button variant="outline" size="sm" onClick={fetchPrompts}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className={refreshing ? 'opacity-50' : ''}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
              
               <Link to="/create-prompt">
@@ -262,11 +366,23 @@ const CommunityLibrary: React.FC = () => {
 
           {loading ? (
             <div className="text-center py-12">
-              <div className="text-soft-lavender">Loading prompts...</div>
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 border-2 border-electric-cyan border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="text-soft-lavender">Loading community prompts...</div>
+              </div>
             </div>
           ) : filteredPrompts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-soft-lavender/70">No prompts found</div>
+              <div className="flex flex-col items-center">
+                <ImageIcon className="w-16 h-16 text-soft-lavender/30 mb-4" />
+                <div className="text-soft-lavender/70 text-lg mb-2">No prompts found</div>
+                <p className="text-soft-lavender/50 text-sm">
+                  {searchQuery || selectedTags.length > 0 
+                    ? "Try adjusting your search or filters" 
+                    : "Be the first to share a prompt with the community!"
+                  }
+                </p>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -278,26 +394,18 @@ const CommunityLibrary: React.FC = () => {
                 >
                   <div className="aspect-square overflow-hidden bg-deep-bg relative">
                     {prompt.media_url ? (
-                      isVideoUrl(prompt.media_url) ? (
-                        <div className="relative w-full h-full">
-                          <video
-                            src={prompt.media_url}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                            <Play className="w-12 h-12 text-white" />
-                          </div>
-                        </div>
-                      ) : (
-                        <img
-                          src={prompt.media_url}
-                          alt={prompt.title}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                        />
-                      )
+                      <OptimizedImage
+                        src={prompt.media_url}
+                        alt={prompt.title}
+                        className="transition-transform duration-300 hover:scale-105"
+                        isVideo={isVideoUrl(prompt.media_url)}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-soft-lavender/30">
-                        No media
+                        <div className="text-center">
+                          <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                          <div className="text-xs">No media</div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -325,13 +433,33 @@ const CommunityLibrary: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ))}
+            <div className="text-center py-8">
+              <div className="bg-error-red/10 border border-error-red/20 rounded-lg p-6 max-w-md mx-auto">
+                <div className="flex items-center justify-center mb-4">
+                  <AlertCircle className="w-8 h-8 text-error-red" />
+                </div>
+                <h3 className="text-error-red font-medium mb-2">Failed to Load Prompts</h3>
+                <p className="text-error-red/80 text-sm mb-4">{error}</p>
+                <Button variant="outline" size="sm" onClick={handleRefresh}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {refreshing && !loading && (
+            <div className="fixed top-24 right-4 bg-card-bg border border-border-color rounded-lg p-3 shadow-lg z-40">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-electric-cyan" />
+                <span className="text-soft-lavender text-sm">Refreshing images...</span>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Prompt Details Modal */}
+      {/* Enhanced Prompt Details Modal */}
       {selectedPrompt && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-card-bg rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -360,7 +488,7 @@ const CommunityLibrary: React.FC = () => {
                       className="w-full rounded-lg"
                     />
                   ) : (
-                    <img
+                    <OptimizedImage
                       src={selectedPrompt.media_url}
                       alt={selectedPrompt.title}
                       className="w-full rounded-lg"
@@ -382,7 +510,7 @@ const CommunityLibrary: React.FC = () => {
                     </button>
                   </div>
                 </div>
-
+              ))}
                 {selectedPrompt.notes && (
                   <div>
                     <h3 className="text-lg font-medium text-soft-lavender mb-2">Notes</h3>
@@ -391,7 +519,7 @@ const CommunityLibrary: React.FC = () => {
                     </div>
                   </div>
                 )}
-
+            </div>
                 <div>
                   <h3 className="text-lg font-medium text-soft-lavender mb-2">Tags</h3>
                   <div className="flex flex-wrap gap-2">
@@ -405,7 +533,7 @@ const CommunityLibrary: React.FC = () => {
                     ))}
                   </div>
                 </div>
-
+          )}
                 <div className="flex gap-4 pt-4">
                   <Button
                     variant="primary"
@@ -440,5 +568,7 @@ const CommunityLibrary: React.FC = () => {
     </div>
   );
 };
+
+export default CommunityLibrary;
 
 export default CommunityLibrary;
