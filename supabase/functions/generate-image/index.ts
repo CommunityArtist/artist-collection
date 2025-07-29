@@ -1,5 +1,181 @@
 // Image generation utilities for Supabase Edge Functions
 import { supabase } from '../lib/supabase';
+import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
+import OpenAI from 'npm:openai@4.28.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, accept',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '3600'
+};
+
+async function getOpenAIKey() {
+  // First try environment variable (preferred for production)
+  let apiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (apiKey && apiKey !== 'sk-REPLACE_WITH_YOUR_ACTUAL_OPENAI_API_KEY_FROM_PLATFORM_OPENAI_COM') {
+    console.log('Using OpenAI API key from environment variable');
+    return apiKey;
+  }
+  
+  // Fallback: try to get from database
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (supabaseUrl && supabaseServiceKey) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      // Try to get a global API key from database
+      const { data, error } = await supabase
+        .from('api_config')
+        .select('key_value')
+        .eq('key_name', 'openai_api_key')
+        .is('user_id', null) // Global key
+        .single();
+      
+      if (!error && data?.key_value && data.key_value.startsWith('sk-')) {
+        console.log('Using OpenAI API key from database (global)');
+        return data.key_value;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching API key from database:', error);
+  }
+  
+  // If no key found, throw descriptive error
+  throw new Error('OpenAI API key not configured. Please add OPENAI_API_KEY to your Supabase Edge Functions environment variables.');
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
+  }
+
+  try {
+    console.log('=== DALL-E 3 Image Generation Started ===');
+    
+    // Get OpenAI API key with fallback logic
+    const openaiApiKey = await getOpenAIKey();
+    
+    const openai = new OpenAI({
+      apiKey: openaiApiKey,
+    });
+
+    const { 
+      prompt, 
+      imageDimensions = '1:1', 
+      numberOfImages = 1,
+      style = 'natural'
+    } = await req.json();
+
+    if (!prompt) {
+      return new Response(
+        JSON.stringify({ error: 'Prompt is required' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('Generating images:', {
+      prompt: prompt.substring(0, 100) + '...',
+      dimensions: imageDimensions,
+      count: numberOfImages,
+      style: style
+    });
+
+    // Convert aspect ratio to DALL-E 3 format
+    let dalleSize = '1024x1024'; // default square
+    if (imageDimensions === '16:9') dalleSize = '1792x1024';
+    else if (imageDimensions === '9:16') dalleSize = '1024x1792';
+    else if (imageDimensions === '4:3') dalleSize = '1024x1024'; // closest to square
+    else if (imageDimensions === '3:4') dalleSize = '1024x1024'; // closest to square
+
+    const imageUrls: string[] = [];
+    
+    // Generate images (DALL-E 3 only supports 1 image per request)
+    for (let i = 0; i < Math.min(numberOfImages, 4); i++) {
+      try {
+        console.log(`Generating image ${i + 1}/${numberOfImages}`);
+        
+        const response = await openai.images.generate({
+          model: "dall-e-3",
+          prompt: prompt,
+          n: 1,
+          size: dalleSize as "1024x1024" | "1792x1024" | "1024x1792",
+          quality: "standard",
+          style: style === 'vivid' ? 'vivid' : 'natural',
+        });
+
+        if (response.data && response.data.length > 0 && response.data[0].url) {
+          imageUrls.push(response.data[0].url);
+          console.log(`Successfully generated image ${i + 1}`);
+        } else {
+          console.error(`No image URL in response for image ${i + 1}`);
+        }
+      } catch (imageError) {
+        console.error(`Error generating image ${i + 1}:`, imageError);
+        // Continue with other images
+      }
+    }
+
+    if (imageUrls.length === 0) {
+      throw new Error('Failed to generate any images');
+    }
+
+    console.log(`Successfully generated ${imageUrls.length} images`);
+
+    return new Response(
+      JSON.stringify({
+        imageUrl: imageUrls, // For backward compatibility
+        imageUrls: imageUrls,
+        generatedCount: imageUrls.length,
+        requestedCount: numberOfImages,
+        dimensions: dalleSize,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+
+  } catch (error) {
+    console.error('Error in generate-image function:', error);
+    
+    let errorMessage = 'Failed to generate image';
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Incorrect API key')) {
+        errorMessage = 'Invalid OpenAI API key. Please check your API key configuration.';
+      } else if (error.message.includes('You exceeded your current quota')) {
+        errorMessage = 'OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits.';
+      } else if (error.message.includes('content filters') || error.message.includes('safety system')) {
+        errorMessage = 'Your prompt was blocked by content filters. Please modify your prompt and try again.';
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+      } else if (error.message.includes('API key not configured')) {
+        errorMessage = 'OpenAI API key not configured. Please contact support to set up the API key.';
+      } else if (error.message.includes('network')) {
+        errorMessage = 'Network error occurred while connecting to OpenAI';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+});
 
 export interface ImageGenerationParams {
   prompt: string;
