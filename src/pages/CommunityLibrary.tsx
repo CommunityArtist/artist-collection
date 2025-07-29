@@ -371,6 +371,20 @@ const CommunityLibrary: React.FC = () => {
                 <div className="text-soft-lavender">Loading community prompts...</div>
               </div>
             </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <div className="bg-error-red/10 border border-error-red/20 rounded-lg p-6 max-w-md mx-auto">
+                <div className="flex items-center justify-center mb-4">
+                  <AlertCircle className="w-8 h-8 text-error-red" />
+                </div>
+                <h3 className="text-error-red font-medium mb-2">Failed to Load Prompts</h3>
+                <p className="text-error-red/80 text-sm mb-4">{error}</p>
+                <Button variant="outline" size="sm" onClick={handleRefresh}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </div>
           ) : filteredPrompts.length === 0 ? (
             <div className="text-center py-12">
               <div className="flex flex-col items-center">
@@ -433,18 +447,7 @@ const CommunityLibrary: React.FC = () => {
                     )}
                   </div>
                 </div>
-            <div className="text-center py-8">
-              <div className="bg-error-red/10 border border-error-red/20 rounded-lg p-6 max-w-md mx-auto">
-                <div className="flex items-center justify-center mb-4">
-                  <AlertCircle className="w-8 h-8 text-error-red" />
-                </div>
-                <h3 className="text-error-red font-medium mb-2">Failed to Load Prompts</h3>
-                <p className="text-error-red/80 text-sm mb-4">{error}</p>
-                <Button variant="outline" size="sm" onClick={handleRefresh}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </Button>
-              </div>
+              ))}
             </div>
           )}
 
@@ -510,7 +513,7 @@ const CommunityLibrary: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+
                 {selectedPrompt.notes && (
                   <div>
                     <h3 className="text-lg font-medium text-soft-lavender mb-2">Notes</h3>
@@ -519,21 +522,23 @@ const CommunityLibrary: React.FC = () => {
                     </div>
                   </div>
                 )}
-            </div>
-                <div>
-                  <h3 className="text-lg font-medium text-soft-lavender mb-2">Tags</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedPrompt.tags?.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-3 py-1 rounded-full text-sm bg-cosmic-purple/20 text-cosmic-purple"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+
+                {selectedPrompt.tags && selectedPrompt.tags.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium text-soft-lavender mb-2">Tags</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPrompt.tags?.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-3 py-1 rounded-full text-sm bg-cosmic-purple/20 text-cosmic-purple"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-          )}
+                )}
+
                 <div className="flex gap-4 pt-4">
                   <Button
                     variant="primary"
@@ -568,7 +573,5 @@ const CommunityLibrary: React.FC = () => {
     </div>
   );
 };
-
-export default CommunityLibrary;
 
 export default CommunityLibrary;
