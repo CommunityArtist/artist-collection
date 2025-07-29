@@ -312,12 +312,11 @@ const ApiConfig: React.FC = () => {
               <p>• <strong>Authentication:</strong> Active</p>
               <p>• <strong>Email:</strong> {userProfile?.id ? 'Verified' : 'Pending'}</p>
             </div>
-              </div>
-            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-            {testResult && (
-              <div className={`border rounded-lg p-4 ${
-                testResult.includes('✅') 
-                  ? 'bg-success-green/10 border-success-green/20' 
-                  : 'bg-red-500/10 border-red-500/20'
 export default ApiConfig;
