@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Key, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { Key, Save, AlertCircle, CheckCircle, Shield, Users, Zap } from 'lucide-react';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
 
 const ApiConfig: React.FC = () => {
   const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [globalApiKey, setGlobalApiKey] = useState('');
+  const [userApiAccess, setUserApiAccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     checkAuth();
-    loadApiKey();
+    loadApiData();
   }, []);
 
   const checkAuth = async () => {
@@ -37,40 +37,48 @@ const ApiConfig: React.FC = () => {
     
     setUserProfile(profile);
     
-    // Redirect non-admin users
-    if (profile?.username !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
+    // Check if user is admin
+    const adminStatus = profile?.username === 'ADMIN';
+    setIsAdmin(adminStatus);
     
     setIsAuthenticated(true);
   };
 
-  const loadApiKey = async () => {
+  const loadApiData = async () => {
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('api_config')
-        .select('key_value')
-        .eq('key_name', 'openai_api_key')
-        .eq('user_id', user.id)
-        .limit(1);
+      // Check user's API access status
+      const { data: accessData, error: accessError } = await supabase
+        .from('api_access')
+        .select('has_access')
+        .eq('user_email', user.email)
+        .single();
 
-      if (error) {
-        throw error;
+      if (!accessError && accessData) {
+        setUserApiAccess(accessData.has_access);
       }
 
-      if (data && data.length > 0 && data[0]?.key_value) {
-        // Show only the last 4 characters for security
-        const maskedKey = '••••••••••••••••••••••••••••••••••••••••••••••••••••' + data[0].key_value.slice(-4);
-        setOpenaiApiKey(maskedKey);
+      // If admin, load global API key
+      if (isAdmin) {
+        const { data: keyData, error: keyError } = await supabase
+          .from('api_config')
+          .select('key_value')
+          .eq('key_name', 'openai_api_key')
+          .is('user_id', null)
+          .single();
+
+        if (!keyError && keyData?.key_value) {
+          // Show only the last 4 characters for security
+          const maskedKey = '••••••••••••••••••••••••••••••••••••••••••••••••••••' + keyData.key_value.slice(-4);
+          setGlobalApiKey(maskedKey);
+        }
       }
     } catch (error) {
-      console.error('Error loading API key:', error);
-      setError('Failed to load API configuration');
+      console.error('Error loading API data:', error);
+      setError('Failed to load API information');
     } finally {
       setIsLoading(false);
     }
@@ -87,21 +95,21 @@ const ApiConfig: React.FC = () => {
         throw new Error('User not authenticated');
       }
 
-      if (!openaiApiKey.trim()) {
+      if (!globalApiKey.trim()) {
         throw new Error('Please enter an OpenAI API key');
       }
 
-      if (!openaiApiKey.startsWith('sk-')) {
+      if (!globalApiKey.startsWith('sk-')) {
         throw new Error('OpenAI API key should start with "sk-"');
       }
 
-      // First, try to upsert the API key
+      // Update the global API key (admin only)
       const { error: upsertError } = await supabase
         .from('api_config')
         .upsert({
           key_name: 'openai_api_key',
-          key_value: openaiApiKey,
-          user_id: user.id
+          key_value: globalApiKey,
+          user_id: null
         }, {
           onConflict: 'user_id,key_name'
         });
@@ -114,7 +122,7 @@ const ApiConfig: React.FC = () => {
       setTimeout(() => setSuccess(false), 3000);
 
       // Reload the masked key
-      await loadApiKey();
+      await loadApiData();
 
     } catch (error) {
       console.error('Error saving API key:', error);
@@ -124,40 +132,10 @@ const ApiConfig: React.FC = () => {
     }
   };
 
-  const testApiKey = async () => {
-    try {
-      setIsTesting(true);
-      setTestResult(null);
-      setError(null);
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-api-key`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'API test failed');
-      }
-
-      setTestResult('✅ API key is working correctly!');
-    } catch (error) {
-      console.error('API test error:', error);
-      setTestResult(`❌ API test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
   const handleKeyChange = (value: string) => {
-    setOpenaiApiKey(value);
+    setGlobalApiKey(value);
     setError(null);
     setSuccess(false);
-    setTestResult(null);
   };
 
   if (!isAuthenticated) {
@@ -167,59 +145,173 @@ const ApiConfig: React.FC = () => {
   return (
     <div className="min-h-screen bg-deep-bg pt-24">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="bg-card-bg rounded-lg p-8 border border-border-color">
+        <div className="space-y-6">
+          {/* Header */}
           <div className="flex items-center gap-3 mb-8">
             <Key className="w-6 h-6 text-electric-cyan" />
-            <h1 className="text-2xl font-bold text-soft-lavender">API Configuration</h1>
+            <h1 className="text-2xl font-bold text-soft-lavender">
+              {isAdmin ? 'API Configuration (Admin)' : 'API Access Status'}
+            </h1>
           </div>
 
-          <div className="space-y-6">
-            <div className="bg-cosmic-purple/10 border border-cosmic-purple/20 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-cosmic-purple mt-0.5" />
-                <div className="text-sm text-soft-lavender">
-                  <p className="font-medium mb-2">Important Security Notice:</p>
-                  <ul className="space-y-1 text-soft-lavender/80">
-                    <li>• Your API key is stored securely in the database</li>
-                    <li>• Only you can view and modify your API configuration</li>
-                    <li>• Get your OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-electric-cyan hover:underline">platform.openai.com</a></li>
-                  </ul>
+          {/* User API Access Status */}
+          <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+            <div className="flex items-center gap-3 mb-4">
+              <Shield className="w-5 h-5 text-electric-cyan" />
+              <h2 className="text-xl font-semibold text-soft-lavender">Your API Access Status</h2>
+            </div>
+            
+            <div className={`p-4 rounded-lg border ${
+              userApiAccess 
+                ? 'bg-success-green/10 border-success-green/20' 
+                : 'bg-red-500/10 border-red-500/20'
+            }`}>
+              <div className="flex items-center gap-3">
+                {userApiAccess ? (
+                  <>
+                    <CheckCircle className="w-5 h-5 text-success-green" />
+                    <div>
+                      <p className="text-success-green font-medium">✅ API Access Granted</p>
+                      <p className="text-success-green/80 text-sm">You can generate images and use AI features</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <div>
+                      <p className="text-red-500 font-medium">❌ API Access Denied</p>
+                      <p className="text-red-500/80 text-sm">Contact support to enable image generation</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Admin Section */}
+          {isAdmin && (
+            <div className="bg-card-bg rounded-lg p-8 border border-border-color">
+              <div className="flex items-center gap-3 mb-6">
+                <Users className="w-6 h-6 text-neon-pink" />
+                <h2 className="text-xl font-semibold text-soft-lavender">Global API Key Management</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-cosmic-purple/10 border border-cosmic-purple/20 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-cosmic-purple mt-0.5" />
+                    <div className="text-sm text-soft-lavender">
+                      <p className="font-medium mb-2">Admin Notice:</p>
+                      <ul className="space-y-1 text-soft-lavender/80">
+                        <li>• This global API key is used by all Edge Functions</li>
+                        <li>• Changes affect all users immediately</li>
+                        <li>• Key should also be set in Supabase Edge Functions environment variables</li>
+                        <li>• Get your OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-electric-cyan hover:underline">platform.openai.com</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-soft-lavender mb-3 font-medium">
+                    Global OpenAI API Key <span className="text-cosmic-purple">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={globalApiKey}
+                    onChange={(e) => handleKeyChange(e.target.value)}
+                    className="w-full bg-deep-bg border border-border-color rounded-lg p-4 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple font-mono"
+                    placeholder="sk-..."
+                    disabled={isLoading || isSaving}
+                  />
+                  <p className="text-soft-lavender/60 text-sm mt-2">
+                    This key is used globally for all users' image generation
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-500" />
+                      <p className="text-red-500 text-sm">{error}</p>
+                    </div>
+                  </div>
+                )}
+
+                {success && (
+                  <div className="bg-success-green/10 border border-success-green/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-success-green" />
+                      <p className="text-success-green text-sm">Global API key updated successfully!</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-4">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={saveApiKey}
+                    disabled={isLoading || isSaving || !globalApiKey.trim()}
+                    className="flex-1"
+                  >
+                    <Save className="w-5 h-5 mr-2" />
+                    {isSaving ? 'Saving...' : 'Save Global API Key'}
+                  </Button>
                 </div>
               </div>
             </div>
+          )}
 
-            <div>
-              <label className="block text-soft-lavender mb-3 font-medium">
-                OpenAI API Key <span className="text-cosmic-purple">*</span>
-              </label>
-              <input
-                type="password"
-                value={openaiApiKey}
-                onChange={(e) => handleKeyChange(e.target.value)}
-                className="w-full bg-deep-bg border border-border-color rounded-lg p-4 text-soft-lavender placeholder-soft-lavender/50 focus:outline-none focus:border-cosmic-purple font-mono"
-                placeholder="sk-..."
-                disabled={isLoading || isSaving}
-              />
-              <p className="text-soft-lavender/60 text-sm mt-2">
-                Enter your OpenAI API key to enable prompt and image generation
-              </p>
+          {/* Navigation Section */}
+          <div className="bg-card-bg rounded-lg p-6 border border-border-color">
+            <div className="flex items-center gap-3 mb-4">
+              <Zap className="w-5 h-5 text-electric-cyan" />
+              <h2 className="text-xl font-semibold text-soft-lavender">Quick Actions</h2>
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate('/prompt-builder')}
+                className="flex-1"
+              >
+                Try Prompt Builder
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate('/prompt-extractor')}
+                className="flex-1"
+              >
+                Try Prompt Extractor
+              </Button>
+              
+              {isAdmin && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => navigate('/api-access')}
+                  className="md:col-span-2"
+                >
+                  <Users className="w-5 h-5 mr-2" />
+                  Manage User API Access
+                </Button>
+              )}
+            </div>
+          </div>
 
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-500" />
-                  <p className="text-red-500 text-sm">{error}</p>
-                </div>
-              </div>
-            )}
-
-            {success && (
-              <div className="bg-success-green/10 border border-success-green/20 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-success-green" />
-                  <p className="text-success-green text-sm">API key saved successfully!</p>
-                </div>
+          {/* System Information */}
+          <div className="bg-deep-bg rounded-lg p-6 border border-border-color">
+            <h3 className="text-soft-lavender font-medium mb-3">System Information</h3>
+            <div className="space-y-2 text-sm text-soft-lavender/70">
+              <p>• <strong>API Access:</strong> {userApiAccess ? 'Enabled' : 'Disabled'}</p>
+              <p>• <strong>User Type:</strong> {isAdmin ? 'Administrator' : 'Standard User'}</p>
+              <p>• <strong>Authentication:</strong> Active</p>
+              <p>• <strong>Email:</strong> {userProfile?.id ? 'Verified' : 'Pending'}</p>
+            </div>
               </div>
             )}
 
@@ -228,63 +320,4 @@ const ApiConfig: React.FC = () => {
                 testResult.includes('✅') 
                   ? 'bg-success-green/10 border-success-green/20' 
                   : 'bg-red-500/10 border-red-500/20'
-              }`}>
-                <p className={`text-sm ${
-                  testResult.includes('✅') ? 'text-success-green' : 'text-red-500'
-                }`}>
-                  {testResult}
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-4">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={saveApiKey}
-                disabled={isLoading || isSaving || !openaiApiKey.trim()}
-                className="flex-1"
-              >
-                <Save className="w-5 h-5 mr-2" />
-                {isSaving ? 'Saving...' : 'Save API Key'}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={testApiKey}
-                disabled={isLoading || isTesting || !openaiApiKey.trim()}
-              >
-                {isTesting ? 'Testing...' : 'Test API Key'}
-              </Button>
-            </div>
-
-            <div className="flex gap-4">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate('/prompt-builder')}
-                className="flex-1"
-              >
-                Back to Prompt Builder
-              </Button>
-            </div>
-
-            <div className="bg-deep-bg rounded-lg p-4 border border-border-color">
-              <h3 className="text-soft-lavender font-medium mb-3">How to get your OpenAI API Key:</h3>
-              <ol className="text-soft-lavender/80 text-sm space-y-2">
-                <li>1. Visit <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-electric-cyan hover:underline">platform.openai.com/api-keys</a></li>
-                <li>2. Sign in to your OpenAI account</li>
-                <li>3. Click "Create new secret key"</li>
-                <li>4. Copy the key and paste it above</li>
-                <li>5. Make sure your OpenAI account has sufficient credits</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default ApiConfig;
