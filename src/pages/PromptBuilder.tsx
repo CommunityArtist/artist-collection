@@ -659,7 +659,7 @@ const PromptBuilder: React.FC = () => {
                       </label>
                       <select
                         value={selectedProvider}
-                        onChange={(e) => setSelectedProvider(e.target.value as 'openai' | 'nebius' | 'rendernet')}
+                              className="w-full h-auto max-h-64 object-contain rounded-lg hover:opacity-90 transition-opacity"
                         className="w-full bg-card-bg border border-border-color rounded-lg px-4 py-2 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
                       >
                         <option value="openai">OpenAI DALL-E 3</option>

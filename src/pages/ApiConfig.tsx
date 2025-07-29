@@ -15,6 +15,8 @@ const ApiConfig: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [isTestingAPI, setIsTestingAPI] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -129,6 +131,45 @@ const ApiConfig: React.FC = () => {
       setError(error instanceof Error ? error.message : 'Failed to save API key');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const testNebiusAPI = async () => {
+    try {
+      setIsTestingAPI(true);
+      setTestResult(null);
+      setError(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication required');
+      }
+
+      console.log('Testing Nebius API connectivity...');
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nebius-ai-integration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ test: true }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setTestResult('✅ Nebius AI API is working correctly!');
+        console.log('Nebius API test successful:', result);
+      } else {
+        throw new Error(result.error || 'API test failed');
+      }
+
+    } catch (err) {
+      console.error('Nebius API test failed:', err);
+      setError(`Nebius API Test Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsTestingAPI(false);
     }
   };
 
@@ -265,6 +306,15 @@ const ApiConfig: React.FC = () => {
                   </div>
                 )}
 
+                {testResult && (
+                  <div className="bg-success-green/10 border border-success-green/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-success-green" />
+                      <p className="text-success-green text-sm">{testResult}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-4">
                   <Button
                     variant="primary"
@@ -275,6 +325,16 @@ const ApiConfig: React.FC = () => {
                   >
                     <Save className="w-5 h-5 mr-2" />
                     {isSaving ? 'Saving...' : 'Save API Keys'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={testNebiusAPI}
+                    disabled={isLoading || isSaving}
+                    className="flex-1"
+                  >
+                    <Zap className="w-5 h-5 mr-2" />
+                    Test Nebius API
                   </Button>
                 </div>
               </div>
