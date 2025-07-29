@@ -12,7 +12,7 @@ async function getNebiusApiKey() {
   // First try environment variable (preferred for production)
   let apiKey = Deno.env.get('NEBIUS_API_KEY');
   
-  if (apiKey && apiKey !== 'your-nebius-api-key-here' && apiKey.length > 10) {
+  if (apiKey && apiKey !== 'eyJhbGciOiJIUzI1NiIsImtpZCI6IlV6SXJWd1h0dnprLVRvdzlLZWstc0M1akptWXBvX1VaVkxUZlpnMDRlOFUiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJnb29nbGUtb2F1dGgyfDEwODUzMjU3MzAzNTg3Nzc1MjY2MCIsInNjb3BlIjoib3BlbmlkIG9mZmxpbmVfYWNjZXNzIiwiaXNzIjoiYXBpX2tleV9pc3N1ZXIiLCJhdWQiOlsiaHR0cHM6Ly9uZWJpdXMtaW5mZXJlbmNlLmV1LmF1dGgwLmNvbS9hcGkvdjIvIl0sImV4cCI6MTkxMTUwMDkwNSwidXVpZCI6IjQ3ZjU3NTNhLTJjNWUtNGM4NC05YjcwLTI2ZWZmNGJmMWE3NCIsIm5hbWUiOiJOZWJpdXMgQm9sdCIsImV4cGlyZXNfYXQiOiIyMDMwLTA3LTI4VDIwOjI4OjI1KzAwMDAifQ.0nXA0vPVoRySHOc63j5OJl3uYQfnnkJ03AJUR_bMA-Q' && apiKey.length > 10) {
     console.log('Using Nebius API key from environment variable');
     return apiKey;
   }
