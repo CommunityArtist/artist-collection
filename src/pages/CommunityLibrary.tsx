@@ -522,18 +522,18 @@ const CommunityLibrary: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
               {selectedPrompt.media_url && (
-                <div>
+                <div className="flex items-center justify-center">
                   {isVideoUrl(selectedPrompt.media_url) ? (
                     <video
                       src={selectedPrompt.media_url}
                       controls
-                      className="w-full rounded-lg"
+                      className="max-w-full max-h-[70vh] rounded-lg object-contain"
                     />
                   ) : (
                     <OptimizedImage
                       src={selectedPrompt.media_url}
                       alt={selectedPrompt.title}
-                      className="w-full rounded-lg"
+                      className="max-w-full max-h-[70vh] rounded-lg object-contain"
                     />
                   )}
                 </div>

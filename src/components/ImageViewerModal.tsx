@@ -138,12 +138,17 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
       )}
 
       {/* Main Image */}
-      <div className="max-w-[90vw] max-h-[80vh] flex items-center justify-center">
+      <div className="max-w-[90vw] max-h-[calc(100vh-160px)] flex items-center justify-center">
         <img
           src={currentImage}
           alt={`Generated artwork ${currentIndex + 1}`}
           className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-          style={{ maxHeight: 'calc(100vh - 120px)' }}
+          style={{ 
+            maxHeight: 'calc(100vh - 160px)',
+            maxWidth: 'calc(100vw - 80px)',
+            width: 'auto',
+            height: 'auto'
+          }}
         />
       </div>
 
