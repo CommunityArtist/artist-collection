@@ -663,8 +663,8 @@ const PromptBuilder: React.FC = () => {
                         className="w-full bg-card-bg border border-border-color rounded-lg px-4 py-2 text-soft-lavender focus:outline-none focus:border-cosmic-purple"
                       >
                         <option value="openai">OpenAI DALL-E 3</option>
-                        <option value="nebius">Nebius AI (Yandex)</option>
-                        <option value="rendernet">RenderNet AI</option>
+                        <option value="nebius" disabled>Nebius AI (Yandex) - Coming Soon</option>
+                        <option value="rendernet" disabled>RenderNet AI - Coming Soon</option>
                       </select>
                     </div>
                     <Button
